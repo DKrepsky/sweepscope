@@ -1,0 +1,9 @@
+# agent team: local-only artefacts (only specs are committed)
+.claude/bus/
+.claude/tmp/
+.claude/settings.local.json
+
+# build output
+target/
+node_modules/
+dist/
