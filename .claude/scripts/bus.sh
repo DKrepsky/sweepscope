@@ -4,7 +4,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 bus="$root/.claude/bus"
-agent_pattern='^(orchestrator|product-manager|designer|staff-engineer|developer(-[0-9]+)?|qa|code-reviewer)$'
+agent_pattern='^(product-manager|designer|staff-engineer|developer(-[0-9]+)?|qa|code-reviewer)$'
 type_pattern='^(handoff|question|answer|feedback|bug|approval-request|approved|rejected|report)$'
 
 fail() { echo "bus: $*" >&2; exit 1; }

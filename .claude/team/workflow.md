@@ -12,7 +12,7 @@ Every agent reads this file at the start of a task, then its own memory file, th
 | `developer` | Implementation and its tests | Source code + tests | changes specs or architecture |
 | `qa` | Quality | Test plan, e2e tests, manual checks, QA report | fixes product code |
 | `code-reviewer` | Code quality, bugs, security, architecture guard | Review findings | edits code |
-| `orchestrator` | The main Claude session: runs this workflow, spawns agents, relays human approvals | | decides on behalf of the human |
+| `product-manager` also acts as **orchestrator** | The main session agent: the human talks only to the PM, who runs this workflow, spawns the other agents and relays approvals | | decides on behalf of the human |
 
 The human approves at four gates. No agent skips a gate.
 
@@ -27,7 +27,7 @@ The human approves at four gates. No agent skips a gate.
 
 | Step | Agent | Does | Ends with |
 |---|---|---|---|
-| 1 | PM | Takes the request, asks the human clarifying questions (through the orchestrator) | Questions or a draft |
+| 1 | PM | Takes the request, asks the human clarifying questions | Questions or a draft |
 | 2 | PM | Creates the GitHub issue (story with acceptance criteria, or bug) | Issue URL, status `NEEDS_HUMAN_APPROVAL` (**G1**) |
 | 3 | PM | After approval: hands off to Designer (or straight to Staff Engineer if no design is needed) | `handoff` message |
 | 4 | Designer | Journey, workflow, UI, tokens and components; wireframes when layout or flow is new | Design spec committed under `docs/specs/`, status `NEEDS_HUMAN_APPROVAL` (**G2**) |
@@ -37,13 +37,13 @@ The human approves at four gates. No agent skips a gate.
 | 8 | QA | Test plan first, then automated e2e and manual and UI verification; QA report | Report to PM and Staff; `bug` messages to developers |
 | 9 | Code Reviewer | Reviews the diff against the architecture rules | `feedback` to developers or an approval report |
 | 10 | PM | Presents the finished feature against the acceptance criteria | Status `NEEDS_HUMAN_APPROVAL` (**G4**) |
-| 11 | orchestrator | After G4 only: push, following section 6 | |
+| 11 | PM | After G4 only: push, following section 6 | |
 
 Loops:
 
 - QA finds a bug → `bug` message to the developer → fix → QA retests the affected cases.
 - Review finds issues → `feedback` to the developer → fix → review of the changed parts. If a fix changes behaviour, QA retests.
-- More than three rounds on the same problem → the orchestrator stops and asks the Staff Engineer, then the human.
+- More than three rounds on the same problem → the PM stops and asks the Staff Engineer, then the human.
 - A change to the story or the design during planning goes back to the PM or Designer and through the gate again. Scope cuts that remove an acceptance criterion need the human's approval (G1 again).
 
 ## 3. Artefacts
@@ -65,7 +65,7 @@ Loops:
 
 ## 4. Message bus
 
-Agents talk through `.claude/scripts/bus.sh`. Agents are short-lived, so the bus is the record and the orchestrator is the delivery mechanism.
+Agents talk through `.claude/scripts/bus.sh`. Agents are short-lived, so the bus is the record and the PM (main session) is the delivery mechanism.
 
 ```sh
 .claude/scripts/bus.sh inbox <me>                         # at the start of every task
@@ -82,9 +82,9 @@ Rules:
 
 - Every handoff names the issue, the artefact paths, what is expected next and what is still open.
 - Questions go to the owner of the answer: product questions to the PM, UX questions to the Designer, technical ones to the Staff Engineer.
-- Questions for the human are never sent on the bus. They go in the agent's final reply with status `NEEDS_INFO` and the orchestrator asks the human.
+- Questions for the human are never sent on the bus. They go in the agent's final reply with status `NEEDS_INFO` and the PM asks the human.
 - Developers are addressed as `developer-1`, `developer-2` … when work is split.
-- An agent finishes by replying to the orchestrator with: status (`DONE`, `NEEDS_HUMAN_APPROVAL`, `NEEDS_INFO`, `BLOCKED`), the artefact paths, the messages sent, and the next agent expected.
+- An agent finishes by replying to the PM with: status (`DONE`, `NEEDS_HUMAN_APPROVAL`, `NEEDS_INFO`, `BLOCKED`), the artefact paths, the messages sent, and the next agent expected.
 
 ## 5. Memory
 
