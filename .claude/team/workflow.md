@@ -50,7 +50,7 @@ Loops:
 
 | Artefact | Location | Committed |
 |---|---|---|
-| Story, bug | GitHub issue (labels `story` or `bug`) | n/a |
+| Story, bug | GitHub issue from `.github/ISSUE_TEMPLATE/` (labels `enhancement` or `bug`) | n/a |
 | Design spec, wireframes | `docs/specs/<issue>-<slug>/design-spec.md`, `prototypes/` | yes |
 | Implementation spec | `docs/specs/<issue>-<slug>/implementation-spec.md` | yes |
 | ADR | `docs/adr/NNNN-<slug>.md` | yes |
