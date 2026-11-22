@@ -166,3 +166,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Time-base indexes: 0 = 2 ns, 15 = 200 us, 24 = 200 ms, 25 = 500 ms (streaming); range 8 = 1 V. Count 1-2-5 steps before hard-coding an index in tests.
 - Capture model: cycle = `frame_cycle(wait for edge + record)`, slept in <= 20 ms slices that check the unplug flag; Normal sweep with no edge in time sleeps exactly `timeout` then `Timeout`. Edge search is capped at two signal periods (the waveform repeats).
 - Integration tests share `tests/common/mod.rs` (`rig()`, `setup()`); `FakeClock` is in `sweepscope_kernel::testing` (public, not feature gated).
+
+## WP12 marker and segmented (developer-9)
+- Vitest/jsdom does not load Svelte component CSS: `getComputedStyle` is always default. CSS-only fixes are pinned in unit tests by importing `./X.svelte?raw` and matching the rule, plus a Playwright `toHaveCSS` check.
+- check-test-names rejects a `BUG-n:` prefix on `it(...)` titles (must start with `given`); `AC-MK1:`-style prefixes pass only where already present.
+- Marker: `aria-valuenow` = `dragPosition ?? keyPosition ?? position`; key nudges step from the shown value and the override clears when the `position` prop changes or on blur. Worktree needs `npm ci` in `frontend/` first.
+- Worktree-isolated shells refuse compound commands that `cd` out or compute paths: keep commands plain and run from the worktree.
