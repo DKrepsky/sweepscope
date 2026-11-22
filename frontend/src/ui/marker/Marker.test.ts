@@ -154,3 +154,53 @@ describe('Marker looks', () => {
     expect(onreset).toHaveBeenCalledOnce();
   });
 });
+
+describe('Marker value for assistive technology', () => {
+  it('given a drag in progress, when the pointer moves, then aria-valuenow follows it in the same step', async () => {
+    const { marker } = setup();
+    await down(marker, 300);
+    await move(marker, 200);
+    expect(marker).toHaveAttribute('aria-valuenow', '0.75');
+    await move(marker, 100);
+    expect(marker).toHaveAttribute('aria-valuenow', '1');
+  });
+
+  it('given a drag in progress, when the pointer moves, then aria-valuetext reads as a percentage', async () => {
+    const { marker } = setup();
+    await down(marker, 300);
+    await move(marker, 200);
+    expect(marker).toHaveAttribute('aria-valuetext', '75 %');
+  });
+
+  it('given a drag, when it is released and the position prop has not changed, then aria-valuenow shows the prop again', async () => {
+    const { marker } = setup();
+    await down(marker, 300);
+    await move(marker, 200);
+    await up(marker);
+    expect(marker).toHaveAttribute('aria-valuenow', '0.5');
+  });
+
+  it('given a focused marker, when Alt+ArrowUp is pressed, then aria-valuenow changes in the same step', async () => {
+    const { marker } = setup({ step: 0.1 });
+    marker.focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    expect(marker).toHaveAttribute('aria-valuenow', '0.6');
+  });
+
+  it('given a parent that does not move the marker, when Alt+ArrowUp is pressed twice, then each press steps from the last value', async () => {
+    const { marker, oncommit } = setup({ step: 0.1 });
+    marker.focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{ArrowUp}{/Alt}');
+    expect(oncommit).toHaveBeenLastCalledWith(0.7);
+    expect(marker).toHaveAttribute('aria-valuenow', '0.7');
+  });
+
+  it('given a keyboard move, when the position prop changes, then aria-valuenow shows the new prop', async () => {
+    const view = render(Marker, { kind: 'ground', position: 0.5, label: '1', name: 'CH1 ground', step: 0.1 });
+    const marker = screen.getByRole('slider');
+    marker.focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    await view.rerender({ position: 0.55 });
+    expect(marker).toHaveAttribute('aria-valuenow', '0.55');
+  });
+});

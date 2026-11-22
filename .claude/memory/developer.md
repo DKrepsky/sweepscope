@@ -176,3 +176,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Crate `engineering-format` (`backend/libs/`), API `format(f64, Quantity) -> Formatted{value,text,unit}`; units use `us` for micro, points are `pts` with k/M/G, percent and divisions take no prefix (3 significant digits, so 0.5 div is `0.500`). Scale quantities trim zeros via `{:.6}`.
 - The M1 spec and bus live only in the main checkout (`/home/kr/workspace/sweepscope/docs/specs/m1-live-view`, `.claude/bus`); an agent worktree starts from an old branch: create the WP branch from `feat/m1-live-view` with `git checkout -b`. `cargo test --offline -p <crate>` works in the full workspace here.
 - `StepBy<RangeInclusive>` is not reversible: iterate group indexes and multiply.
+## WP12 marker and segmented (developer-9)
+- Vitest/jsdom does not load Svelte component CSS: `getComputedStyle` is always default. CSS-only fixes are pinned in unit tests by importing `./X.svelte?raw` and matching the rule, plus a Playwright `toHaveCSS` check.
+- check-test-names rejects a `BUG-n:` prefix on `it(...)` titles (must start with `given`); `AC-MK1:`-style prefixes pass only where already present.
+- Marker: `aria-valuenow` = `dragPosition ?? keyPosition ?? position`; key nudges step from the shown value and the override clears when the `position` prop changes or on blur. Worktree needs `npm ci` in `frontend/` first.
+- Worktree-isolated shells refuse compound commands that `cd` out or compute paths: keep commands plain and run from the worktree.

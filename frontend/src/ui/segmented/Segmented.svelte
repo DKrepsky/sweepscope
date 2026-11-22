@@ -95,6 +95,7 @@
     min-width: var(--ss-size-control-md);
     padding: 0 var(--ss-space-3);
     font-size: var(--ss-font-size-sm);
+    white-space: nowrap;
     color: var(--ss-color-text-secondary);
   }
 
