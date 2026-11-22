@@ -570,6 +570,10 @@ section 8.4). Still open, to be decided in the story that first needs them:
 4. **Offline mode as a device.** A `FileDevice` implementing `ScopeDevice` for saved captures (DAT-4).
 5. **Tauri security.** The scaffold sets a strict CSP, an app manifest listing only our commands and one capability for the
    main window. Review again when plugins (dialogs, file system) are added.
+   The CSP (`src-tauri/tauri.conf.json`, JSON has no comments) allows `style-src 'unsafe-inline'` on purpose: Svelte
+   sets inline `style` attributes and `style:` directives at run time (scale, positions, colours from tokens), which a
+   strict `style-src` blocks. Scripts stay `'self'` only, so inline styles cannot run code. Revisit if styles move to
+   classes only.
 6. **Multi-window.** Which stores are per window and which per application (DSP-8).
 7. **Hardware test checklist.** The manual pre-release list.
 

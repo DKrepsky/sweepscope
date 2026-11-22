@@ -236,3 +236,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## M1 shell fix round (developer-3)
 - Capability needs `core:event:allow-listen` and `allow-unlisten` for the frontend to receive backend events; browser stubs hide this, so a manifest test pins the exact `core:` permissions (the commands test filters `core:` out).
 - `SWEEPSCOPE_NO_HARDWARE=1` skips `HantekCatalog::start` (`choose_hardware` takes the starter as a closure, so the test proves it is never called). Docs: README, docs/troubleshooting.md (DMABUF workaround), docs/usb-permissions.md. Prettier covers only `frontend/`, not the root README.
+## M1 review fix round (developer-1)
+- Permission banner command embeds the udev rule text (`include_str!` of `packaging/udev/...`) via `printf | sudo tee`, so it works from any directory and without a checkout.
+- `createTauriClient(transport, report)`: background rejections (listen, open channel, close) go to an injected reporter (default `console.error`); `BackendClient` interface unchanged.
+- Thread tests: replace sleeps with a channel handshake or no delay (result must hold in any order); `testing::eventually` for conditions. CSP `unsafe-inline` rationale lives in docs/architecture.md section on Tauri security (JSON has no comments).

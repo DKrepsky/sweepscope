@@ -10,3 +10,6 @@ dist/
 frontend/test-results/
 frontend/playwright-report/
 src-tauri/gen/
+
+# agent worktrees
+.claude/worktrees/
