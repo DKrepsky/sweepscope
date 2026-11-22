@@ -20,3 +20,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Re-review baseline also includes `git status` for untracked scratch files and `git ls-files` for png/log outside e2e snapshots.
 - Rust crates: check `pub mod` against the spec's re-export list; check `verified`/unverified flags against PRD tables; flag real-time sleeps and wall-clock bounds in tests (use a FakeClock hook); check devices opened before an unplug stay dead after replug.
 - Simulators/fakes: check handle generation after replug, initial Attached on subscribe, finite-value validation, and that test-only helpers are cfg(test).
+- Tauri 2 custom capabilities: check that core:event:allow-listen/unlisten are present when the frontend uses `listen`; app-only permission lists silently block events.
+- Rust threaded modules: check Drop joins, weak handler state, locks never held across bus requests, latest-wins via subscribe_latest; flag real sleeps in tests.
+- Help commands shown in banners must work outside the repo root (relative paths).

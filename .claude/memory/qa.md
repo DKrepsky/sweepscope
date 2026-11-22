@@ -92,3 +92,17 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Background jobs ignore SIGINT: to test Ctrl+C use python Popen(start_new_session, SIGINT default) and os.killpg. `timeout` puts the app in its own group (run-all did not stop on Ctrl+C at e34f3a9).
 - Never `pkill -f` patterns (kills own shell, exit 144); use pgrep and kill by PID.
 - Synthetic summarize checks: clone a real JSON, drop quickRun, set configuredDurationS 60, vary drawMs.mean / ipcMs.p99 (4 ms floor, 1.5 ratio, ipc-only rule).
+
+## M1 live view lessons (real Tauri app + simulator)
+- The Tauri app ALWAYS composes `HantekCatalog`: `SWEEPSCOPE_SIMULATOR=1` does not stop it opening a plugged-in 6254BC (happened once, killed at once). Run the app
+  only as `unshare -rm ./run-app.sh ...` where run-app.sh does `mount -t tmpfs none /dev/bus/usb && mount -t tmpfs none /sys/bus/usb/devices` first. Check `lsusb | grep 04b5`.
+- Xvfb recipe: debs already extracted in `/tmp/claude-1000/xv/root`; env also needs `__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json`
+  and `RUSTUP_HOME/CARGO_HOME`. The window shows black for ~15 s after start and clicks sent too early are lost: `xdotool windowmap/windowmove` the "SweepScope" window,
+  wait, then click. Capture with `import -window root` (DISPLAY must be the Xvfb). F5 does not reload; right click, Inspect Element docks devtools, console prompt at the bottom.
+- The vite dev server log prints webview console errors (`[vite] (client) ...`): grep it for capability errors (`not allowed`). Browser stubs hide capability gaps
+  (BUG-1: `core:event:allow-listen` missing); always smoke the real window once.
+- Drive the backend from devtools: `window.__TAURI_INTERNALS__.invoke('use_simulator',{enabled:false|true})` = unplug/replug; 20-cycle loop and `/proc/<pid>/task` count work.
+- To test a capability fix without editing the repo: `git archive HEAD | tar -x` into scratch, patch, `CARGO_TARGET_DIR=<scratch> cargo build -p sweepscope-app` (~70 s with warm deps cache), run that binary.
+- e2e stub now has `emit(page, event, payload)` and `sendFrame(page, bytes)` (support/tauri-stub.ts) and `wireFrame` (support/frames.ts); wait for `open_frame_stream` in the IPC log before the first frame.
+  Pixel counting of traces: count bright pixels (max channel > 80) against an empty baseline; frozen traces are dimmed.
+- Branch not on the remote means the CI baseline regeneration cannot be done by QA; say so, do not commit local renders.

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openGallery, openMain, SCOPE_SCREEN } from './support/app';
+import { sine, wireFrame } from './support/frames';
+import { sendFrame } from './support/tauri-stub';
 
 const SCALES = [1, 1.25, 1.5, 2];
 
@@ -79,6 +81,8 @@ for (const scale of SCALES) {
     }) => {
       test.skip(browserName !== 'chromium', 'Snapshots are stored for Chromium only');
       await openWithFreshGraticule(page);
+      await sendFrame(page, wireFrame({ mask: 0b0111, count: 2501, value: sine }));
+      await expect(page.locator('.graph')).toHaveAttribute('data-state', 'live');
       await expect(page.locator(SCOPE_SCREEN)).toHaveScreenshot(`scope-screen-${scale}.png`, { scale: 'device' });
     });
   });
