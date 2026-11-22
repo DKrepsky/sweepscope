@@ -82,6 +82,14 @@ mod tests {
     }
 
     #[test]
+    fn given_the_shipped_rule_text_when_it_is_quoted_into_the_command_then_it_has_no_single_quote() {
+        assert!(
+            !RULE_CONTENT.contains('\''),
+            "a single quote would break the printf quoting"
+        );
+    }
+
+    #[test]
     fn given_invalid_calibration_when_the_issue_is_asked_then_the_kind_says_so_without_help() {
         let issue = issue_for(&DeviceError::CalibrationInvalid).unwrap();
 

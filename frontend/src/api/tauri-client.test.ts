@@ -134,7 +134,9 @@ describe('tauri client contract', () => {
     const report = vi.fn();
     const transport = fakeTransport({ invoke: vi.fn().mockRejectedValue(failure) });
 
-    createTauriClient(transport, report).openStream('frames', () => {}).close();
+    createTauriClient(transport, report)
+      .openStream('frames', () => {})
+      .close();
     await Promise.resolve();
     await Promise.resolve();
 

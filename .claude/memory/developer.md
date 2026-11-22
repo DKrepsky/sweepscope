@@ -243,3 +243,5 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## BUG-3 unverified time base (developer-8)
 - `HorizontalModel.unverified?: string` (text 'Unverified (see accuracy note).' from design 8; backend sends only `ScaleChoice.verified`); `Unverified` warning Badge next to the Time/div stepper and in the readout. e2e stub: `stubTauri(page, settings, { unverifiedTimeBase: true })`, `openMain(page, 100, options)`.
 - Bash tool in a worktree refuses compound commands with `cd` + git/rm; run `cd <abs>/frontend && ...` as its own call, and run npx playwright from `frontend/` (else it fetches a stray playwright).
+## M1 review fix round 2 (developer-1)
+- Full `npm run check` runs from the repo root (not frontend/); run `npx prettier --write` on touched frontend files first. A test guards that the udev rule has no single quote (printf quoting in the permission command).
