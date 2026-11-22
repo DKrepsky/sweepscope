@@ -83,6 +83,73 @@ fn given_corrupt_json_when_saving_then_the_old_bytes_are_kept_as_a_backup_and_th
 }
 
 #[test]
+fn given_a_second_corruption_when_saving_then_the_first_backup_is_kept_and_the_second_is_numbered() {
+    let storage = MemoryStorage::default();
+    let bus = module_on(&storage);
+    storage.write("settings.json", b"first bad").unwrap();
+    bus.request(SaveUiState(entry("a", "1"))).unwrap();
+    storage.write("settings.json", b"second bad").unwrap();
+
+    bus.request(SaveUiState(entry("a", "2"))).unwrap();
+
+    assert_eq!(storage.read("settings.json.corrupt"), Ok(Some(b"first bad".to_vec())));
+    assert_eq!(
+        storage.read("settings.json.corrupt.1"),
+        Ok(Some(b"second bad".to_vec()))
+    );
+}
+
+#[test]
+fn given_many_corruptions_when_saving_then_backups_stay_bounded() {
+    let storage = MemoryStorage::default();
+    let bus = module_on(&storage);
+    for _ in 0..15 {
+        storage.write("settings.json", b"bad").unwrap();
+        bus.request(SaveUiState(entry("a", "1"))).unwrap();
+    }
+
+    assert_eq!(storage.read("settings.json.corrupt.9"), Ok(Some(b"bad".to_vec())));
+    assert_eq!(storage.read("settings.json.corrupt.10"), Ok(None));
+}
+
+#[test]
+fn given_an_invalid_namespace_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
+    for namespace in ["", "../x", "has space", &"n".repeat(65)] {
+        let storage = MemoryStorage::default();
+
+        let error = module_on(&storage)
+            .request(SaveUiState(entry(namespace, "1")))
+            .unwrap_err();
+
+        assert_eq!(error.category, ErrorCategory::Recoverable);
+        assert_eq!(storage.read("settings.json"), Ok(None));
+    }
+}
+
+#[test]
+fn given_text_that_is_not_json_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
+    let storage = MemoryStorage::default();
+
+    let error = module_on(&storage)
+        .request(SaveUiState(entry("a", "{ nope")))
+        .unwrap_err();
+
+    assert_eq!(error.category, ErrorCategory::Recoverable);
+    assert_eq!(storage.read("settings.json"), Ok(None));
+}
+
+#[test]
+fn given_an_oversized_value_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
+    let storage = MemoryStorage::default();
+    let big = format!("\"{}\"", "x".repeat(70 * 1024));
+
+    let error = module_on(&storage).request(SaveUiState(entry("a", &big))).unwrap_err();
+
+    assert_eq!(error.category, ErrorCategory::Recoverable);
+    assert_eq!(storage.read("settings.json"), Ok(None));
+}
+
+#[test]
 fn given_a_file_of_a_newer_version_when_saving_then_a_recoverable_error_returns_and_the_file_is_unchanged() {
     let storage = MemoryStorage::default();
     let future = br#"{"version":2,"ui":{},"extra":true}"#;

@@ -8,6 +8,9 @@ use crate::UiStateEntry;
 
 pub const SETTINGS_KEY: &str = "settings.json";
 const CORRUPT_BACKUP_KEY: &str = "settings.json.corrupt";
+const MAX_NUMBERED_BACKUPS: u32 = 9;
+const MAX_NAMESPACE_LEN: usize = 64;
+const MAX_JSON_BYTES: usize = 64 * 1024;
 const SUPPORTED_VERSION: u32 = 1;
 
 #[derive(Serialize, Deserialize)]
@@ -68,6 +71,7 @@ pub fn load(storage: &dyn Storage, namespace: &str) -> Result<Option<UiStateEntr
 /// Read-modify-write of the whole file. A corrupt file is kept as a backup before it is replaced;
 /// a file from a newer version is never touched.
 pub fn save(storage: &dyn Storage, entry: UiStateEntry) -> Result<(), KernelError> {
+    validate(&entry)?;
     let mut file = current_file(storage)?;
     file.ui.insert(
         entry.namespace,
@@ -80,6 +84,38 @@ pub fn save(storage: &dyn Storage, entry: UiStateEntry) -> Result<(), KernelErro
     storage.write(SETTINGS_KEY, &bytes)
 }
 
+fn validate(entry: &UiStateEntry) -> Result<(), KernelError> {
+    let name_ok = !entry.namespace.is_empty()
+        && entry.namespace.len() <= MAX_NAMESPACE_LEN
+        && entry
+            .namespace
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if !name_ok {
+        return Err(KernelError::recoverable("settings namespace is not valid"));
+    }
+    if entry.json.len() > MAX_JSON_BYTES {
+        return Err(KernelError::recoverable("settings value is too large"));
+    }
+    serde_json::from_str::<Value>(&entry.json)
+        .map(drop)
+        .map_err(|_| KernelError::recoverable("settings value is not valid JSON"))
+}
+
+/// The first corruption keeps the plain name; later ones get a number. When all slots are taken the last one is reused.
+fn backup_key(storage: &dyn Storage) -> Result<String, KernelError> {
+    if storage.read(CORRUPT_BACKUP_KEY)?.is_none() {
+        return Ok(CORRUPT_BACKUP_KEY.to_owned());
+    }
+    for n in 1..MAX_NUMBERED_BACKUPS {
+        let key = format!("{CORRUPT_BACKUP_KEY}.{n}");
+        if storage.read(&key)?.is_none() {
+            return Ok(key);
+        }
+    }
+    Ok(format!("{CORRUPT_BACKUP_KEY}.{MAX_NUMBERED_BACKUPS}"))
+}
+
 fn current_file(storage: &dyn Storage) -> Result<SettingsFile, KernelError> {
     let Some(bytes) = storage.read(SETTINGS_KEY)? else {
         return Ok(SettingsFile::default());
@@ -87,7 +123,7 @@ fn current_file(storage: &dyn Storage) -> Result<SettingsFile, KernelError> {
     match parse(&bytes)? {
         Parsed::Valid(file) => Ok(file),
         Parsed::Corrupt => {
-            storage.write(CORRUPT_BACKUP_KEY, &bytes)?;
+            storage.write(&backup_key(storage)?, &bytes)?;
             Ok(SettingsFile::default())
         }
     }

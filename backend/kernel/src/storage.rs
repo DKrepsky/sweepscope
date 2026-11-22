@@ -31,7 +31,9 @@ impl FileStorage {
 
     fn stage(&self, target: &Path, bytes: &[u8]) -> Result<PathBuf, KernelError> {
         fs::create_dir_all(&self.root).map_err(io_error("create the storage folder"))?;
-        let staged = target.with_extension("tmp");
+        let mut name = target.file_name().unwrap_or_default().to_os_string();
+        name.push(".tmp");
+        let staged = target.with_file_name(name);
         let mut file = File::create(&staged).map_err(io_error("write"))?;
         file.write_all(bytes)
             .and_then(|()| file.sync_all())
@@ -93,6 +95,18 @@ mod tests {
         storage.stage(&target, b"new but never renamed").unwrap();
 
         assert_eq!(storage.read("a.json"), Ok(Some(b"old".to_vec())));
+    }
+
+    #[test]
+    fn given_keys_differing_only_in_extension_when_staged_then_temp_files_differ() {
+        let dir = TempDir::new();
+        let storage = FileStorage::new(dir.path());
+
+        let json = storage.stage(&storage.path_for("a.json").unwrap(), b"j").unwrap();
+        let txt = storage.stage(&storage.path_for("a.txt").unwrap(), b"t").unwrap();
+
+        assert_ne!(json, txt);
+        assert_eq!(fs::read(json).unwrap(), b"j");
     }
 
     #[test]
