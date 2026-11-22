@@ -1,0 +1,20 @@
+[package]
+name = "sweepscope-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SweepScope desktop shell: composition root and IPC"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+sweepscope-kernel = { path = "../backend/kernel" }
+sweepscope-settings = { path = "../backend/features/settings" }
+tauri = { version = "2.12", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ts-rs = "12"
