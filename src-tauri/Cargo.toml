@@ -13,9 +13,12 @@ workspace = true
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
+sweepscope-acquisition = { path = "../backend/features/acquisition" }
+sweepscope-device = { path = "../backend/features/device" }
+sweepscope-display = { path = "../backend/features/display" }
 sweepscope-kernel = { path = "../backend/kernel" }
 sweepscope-settings = { path = "../backend/features/settings" }
-tauri = { version = "2.12", features = [] }
-
-[dev-dependencies]
+env_logger = "0.11"
+log = "0.4"
 serde_json = "1"
+tauri = { version = "2.12", features = [] }

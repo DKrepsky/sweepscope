@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-frame-stream"
+description = "Enables the open_frame_stream command without any pre-configured scope."
+commands.allow = ["open_frame_stream"]
+
+[[permission]]
+identifier = "deny-open-frame-stream"
+description = "Denies the open_frame_stream command without any pre-configured scope."
+commands.deny = ["open_frame_stream"]

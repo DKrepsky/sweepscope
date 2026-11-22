@@ -1,7 +1,23 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "The main window may call the two settings commands and nothing else.",
+  "description": "The main window may call the registered app commands and nothing else.",
   "windows": ["main"],
-  "permissions": ["allow-load-ui-state", "allow-save-ui-state"]
+  "permissions": [
+    "allow-load-ui-state",
+    "allow-save-ui-state",
+    "allow-get-snapshot",
+    "allow-set-running",
+    "allow-force-trigger",
+    "allow-set-channel",
+    "allow-step-setting",
+    "allow-reset-setting",
+    "allow-set-trigger-position",
+    "allow-set-trigger-level",
+    "allow-set-trigger",
+    "allow-use-simulator",
+    "allow-retry-connection",
+    "allow-open-frame-stream",
+    "allow-close-frame-stream"
+  ]
 }

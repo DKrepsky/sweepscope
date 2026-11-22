@@ -11,6 +11,15 @@ frontend, packaged with Tauri 2. Requirements are in [docs/prd.md](docs/prd.md),
 - WebKitGTK development packages for Tauri 2:
   - Ubuntu 24.04: `sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
   - Fedora: `sudo dnf install @development-tools pkgconf-pkg-config webkit2gtk4.1-devel libxdo-devel openssl-devel libappindicator-gtk3-devel librsvg2-devel`
+- The libusb development package, used by the scope driver:
+  - Ubuntu 24.04: `sudo apt install libusb-1.0-0-dev`
+  - Fedora: `sudo dnf install libusb1-devel`
+- USB access for the scope on Linux: install the udev rule, see [docs/usb-permissions.md](docs/usb-permissions.md).
+
+## Running without a scope
+
+`SWEEPSCOPE_SIMULATOR=1 npm run dev` starts the app with the built-in simulated oscilloscope. `RUST_LOG=debug` turns on
+driver and adapter logs.
 
 ## Commands
 
