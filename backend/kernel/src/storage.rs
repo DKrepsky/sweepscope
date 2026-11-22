@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use crate::KernelError;
 
@@ -10,14 +11,18 @@ pub trait Storage: Send + Sync {
 }
 
 /// Stores each key as a file in one directory. Writes go to a temp file first and are renamed into place.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FileStorage {
     root: PathBuf,
+    write_lock: Mutex<()>,
 }
 
 impl FileStorage {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self {
+            root: root.into(),
+            write_lock: Mutex::new(()),
+        }
     }
 
     fn path_for(&self, key: &str) -> Result<PathBuf, KernelError> {
@@ -32,7 +37,7 @@ impl FileStorage {
     fn stage(&self, target: &Path, bytes: &[u8]) -> Result<PathBuf, KernelError> {
         fs::create_dir_all(&self.root).map_err(io_error("create the storage folder"))?;
         let mut name = target.file_name().unwrap_or_default().to_os_string();
-        name.push(".tmp");
+        name.push(format!(".{}.tmp", std::process::id()));
         let staged = target.with_file_name(name);
         let mut file = File::create(&staged).map_err(io_error("write"))?;
         file.write_all(bytes)
@@ -57,8 +62,12 @@ impl Storage for FileStorage {
 
     fn write(&self, key: &str, bytes: &[u8]) -> Result<(), KernelError> {
         let target = self.path_for(key)?;
+        let _guard = self.write_lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let staged = self.stage(&target, bytes)?;
-        fs::rename(staged, target).map_err(io_error("replace the file"))
+        fs::rename(&staged, target).map_err(|error| {
+            let _ = fs::remove_file(&staged);
+            io_error("replace the file")(error)
+        })
     }
 }
 
@@ -107,6 +116,22 @@ mod tests {
 
         assert_ne!(json, txt);
         assert_eq!(fs::read(json).unwrap(), b"j");
+    }
+
+    #[test]
+    fn given_a_failing_rename_when_written_then_the_temp_file_is_removed() {
+        let dir = TempDir::new();
+        let storage = FileStorage::new(dir.path());
+        fs::create_dir(dir.path().join("a.json")).unwrap();
+
+        let result = storage.write("a.json", b"new");
+
+        assert!(result.is_err());
+        let leftovers = fs::read_dir(dir.path())
+            .unwrap()
+            .filter(|e| e.as_ref().unwrap().file_name().to_string_lossy().ends_with(".tmp"))
+            .count();
+        assert_eq!(leftovers, 0);
     }
 
     #[test]

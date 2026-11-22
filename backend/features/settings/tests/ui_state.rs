@@ -83,70 +83,94 @@ fn given_corrupt_json_when_saving_then_the_old_bytes_are_kept_as_a_backup_and_th
 }
 
 #[test]
-fn given_a_second_corruption_when_saving_then_the_first_backup_is_kept_and_the_second_is_numbered() {
+fn given_an_existing_backup_and_a_new_corrupt_file_when_saving_then_the_backup_is_unchanged_and_the_save_succeeds() {
     let storage = MemoryStorage::default();
-    let bus = module_on(&storage);
-    storage.write("settings.json", b"first bad").unwrap();
-    bus.request(SaveUiState(entry("a", "1"))).unwrap();
+    storage.write("settings.json.corrupt", b"first bad").unwrap();
     storage.write("settings.json", b"second bad").unwrap();
+    let bus = module_on(&storage);
 
     bus.request(SaveUiState(entry("a", "2"))).unwrap();
 
     assert_eq!(storage.read("settings.json.corrupt"), Ok(Some(b"first bad".to_vec())));
-    assert_eq!(
-        storage.read("settings.json.corrupt.1"),
-        Ok(Some(b"second bad".to_vec()))
-    );
+    assert_eq!(storage.read("settings.json.corrupt.1"), Ok(None));
+    assert_eq!(load(&bus, "a"), Ok(Some(entry("a", "2"))));
+}
+
+fn assert_save_refused_and_file_unchanged(storage: &MemoryStorage, rejected: UiStateEntry) {
+    let before = storage.read("settings.json").unwrap();
+
+    let error = module_on(storage).request(SaveUiState(rejected)).unwrap_err();
+
+    assert_eq!(error.category, ErrorCategory::Recoverable);
+    assert_eq!(storage.read("settings.json").unwrap(), before);
 }
 
 #[test]
-fn given_many_corruptions_when_saving_then_backups_stay_bounded() {
+fn given_an_invalid_namespace_when_saving_then_a_recoverable_error_returns_and_the_file_is_unchanged() {
+    for namespace in ["", "Bad Name", "../x", "1a", "a_b", &"n".repeat(65)] {
+        let storage = MemoryStorage::default();
+        storage.write("settings.json", br#"{"version":1,"ui":{}}"#).unwrap();
+
+        assert_save_refused_and_file_unchanged(&storage, entry(namespace, "1"));
+    }
+}
+
+#[test]
+fn given_a_namespace_of_64_characters_when_saving_then_it_is_accepted() {
+    let bus = module_on(&MemoryStorage::default());
+
+    assert_eq!(bus.request(SaveUiState(entry(&"n".repeat(64), "1"))), Ok(()));
+}
+
+#[test]
+fn given_version_zero_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
+    let storage = MemoryStorage::default();
+    let mut rejected = entry("a", "1");
+    rejected.version = 0;
+
+    assert_save_refused_and_file_unchanged(&storage, rejected);
+    assert_eq!(storage.read("settings.json"), Ok(None));
+}
+
+#[test]
+fn given_text_that_is_not_json_when_saving_then_a_recoverable_error_returns_and_the_file_is_unchanged() {
+    let storage = MemoryStorage::default();
+
+    assert_save_refused_and_file_unchanged(&storage, entry("a", "{"));
+    assert_eq!(storage.read("settings.json"), Ok(None));
+}
+
+#[test]
+fn given_a_json_of_65537_bytes_when_saving_then_a_recoverable_error_returns_and_the_file_is_unchanged() {
+    let storage = MemoryStorage::default();
+    let json = format!("\"{}\"", "x".repeat(65_537 - 2));
+    assert_eq!(json.len(), 65_537);
+
+    assert_save_refused_and_file_unchanged(&storage, entry("a", &json));
+    assert_eq!(storage.read("settings.json"), Ok(None));
+}
+
+#[test]
+fn given_64_namespaces_when_a_65th_is_saved_then_it_is_refused_and_an_existing_one_can_still_update() {
     let storage = MemoryStorage::default();
     let bus = module_on(&storage);
-    for _ in 0..15 {
-        storage.write("settings.json", b"bad").unwrap();
-        bus.request(SaveUiState(entry("a", "1"))).unwrap();
+    for n in 0..64 {
+        bus.request(SaveUiState(entry(&format!("ns{n}"), "1"))).unwrap();
     }
 
-    assert_eq!(storage.read("settings.json.corrupt.9"), Ok(Some(b"bad".to_vec())));
-    assert_eq!(storage.read("settings.json.corrupt.10"), Ok(None));
+    assert_save_refused_and_file_unchanged(&storage, entry("extra", "1"));
+    assert_eq!(bus.request(SaveUiState(entry("ns0", "2"))), Ok(()));
 }
 
 #[test]
-fn given_an_invalid_namespace_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
-    for namespace in ["", "../x", "has space", &"n".repeat(65)] {
-        let storage = MemoryStorage::default();
-
-        let error = module_on(&storage)
-            .request(SaveUiState(entry(namespace, "1")))
-            .unwrap_err();
-
-        assert_eq!(error.category, ErrorCategory::Recoverable);
-        assert_eq!(storage.read("settings.json"), Ok(None));
-    }
-}
-
-#[test]
-fn given_text_that_is_not_json_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
+fn given_an_invalid_namespace_when_loading_then_a_recoverable_error_returns_without_reading_storage() {
     let storage = MemoryStorage::default();
+    storage.write("settings.json", b"{ not json").unwrap();
 
-    let error = module_on(&storage)
-        .request(SaveUiState(entry("a", "{ nope")))
-        .unwrap_err();
+    let error = load(&module_on(&storage), "Bad Name").unwrap_err();
 
+    assert_eq!(error.message, "invalid ui state namespace");
     assert_eq!(error.category, ErrorCategory::Recoverable);
-    assert_eq!(storage.read("settings.json"), Ok(None));
-}
-
-#[test]
-fn given_an_oversized_value_when_saving_then_a_recoverable_error_returns_and_nothing_is_written() {
-    let storage = MemoryStorage::default();
-    let big = format!("\"{}\"", "x".repeat(70 * 1024));
-
-    let error = module_on(&storage).request(SaveUiState(entry("a", &big))).unwrap_err();
-
-    assert_eq!(error.category, ErrorCategory::Recoverable);
-    assert_eq!(storage.read("settings.json"), Ok(None));
 }
 
 #[test]

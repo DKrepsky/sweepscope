@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sweepscope_kernel::{KernelError, Storage};
@@ -8,9 +9,10 @@ use crate::UiStateEntry;
 
 pub const SETTINGS_KEY: &str = "settings.json";
 const CORRUPT_BACKUP_KEY: &str = "settings.json.corrupt";
-const MAX_NUMBERED_BACKUPS: u32 = 9;
 const MAX_NAMESPACE_LEN: usize = 64;
+const MAX_NAMESPACES: usize = 64;
 const MAX_JSON_BYTES: usize = 64 * 1024;
+const MIN_VERSION: u32 = 1;
 const SUPPORTED_VERSION: u32 = 1;
 
 #[derive(Serialize, Deserialize)]
@@ -55,6 +57,7 @@ fn corrupt_error() -> KernelError {
 }
 
 pub fn load(storage: &dyn Storage, namespace: &str) -> Result<Option<UiStateEntry>, KernelError> {
+    validate_namespace(namespace)?;
     let Some(bytes) = storage.read(SETTINGS_KEY)? else {
         return Ok(None);
     };
@@ -68,11 +71,14 @@ pub fn load(storage: &dyn Storage, namespace: &str) -> Result<Option<UiStateEntr
     }
 }
 
-/// Read-modify-write of the whole file. A corrupt file is kept as a backup before it is replaced;
-/// a file from a newer version is never touched.
+/// Read-modify-write of the whole file. A corrupt file is kept as a backup before it is replaced
+/// (the first backup is never overwritten); a file from a newer version is never touched.
 pub fn save(storage: &dyn Storage, entry: UiStateEntry) -> Result<(), KernelError> {
     validate(&entry)?;
     let mut file = current_file(storage)?;
+    if file.ui.len() >= MAX_NAMESPACES && !file.ui.contains_key(&entry.namespace) {
+        return Err(KernelError::recoverable("too many ui state entries"));
+    }
     file.ui.insert(
         entry.namespace,
         StoredEntry {
@@ -85,35 +91,28 @@ pub fn save(storage: &dyn Storage, entry: UiStateEntry) -> Result<(), KernelErro
 }
 
 fn validate(entry: &UiStateEntry) -> Result<(), KernelError> {
-    let name_ok = !entry.namespace.is_empty()
-        && entry.namespace.len() <= MAX_NAMESPACE_LEN
-        && entry
-            .namespace
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
-    if !name_ok {
-        return Err(KernelError::recoverable("settings namespace is not valid"));
+    validate_namespace(&entry.namespace)?;
+    if entry.version < MIN_VERSION {
+        return Err(KernelError::recoverable("invalid ui state version"));
     }
     if entry.json.len() > MAX_JSON_BYTES {
-        return Err(KernelError::recoverable("settings value is too large"));
+        return Err(KernelError::recoverable("ui state is too large"));
     }
-    serde_json::from_str::<Value>(&entry.json)
+    serde_json::from_str::<IgnoredAny>(&entry.json)
         .map(drop)
-        .map_err(|_| KernelError::recoverable("settings value is not valid JSON"))
+        .map_err(|_| KernelError::recoverable("ui state is not valid JSON"))
 }
 
-/// The first corruption keeps the plain name; later ones get a number. When all slots are taken the last one is reused.
-fn backup_key(storage: &dyn Storage) -> Result<String, KernelError> {
-    if storage.read(CORRUPT_BACKUP_KEY)?.is_none() {
-        return Ok(CORRUPT_BACKUP_KEY.to_owned());
+/// Matches `^[a-z][a-z0-9.-]{0,63}$`.
+fn validate_namespace(namespace: &str) -> Result<(), KernelError> {
+    let mut chars = namespace.chars();
+    let first_ok = chars.next().is_some_and(|c| c.is_ascii_lowercase());
+    let rest_ok = chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '.' | '-'));
+    if first_ok && rest_ok && namespace.len() <= MAX_NAMESPACE_LEN {
+        Ok(())
+    } else {
+        Err(KernelError::recoverable("invalid ui state namespace"))
     }
-    for n in 1..MAX_NUMBERED_BACKUPS {
-        let key = format!("{CORRUPT_BACKUP_KEY}.{n}");
-        if storage.read(&key)?.is_none() {
-            return Ok(key);
-        }
-    }
-    Ok(format!("{CORRUPT_BACKUP_KEY}.{MAX_NUMBERED_BACKUPS}"))
 }
 
 fn current_file(storage: &dyn Storage) -> Result<SettingsFile, KernelError> {
@@ -123,8 +122,15 @@ fn current_file(storage: &dyn Storage) -> Result<SettingsFile, KernelError> {
     match parse(&bytes)? {
         Parsed::Valid(file) => Ok(file),
         Parsed::Corrupt => {
-            storage.write(&backup_key(storage)?, &bytes)?;
+            keep_first_backup(storage, &bytes)?;
             Ok(SettingsFile::default())
         }
     }
+}
+
+fn keep_first_backup(storage: &dyn Storage, bytes: &[u8]) -> Result<(), KernelError> {
+    if storage.read(CORRUPT_BACKUP_KEY)?.is_some() {
+        return Ok(());
+    }
+    storage.write(CORRUPT_BACKUP_KEY, bytes)
 }
