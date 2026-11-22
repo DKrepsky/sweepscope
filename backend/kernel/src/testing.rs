@@ -31,6 +31,10 @@ impl Clock for FakeClock {
     fn now(&self) -> Instant {
         *self.now.lock().unwrap()
     }
+
+    fn sleep(&self, duration: Duration) {
+        self.advance(duration);
+    }
 }
 
 /// In-memory storage; clones share the same contents, so a second module instance can reopen it.
