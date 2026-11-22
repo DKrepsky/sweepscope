@@ -22,7 +22,7 @@ Rules fixed before measuring (spec 2.6):
 
 ## 2. Method
 
-- Spike branch `spike/4-roll-streaming`, tag `spike-4-final` (local until pushed), tip `1a5ffb5`. Code: `spikes/4-roll-streaming/` (standalone workspace, uses the #3 simulator by path).
+- Spike branch `spike/4-roll-streaming`, tag `spike-4-final` (local until pushed), tip `aea1a7d` (the acceptance hour ran at `1a5ffb5`; later commits add CPU columns, overrides and Mesa EGL). Code: `spikes/4-roll-streaming/` (standalone workspace, uses the #3 simulator by path).
 - Acceptance run: `spikes/4-roll-streaming/tools/soak.sh app`. The Tauri app under Xvfb (1280x720, software rendering), isolated HOME and XDG directories,
   real time (speed 1), 3600 s, simulator with four channels at 500 ms/div (2 ms interval, 499 samples per second per channel), poll every 100 ms,
   `inject_overrun()` every 600 s.
