@@ -196,3 +196,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Shared integration-test helpers live in `tests/domain_support/mod.rs` (directory form, so cargo does not build it as a test crate).
 - Worktree-isolated shells refuse long compound commands (heredocs with `cd`); use the Write tool per file.
 - Edits are validated on a cloned model and committed whole (`Instrument::edit`), so a rejected patch never half-applies.
+## M1 WP4 Hantek adapter (developer-4)
+- Driver 0.2.0 mock: `Scope::new(MockTransport)` scripted like the driver's `tests/scope_mock.rs` (control_in for 0xA2/0x1580, 0x1600 with `CAL_FLAG`, 0x1B00, 0xE3/0x15F0 BCD; `push_bulk_in` reset reply; `on_bulk_in` keyed on the last `BulkOut`). Default driver `Config` has 4 channels on, so the adapter itself must refuse capture before `configure`. `CMD_STOP` = `[3,0,4,0]`; position byte 0 is about -4.016 div (test clamps with -4.1).
+- Hardware test names must still be given_/when_/then_ (name check); human filters them with `hardware`.
+- Bash tool refuses commands with `cat >>` into `.claude/memory`; use the Edit tool for memory.
