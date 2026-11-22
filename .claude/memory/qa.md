@@ -58,3 +58,17 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Retest round 2 verdict PASS: BUG-1..10 and C-2, C-3 closed; open cosmetic C-1 (channel row alignment), C-4 (Marker aria-valuenow, unverified), C-5
   (Settings popover labels wrap in WebKitGTK). Window minimum is 1024 x 720 (content floor 64 x 45 rem), Stop is #f2766f.
 - Known limit: banners are not counted in the height thresholds.
+
+## Visual snapshots and CI (PR #1)
+- Baselines in `frontend/e2e/__screenshots__/chromium/` must come from the CI runner (ubuntu-24.04): a local host and even the official
+  `mcr.microsoft.com/playwright:v1.65.1-noble` container render differently from the runner (the container differed from CI more than the
+  old local baselines did). Fonts are not bundled, so wrapping can differ (StatusChip row wrapped differently).
+- How to regenerate: temporarily change the browser job's Run Playwright step to
+  `npm --prefix frontend run test:e2e -- --project=chromium e2e/visual.spec.ts --update-snapshots all --retries=0` plus an
+  `upload-artifact` of `frontend/e2e/__screenshots__/chromium/visual.spec.ts/`, push, `gh run download <run> -n snapshots`, copy the images,
+  revert the workflow in the next commit. (`npm --prefix frontend exec` does not find the config; use `run test:e2e`.) Pushing a new
+  branch for this was denied by the permission classifier: use the PR branch only.
+- The gallery snapshot test stops at the first mismatch, so a failed run shows only one gallery section; regenerate all at once.
+- CI renders are deterministic (two runs gave 0 differing pixels). Graph scope-screen snapshots passed on CI unchanged.
+- Working tree may hold another agent's uncommitted edits: use a `git worktree add --detach` in the scratchpad and push `HEAD:<branch>`.
+- Gallery crops use `maxDiffPixelRatio: 0.01` (global 0.002 stays for full-window shots): Dialog text differed by 518 px between two CI runs.
