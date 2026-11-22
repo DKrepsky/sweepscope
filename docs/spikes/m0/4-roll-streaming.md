@@ -159,7 +159,7 @@ Approved: A, with the condition written out below. Plus the section 7 run done n
 
 Changes requested (applied in this branch where marked):
 
-1. **Gap item in the product stream**: written as [ADR 0009](../../adr/0009-roll-stream-gap-item.md). keep the layout of spec 2.6 (kind, sequence, absolute index, `after`,
+1. **Gap item in the product stream**: written as [ADR 0009](../../adr/0009-roll-stream-gap-item.md). It keeps the layout of spec 2.6 (kind, sequence, absolute index, `after`,
    `missed` as estimate); the roll story's requirements must say the size is an estimate (PRD 5.2) and the marker is drawn as an uncertain band.
 2. **PRD 8.3 'Memory in roll recording'**: baseline after the ring is full, Rust rule 2 MiB per hour: applied in `docs/prd.md`.
 3. No change to the driver or to ADR 0007: `poll_roll` plus `Overrun` was enough.
