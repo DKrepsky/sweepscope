@@ -166,3 +166,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Time-base indexes: 0 = 2 ns, 15 = 200 us, 24 = 200 ms, 25 = 500 ms (streaming); range 8 = 1 V. Count 1-2-5 steps before hard-coding an index in tests.
 - Capture model: cycle = `frame_cycle(wait for edge + record)`, slept in <= 20 ms slices that check the unplug flag; Normal sweep with no edge in time sleeps exactly `timeout` then `Timeout`. Edge search is capped at two signal periods (the waveform repeats).
 - Integration tests share `tests/common/mod.rs` (`rig()`, `setup()`); `FakeClock` is in `sweepscope_kernel::testing` (public, not feature gated).
+
+## M1 WP1 contracts (developer-1)
+- ts-rs `export_to` is relative to the source FILE's directory (not the crate): kernel/src/*.rs use 3 up-levels, kernel/src/contracts/*.rs and features/*/src/*.rs use 4. A wrong count silently writes `backend/frontend/`; check `git status` for strays.
+- u64 fields need `#[ts(type = "number")]` (default is bigint); optional patch fields use `#[ts(optional)]` on `Option<T>` to get `x?: T`.
+- Tooling in this sandbox refuses `cd X && python3 - <<EOF` / heredoc-with-git style compound commands in a worktree; use the Write/Edit tools, plain commands, and `git add -A <paths>` separately.
+- Generated-types freshness is checked in CI by `git status --porcelain frontend/src/api/generated`; commit generated files with the code.
