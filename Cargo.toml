@@ -6,6 +6,7 @@ members = ["backend/kernel", "backend/libs/*", "backend/features/*", "src-tauri"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+publish = false
 
 # Crates opt in with `[lints] workspace = true`. `unsafe_code` is forbidden per crate with `#![forbid(unsafe_code)]`
 # because the shell crate cannot forbid it and still inherit these lints.
