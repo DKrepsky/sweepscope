@@ -1,4 +1,4 @@
-# ADR 0008: Spike code lives on an unmerged branch; only the report and the raw results are committed to `main`
+# ADR 0008: Spike code lives on an unmerged branch; only the report is committed to `main`
 
 Status: accepted
 Date: 2026-11-22
@@ -20,18 +20,19 @@ protected and changes go through pull requests (workflow section 6).
    `spike-<issue>-final` and the tag is pushed so the code stays reachable. Product code that comes out of a spike is
    rewritten under the normal rules in its own story (the spike teaches, it does not donate).
 3. **What reaches `main`.** A pull request from a separate branch `docs/spike-<issue>-report` carries only
-   `docs/spikes/m0/` (report, raw results, the run instructions).
+   `docs/spikes/m0/` (the report and the run instructions). No raw results and no per-run data are committed.
 4. **Report format.** `docs/spikes/m0/<issue>-<slug>.md` with these sections, in order: Question and decision rule
    (copied from the implementation spec, fixed before measuring); Method (spike tag and commit, exact commands,
    scenarios, what each metric means, known measurement limits); Environments (one table row per machine, see below);
    Results (one table per metric, medians and percentiles, never only averages); Findings; Decision (go or no-go
    against the rule, with reasons); Changes requested (to ADRs, PRD requirements, the driver); Open points.
-5. **Where measurements are recorded.** Raw data in `docs/spikes/m0/results/<issue>/<machine-id>/`: one JSON per run
-   (summary statistics and the run configuration), plus gzipped CSV per-sample series when under 200 KB, plus
-   `environment.json` and a screenshot of any failure. `machine-id` is a slug of CPU/GPU class and display server
-   (`nvidia-rtx4060ti-x11`), never a host or user name. The environment capture script strips host name, user name,
-   home paths and serial numbers. The report tables are generated from the JSON by a script kept on the spike branch,
-   so they can be regenerated.
+5. **Where measurements are recorded.** Raw data and per-run data (JSON per run, CSV series, `environment.json`,
+   screenshots, recordings) are kept locally by whoever ran the measurement and are never committed, in any branch.
+   The report carries the numbers: its tables hold the summary statistics and the run configuration, and its
+   Environments table is the committed environment record. A machine is named by a slug of CPU/GPU class and display
+   server (`nvidia-rtx4060ti-x11`), never a host or user name; the report text is checked for host names, user names,
+   home paths and serial numbers before commit. Tables are produced from the local data by a script kept on the spike
+   branch, so the maintainer can regenerate them.
 6. **Environment record** per machine: distribution and kernel, CPU, GPU and driver version, display server (X11 or
    Wayland), display refresh rate and scale factor, WebKitGTK version, Tauri version, relevant environment variables.
 7. **Decision rules are written before the first measurement** in the implementation spec, so the result cannot be
