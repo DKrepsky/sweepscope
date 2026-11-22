@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { menuTriggerAttributes } from '../menu/trigger';
 import RunButton from './RunButton.svelte';
 
 describe('RunButton', () => {
@@ -29,5 +30,12 @@ describe('RunButton', () => {
     await userEvent.tab();
     await userEvent.keyboard(' ');
     expect(onclick).toHaveBeenCalledOnce();
+  });
+
+  it('AC-B2: given menu trigger attributes, when spread on RunButton, then they reach the button', () => {
+    render(RunButton, { running: false, onclick: vi.fn(), ...menuTriggerAttributes(false) });
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('aria-haspopup', 'menu');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 });

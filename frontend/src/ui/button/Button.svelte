@@ -1,7 +1,11 @@
 <script module lang="ts">
   import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
 
-  export interface ButtonProps {
+  type OwnProps = 'class' | 'type' | 'children' | 'onclick' | 'disabled' | 'title';
+
+  /** Extra attributes (for example the menu trigger ones) are forwarded to the `<button>`. */
+  export interface ButtonProps extends Omit<HTMLButtonAttributes, OwnProps> {
     size?: 'sm' | 'md' | 'lg';
     /** Latched on state (toggle buttons), distinct from the transient press feedback. */
     pressed?: boolean;
@@ -33,6 +37,7 @@
     left,
     children,
     right,
+    ...rest
   }: ButtonProps = $props();
 
   let down = $state(false);
@@ -54,6 +59,7 @@
 
 {#snippet control()}
   <button
+    {...rest}
     type="button"
     class={['btn focus-ring', size, tone, { on: pressed, icon: iconOnly, disabled }]}
     aria-disabled={disabled ? 'true' : undefined}

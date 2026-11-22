@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { menuTriggerAttributes } from '../menu/trigger';
 import Button from './Button.svelte';
 
 const label = createRawSnippet(() => ({ render: () => '<span>Go</span>' }));
@@ -55,5 +56,30 @@ describe('Button', () => {
   it('given pressed true, when rendered, then aria-pressed is true', () => {
     render(Button, { children: label, pressed: true });
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('AC-B1: given menu trigger attributes, when spread on Button, then aria-haspopup and aria-expanded reach the button', () => {
+    render(Button, { children: label, ...menuTriggerAttributes(true) });
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('aria-haspopup', 'menu');
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('AC-B1: given forwarded aria-pressed and data-pressed, when Button has its own values, then its own win', () => {
+    const forwarded = { 'aria-pressed': 'mixed', 'data-pressed': 'true' } as const;
+    render(Button, { children: label, pressed: false, ...forwarded });
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(button).not.toHaveAttribute('data-pressed');
+  });
+
+  it('AC-B1: given a forwarded aria-label, when ariaLabel is set, then ariaLabel wins', () => {
+    render(Button, { children: label, ariaLabel: 'Own', 'aria-label': 'Forwarded' });
+    expect(screen.getByRole('button', { name: 'Own' })).toBeInTheDocument();
+  });
+
+  it('AC-B1: given a forwarded data attribute, when rendered, then it reaches the button', () => {
+    render(Button, { children: label, 'data-testid': 'trigger' });
+    expect(screen.getByTestId('trigger')).toBe(screen.getByRole('button'));
   });
 });

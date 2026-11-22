@@ -1,7 +1,11 @@
 <script module lang="ts">
   import type { Snippet } from 'svelte';
+  import type { ButtonProps } from '../button/Button.svelte';
 
-  export interface RunButtonProps {
+  export interface RunButtonProps extends Omit<
+    ButtonProps,
+    'size' | 'tone' | 'pressed' | 'left' | 'right' | 'title' | 'children'
+  > {
     running: boolean;
     disabled?: boolean;
     disabledReason?: string;
@@ -15,10 +19,10 @@
   import Button from '../button/Button.svelte';
   import Icon from '../icon/Icon.svelte';
 
-  let { running, disabled, disabledReason, onclick, children }: RunButtonProps = $props();
+  let { running, disabled, disabledReason, onclick, children, ...rest }: RunButtonProps = $props();
 </script>
 
-<Button size="lg" tone={running ? 'stop' : 'run'} {disabled} {disabledReason} {onclick}>
+<Button {...rest} size="lg" tone={running ? 'stop' : 'run'} {disabled} {disabledReason} {onclick}>
   {#snippet left()}
     <Icon name={running ? 'stop' : 'play'} />
   {/snippet}
