@@ -35,6 +35,8 @@ test('given the component gallery, when rendered, then each section matches its 
   for (const name of names.filter((n) => !['Graph', 'Tooltip', 'Toast'].includes(n))) {
     const section = page.locator(`[data-component="${name}"]`);
     await section.scrollIntoViewIfNeeded();
-    await expect(section).toHaveScreenshot(`gallery-${name}.png`);
+    // Small crops: a few glyphs of antialiasing noise between two CI runs (seen: 518 px in Dialog) exceed the global 0.2 % ratio.
+    // 1 % still fails on any moved, resized or recoloured element.
+    await expect(section).toHaveScreenshot(`gallery-${name}.png`, { maxDiffPixelRatio: 0.01 });
   }
 });
