@@ -90,7 +90,7 @@ mod tests {
         let window = &conf["app"]["windows"][0];
         let csp = conf["app"]["security"]["csp"].as_str().expect("csp");
         assert_eq!(window["minWidth"], 1024);
-        assert_eq!(window["minHeight"], 576);
+        assert_eq!(window["minHeight"], 720);
         assert!(!csp.contains("unsafe-eval"));
         assert!(!csp.contains("https:"));
         assert_eq!(csp.matches("http:").count(), 1, "only the ipc.localhost origin");
