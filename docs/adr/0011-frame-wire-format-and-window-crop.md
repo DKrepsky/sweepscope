@@ -18,7 +18,7 @@ later story (#32).
    is exact. The window is centred in the record (`window_start = (record_len - (N - 1)) / 2`, rounded down) until pan exists; the hardware
    trigger position is derived from the on-screen position (spec 3.2). A frame therefore carries about 2501 samples per channel at 250 samples
    per division and as few as 6 at 2 ns per division.
-2. **Sample type.** `f32`, little endian, **divisions from the top edge** (`0` top, `8` bottom, may lie outside 0 to 8 when the signal is off
+2. **Sample type.** (Ground level is derived from `ChannelData.zero_code` with centre code 128, so `FrameContext` carries no positions; the header stores the setup revision truncated to `u32`.) `f32`, little endian, **divisions from the top edge** (`0` top, `8` bottom, may lie outside 0 to 8 when the signal is off
    screen; the graph clamps and marks it). Computed in Rust: `up = position_divs + sign x (code - zero_code) / counts_per_div` with `sign = -1` when
    inverted, `y = 4 - up`. No volts reach the frontend in a frame; scales and labels come from the instrument state.
 3. **Layout** (header 48 bytes so every `f32` array stays 4-byte aligned; the header is read with a `DataView`):

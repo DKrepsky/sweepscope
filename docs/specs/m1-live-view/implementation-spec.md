@@ -155,7 +155,7 @@ pub fn geometry(record_len: usize, sample_interval_s: f64, seconds_per_div: f64)
 pub fn record_percent(g: &Geometry, record_len: usize, screen_fraction: f64) -> f64;   // 100 * (window_start + s * (window_len - 1)) / record_len -> trigger.horizontal_position_percent
 pub fn trigger_index_in_window(g: &Geometry, sample_index: usize) -> Option<usize>;    // None when outside 0..window_len
 ```
-Examples that tests pin (record 4096, 250 samples/div): `window_len = 2501`, `window_start = 797`, screen 50 % gives record percent 50.0, screen 0 % gives 19.46, screen 100 % gives 80.54.
+Examples that tests pin (record 4096, 250 samples/div): `window_len = 2501`, `window_start = 798` (`(4096 - 2500) / 2`), screen 50 % gives record percent 50.0, screen 0 % gives 19.48, screen 100 % gives 80.52 (the two ends sum to 100).
 At 2 ns/div with four channels (interval 4 ns): `spd = 0.5`, `window_len = 6`.
 
 ### 3.3 State slices published by `acquisition` (TS; `FormattedValue` in ADR 0013)
@@ -190,6 +190,8 @@ Rules of `acquisition` (all in `domain/`, pure, unit tested):
 - The last enabled channel cannot be disabled (`reason: "At least one channel must stay on"`). Disabling the trigger source moves the source to the first enabled channel.
 - Enabled channel count changes the sample interval (`Capabilities::sample_interval_s`), so the geometry and the facts are recomputed on every setup change.
 - Position is clamped to `+- max_position_divs` of the channel's range; the ground marker reads the clamped value. A range change re-clamps.
+- Trigger source is a 1-based channel number in `TriggerPatch` and `TriggerState` (the device setup keeps the zero-based index and `acquisition` converts). A disabled channel is rejected as trigger source with a reason. Stepping: direction `-1` is faster or smaller, `+1` slower or larger; stepping into a roll time base is a silent no-op and the reason is in `Availability`.
+- Trigger level in divisions is clamped to +-4 (the screen). Every edit, including `set_running`, is rejected while no device is ready (ADR 0013 item 8).
 - Trigger level is stored in volts at the input: `level_volts = (level_divisions - position_divs_of_source) x volts_per_div_of_source`; the label is `level_volts x probe` formatted. A range change keeps the volts.
 - `unverified`: `range.verified == false` gives `"Unverified range: <below 50 mV | above 1 V> per div. Accuracy up to about 5 % of a division."`; a time base with `verified == false` makes `ScaleChoice.verified` false (the stepper badge says `Unverified`).
 - Status phase: Run gives `Armed`; `Frame(Triggered)` gives `Triggered`; `Frame(Auto)` gives `Auto`; `TimedOut` gives `WaitingForTrigger`; Stop and loss give `Stopped`. Only changes are published.
@@ -259,7 +261,7 @@ impl Instrument {
     pub fn setup(&self) -> Option<&AcquisitionSetup>;
 }
 pub struct Change { pub setup_changed: bool, pub state_changed: bool }
-pub fn next_status(phase: Phase, event: StatusEvent) -> Phase;  pub struct CaptureMeter;  // record(now), rate(now), dead_time(record_duration)
+pub fn next_status(phase: Phase, event: StatusEvent) -> Phase;  pub struct CaptureMeter;   // WP5 additions accepted: Defaults { resume_after_reconnect }, Instrument::{set_unavailable(reason), facts(revision, &CaptureMeter, now), running(), record_duration_s()}, CaptureMeter::{clear(), dead_time_percent(now, record_duration_s)}, StatusEvent { Run, Stop, Lost, Triggered, Auto, TimedOut }  // record(now), rate(now), dead_time(record_duration)
 
 pub struct DisplayDeps { pub bus: Bus, pub unix_time_us: fn() -> f64 }
 impl DisplayModule { pub fn new(deps: DisplayDeps) -> Result<Self, KernelError>; }               // subscribe_latest::<FrameCaptured>, publish DisplayFrameReady
