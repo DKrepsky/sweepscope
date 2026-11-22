@@ -1,0 +1,24 @@
+{
+  "speed": 1,
+  "durationS": 1500,
+  "gaps": [],
+  "items": 0,
+  "result": {
+    "itemsSent": 15001,
+    "samplesPerChannel": 749900,
+    "gaps": [
+      {
+        "after": 299950,
+        "missed": 50
+      },
+      {
+        "after": 599950,
+        "missed": 50
+      }
+    ],
+    "endReason": "duration",
+    "fileBytes": 3479656,
+    "ringFill": 90000
+  },
+  "error": null
+}

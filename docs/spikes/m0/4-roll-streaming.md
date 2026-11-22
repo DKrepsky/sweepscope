@@ -114,16 +114,37 @@ not comparable to the hour as a leak test. They do show that growth is **not pro
 one case and 0.16 MiB in the other); it follows wall time. The earlier reading "headless 64 KiB against app 3.4 MiB for the same items" compares a
 60 s run with a 3600 s run, so it does not isolate the Channel (finding 3).
 
+### 4.7 Attribution runs (added after the decision, Mesa EGL harness `aea1a7d`)
+
+Two 1500 s real-time runs with a 180 s ring (ring full at 180 s). Raw data in `results/4/i5-9600kf-xvfb-software/attribution-headless/` and `attribution-app-no-channel/`.
+
+| Run | Rust RSS | Slope after 300 s | CPU, whole process | Recording | Gaps |
+|---|---|---|---|---|---|
+| Headless backend (poller, ring, recorder, simulator; no WebView, no Channel) | 3,464 KiB flat from 150 s to 1,490 s | 0.000 KiB/s | 0.21 % of one core (recorder thread 0.04 %, main thread 0.07 %) | 3,479,652 bytes, exact, 0 skipped sequence numbers | 2 of 2 |
+| App under Xvfb, Channel send disabled (`SPIKE_NO_CHANNEL=1`, Mesa EGL) | 135,488 to 139,316 KiB; 135,649 mean at 200 to 500 s, 136,461 mean at 1,200 to 1,500 s | 0.81 KiB/s from 300 s (flat until about 650 s, then +1.2 KiB/s) | 18.1 % of one core (main thread 16.2 %, UI redraw under software GL; recorder 0.04 %) | 3,479,656 bytes, exact | 2 of 2 |
+
+WebKit RSS in the no-Channel run grew 21 MiB over 1500 s (183 to 209 MiB, UI idle redraw, not settled in a 25 minute run). CPU of the backend is far below the 2 % rule.
+
+What the runs show, and what they do not:
+
+- Our backend does not leak: the headless Rust RSS is flat to the KiB over 25 minutes.
+- Switching the Channel send off does not remove the growth. After about 650 s the no-Channel app grows about 1.2 KiB/s (+632 KiB from 600 s to 1200 s), the same
+  rate as the Channel-on hour (1.2 KiB/s). The first reading "+0.8 MiB against +3.4 MiB" compares a 1000 s window with a 3300 s window; per second the rates are equal
+  within noise. So the Channel send is **not** shown to be the cause; the growth sits in the UI process of the app (GTK and WebKit UI-process code, redraws, allocator), which
+  is inside the Rust-side RSS figure.
+- Caveats: the no-Channel run used Mesa software EGL (baseline 135 MiB) and the Channel-on hour used NVIDIA EGL under Xvfb (baseline 177 MiB), so the two are not like for like; 25 minutes
+  against 60; the Channel-on figure is one run; there is no Channel-on run with Mesa. The first attribution app run shared a display and is discarded. `dmesg` on this machine shows 16
+  `WebKitWebProcess` segfaults in `libnvidia-eglcore` under Xvfb: harness runs must force Mesa EGL (done in `tools/soak.sh` at `aea1a7d`). The 60 minute Channel-on run is therefore
+  possibly affected by that driver path; it did not crash.
+
 ## 5. Findings
 
 1. **Constant memory by construction works.** The ring stays at its capacity from minute 10 on; the frontend window is bounded; the file grows 8.3 MB with exact size.
 2. **Gaps travel as data and survive every hop.** The six gaps are identical in `start_roll` result, recording and frontend markers, at the right absolute index.
    The chunk after a gap starts at `after + missed`, so the time axis stays continuous.
-3. **The Rust RSS growth is real, linear in wall time, small, and not yet attributed.** 3.3 MiB per hour (1.2 KiB/s), steady in every period, no step larger than
-   3 MiB. It is not per item (4.6). The measurement cannot tell the cause: Rust RSS here includes the whole UI process under software rendering (painting,
-   WebKit UI-process caches, allocator fragmentation), the poller, the sampler and the Channel. The headless comparison available is accelerated, so it
-   proves nothing about wall-time growth. What would settle it is a real-time headless run (section 7). Extrapolated: about 85 MiB per day on a 180 MiB
-   process; a leak worth finding, not one that stops a roll story.
+3. **The Rust RSS growth is real, linear in wall time, small, and located outside our backend.** 3.3 MiB per hour (1.2 KiB/s) in the app, steady in every period, not per item (4.6).
+   The attribution runs (4.7) show the headless backend flat (slope 0.000) and the app growing at the same rate with the Channel send off. The cause is therefore in the UI
+   process under software rendering (or in the harness), not in the poller, ring, recorder, simulator or Channel send. Extrapolated: about 85 MiB per day on a 180 MiB process.
 4. **The 5 minute exclusion is too short for a process that is still allocating.** The process grew 7.2 MiB before 300 s and the ring only filled at 600 s. For a ring of 10
    minutes the baseline must be taken after the ring is full. This does not change the result (growth after 600 s is 3.0 MiB, still above 2 MiB).
 5. **Natural overrun and CPU were not part of this run.** Natural overrun is unit tested; the CPU rule is informative and was not recorded.
@@ -142,7 +163,7 @@ defect is unattributed 1 KiB/s of process growth would be disproportionate; acce
 
 | Option | What | For | Against |
 |---|---|---|---|
-| A (recommended) | Accept with condition: keep the 2 MiB rule as written; #27's definition of done repeats the one-hour soak and requires either growth within the rule or a documented cause outside our code. Before M3 a 25 minute real-time headless run (section 7) is made to attribute the growth | Honest, cheap, no rule bent | Roll story carries a risk until then |
+| A (recommended) | Accept with condition: keep the 2 MiB rule as written; #27's definition of done repeats the one-hour soak and requires either growth within the rule or a documented cause outside our code. Before M3 a 25 minute real-time headless run (section 7) is made to attribute the growth (done, section 4.7) | Honest, cheap, no rule bent | Roll story carries a risk until then |
 | B | Accept and change the rule to a rate: at most 4 MiB per hour measured after the ring is full (about 1.1 KiB/s), with the exclusion window moved to 15 minutes | Rule matches the shape of the data; usable as regression test | Loosened after seeing the result; the rate hides a real leak of this size |
 | C | Do not accept yet; run the attribution first (section 7, 25 to 60 minutes of unattended time), then decide | Decision rests on a cause | Delay of an hour or less; the answer may be inconclusive again |
 
@@ -152,8 +173,11 @@ Approved: A, with the condition written out below. Plus the section 7 run done n
 ### Condition (binding on #27)
 
 1. The 2 MiB per hour Rust RSS rule stays as written in PRD 8.3, measured after the ring is full.
-2. The definition of done of #27 repeats the one-hour real-time soak and passes if Rust RSS growth is within the rule, or the growth has a documented cause outside our code.
-3. Before M3 the attribution run of section 7 is made. If the headless real-time backend grows at the same rate, the pattern leaks and the fix is part of #27 before it is accepted.
+2. The definition of done of #27 repeats the one-hour real-time soak with the product frontend, and passes if Rust RSS growth is within the rule, or the growth has a documented cause outside
+   our code (UI process, graphics stack).
+3. Attribution done (section 4.7): the backend (poller, ring, recorder, simulator) is flat and CPU is 0.21 %; the Channel send is not the cause. What remains for #27: the soak runs on the
+   real display session of the human or a second machine with a GPU path (not only Xvfb software rendering), and one run with a blank page or no canvas drawing, to confirm that the 1.2 KiB/s
+   belongs to the WebView UI process and not to our frontend code. If the growth is still above the rule there, the story documents the cause or fixes the frontend before acceptance.
 
 ## 7. Changes requested and open points
 
@@ -166,11 +190,8 @@ Changes requested (applied in this branch where marked):
 
 Open points:
 
-- **Attribution run (no human needed, about 25 minutes unattended, any session, headless):** run the backend in real time without WebView and with the
-  same simulator and poll period: `tools/soak.sh real` with `SPIKE_DURATION_S=1500` and, if the script cannot take the override, a copy of its `roll_headless` call.
-  Compare the Rust RSS slope from the moment the ring is full (at 600 s in a 3600 s run; for a short run use a ring sized to fill in 3 minutes). A second
-  run of the app with the Channel send disabled would split the Channel from the UI process; needs Xvfb only. Both are developer-2 work.
-- CPU of poller and recorder was not recorded; add it to the attribution runs.
+- **Attribution runs: done (4.7).** Remaining as written in the condition above. The Channel-on Mesa run and a 60 minute no-Channel run would close the caveats of 4.7; developer-2 work, no human needed.
+- CPU of the backend was measured in the attribution runs: 0.21 % of one core headless.
 - Hardware: roll with the real device is verified nowhere in the driver (`poll_roll` timing, overrun detection by elapsed time); first M3 hardware check.
 
 ## 8. How a gap marker is placed on screen
