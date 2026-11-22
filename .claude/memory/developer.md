@@ -186,3 +186,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
 - Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
 - `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
+
+## M1 WP5 lessons (acquisition domain)
+- Spec 3.2 geometry examples are inconsistent (start 797, 80.54 %); the formula gives start 798, 19.48 / 80.52 %. Tests pin the formula and the 50 % = 50.0 and symmetry properties.
+- Shared integration-test helpers live in `tests/domain_support/mod.rs` (directory form, so cargo does not build it as a test crate).
+- Worktree-isolated shells refuse long compound commands (heredocs with `cd`); use the Write tool per file.
+- Edits are validated on a cloned model and committed whole (`Instrument::edit`), so a rejected patch never half-applies.
