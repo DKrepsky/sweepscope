@@ -164,8 +164,7 @@ test.describe('live view against scripted backend events', () => {
     await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
     await copy.click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(command);
-    // #6 AC2: the control confirms the copy (BUG-4: it does not yet).
-    test.fail(true, 'BUG-4: Copy command gives no confirmation');
+    // #6 AC2: the control confirms the copy.
     await expect(page.getByText(/copied/i)).toBeVisible({ timeout: 1000 });
   });
 

@@ -2,6 +2,7 @@ import './design-system/tokens.css';
 import './design-system/base.css';
 import { mount, tick } from 'svelte';
 import { createTauriClient } from './api';
+import { createCopyText } from './app/clipboard';
 import { createLayoutTierStore, createResizeObserverViewport } from './app/layout';
 import { createLiveApp } from './app/main-window';
 import { createNotifications } from './app/notifications';
@@ -32,8 +33,10 @@ async function start(): Promise<void> {
   const app = createLiveApp({
     client,
     notify,
-    copyText: (text) =>
-      void navigator.clipboard.writeText(text).catch(() => notify('error', 'Could not copy to the clipboard')),
+    copyText: createCopyText({
+      write: (text) => navigator.clipboard.writeText(text),
+      notify: notifications.notify,
+    }),
     now: () => Date.now(),
     requestAnimationFrame: (callback) => void window.requestAnimationFrame(callback),
     afterRender: tick,
