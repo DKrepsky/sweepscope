@@ -229,3 +229,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
 - e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
 - Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.
+
+## Copy confirmation (developer-6, BUG-4)
+- `app/clipboard.createCopyText({ write, notify })` raises an info Toast "Command copied" (error toast on refusal); `main.ts` composes it. Notification `kind` info is allowed through `notifications.notify`, though the `notify` dep of the app layers is error-only.
+- Tool sandbox refuses compound commands with `git -C`/`cd` plus git; run git plain and split commands. QA's uncommitted e2e files (live.spec.ts, support/frames.ts, tauri-stub.ts, graph.spec.ts) were copied into the fix branch to edit them.
