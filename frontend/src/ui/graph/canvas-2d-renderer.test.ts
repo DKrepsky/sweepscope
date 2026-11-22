@@ -109,18 +109,36 @@ describe('Canvas2dRenderer clipping', () => {
 });
 
 describe('Canvas2dRenderer HiDPI crispness', () => {
-  it.each([1, 1.25, 1.5, 2])(
-    'AC-G2: given ratio %s, when the graticule is drawn, then lines sit on device pixel centres and are at least one device pixel wide',
+  const ratios = [1, 1.25, 1.5, 2];
+  const drawn = (ratio: number) => render(everything, { width: 523, height: 418, ratio }).graticule;
+
+  it.each(ratios)(
+    'AC-G2: given ratio %s, when the graticule is drawn, then every line is exactly one device pixel wide',
     (ratio) => {
-      const { graticule } = render(everything, { width: 523, height: 418, ratio });
-      const major = graticule.strokes.filter((s) => s.style === tokens['color-grid-major']);
-      expect(major.length).toBeGreaterThan(0);
-      for (const stroke of graticule.strokes) expect(stroke.width * ratio).toBeGreaterThanOrEqual(1 - 1e-9);
-      for (const [a, b] of pairs(major[0]!.points)) {
-        const fixed = a[0] === b[0] ? a[0] : a[1];
-        const device = fixed * ratio;
-        expect(Math.abs(device - Math.floor(device) - 0.5)).toBeLessThan(1e-6);
+      const { strokes } = drawn(ratio);
+      expect(strokes.length).toBeGreaterThan(0);
+      for (const stroke of strokes) expect(stroke.width * ratio).toBeCloseTo(1, 9);
+    },
+  );
+
+  it.each(ratios)(
+    'AC-G2: given ratio %s, when the graticule is drawn, then the centre of every line sits on a device pixel centre',
+    (ratio) => {
+      for (const stroke of drawn(ratio).strokes) {
+        for (const [a, b] of pairs(stroke.points)) {
+          const fixed = a[0] === b[0] ? a[0] : a[1];
+          const device = fixed * ratio;
+          expect(Math.abs(device - Math.floor(device) - 0.5)).toBeLessThan(1e-6);
+        }
       }
+    },
+  );
+
+  it.each(ratios)(
+    'AC-G2: given ratio %s, when traces are drawn, then their width stays in CSS px and at least one device pixel',
+    (ratio) => {
+      const { traces } = render(everything, { width: 523, height: 418, ratio });
+      for (const stroke of traces.strokes) expect(stroke.width * ratio).toBeGreaterThanOrEqual(1 - 1e-9);
     },
   );
 });

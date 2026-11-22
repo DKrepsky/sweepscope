@@ -60,8 +60,6 @@ for (const scale of SCALES) {
     test(`given scale ${scale}, when the graticule is drawn, then the canvas has device resolution and every line is one device pixel wide in a token colour`, async ({
       page,
     }) => {
-      // BUG-8: at 1.5 and 2 the hairline is 2 device pixels wide but is centred on a pixel centre, so it spreads over 3 pixels.
-      test.fail(scale >= 1.5, 'BUG-8: graticule lines are not one crisp device pixel at scale 1.5 and 2');
       await openWithFreshGraticule(page);
       const scan = await scanGraticule(page);
       expect(scan.dpr).toBe(scale);

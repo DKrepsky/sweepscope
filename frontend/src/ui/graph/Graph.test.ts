@@ -62,7 +62,7 @@ describe('Graph', () => {
     const { rerender } = render(Graph, { summary: 's', frame, createRenderer: () => renderer });
     await vi.waitFor(() => expect(draws).toHaveLength(1));
     const assignmentsAfterFirstDraw = widthSet.mock.calls.length;
-    await rerender({ summary: 's', frame: { ...frame, state: 'stopped' } });
+    await rerender({ summary: 's', frame: { ...frame, state: 'frozen' } });
     await vi.waitFor(() => expect(draws).toHaveLength(2));
     expect(widthSet.mock.calls.length).toBe(assignmentsAfterFirstDraw);
   });

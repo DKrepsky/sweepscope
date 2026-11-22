@@ -12,7 +12,8 @@ export const deviceExtent = (cssLength: number, ratio: number) => Math.round(css
 /** CSS coordinate of the centre of a device pixel: lines placed here are exactly one device pixel crisp. */
 export const crisp = (devicePixel: number, ratio: number) => (devicePixel + 0.5) / ratio;
 
-export const hairline = (cssWidth: number, ratio: number) => Math.max(1, Math.round(cssWidth * ratio)) / ratio;
+/** Graticule lines are exactly one device pixel wide at every ratio (design 8.5), never a rounded CSS width. */
+export const hairline = (ratio: number) => 1 / ratio;
 
 interface Line {
   from: [number, number];
@@ -85,7 +86,7 @@ function frameLines(size: PixelSize): Line[] {
 }
 
 export function drawGraticule(ctx: CanvasRenderingContext2D, size: PixelSize) {
-  const width = hairline(1, size.ratio);
+  const width = hairline(size.ratio);
   ctx.fillStyle = tokens['color-bg-scope'];
   ctx.fillRect(0, 0, size.width, size.height);
   strokeLines(ctx, tokens['color-grid-major'], width, majorLines(size));
