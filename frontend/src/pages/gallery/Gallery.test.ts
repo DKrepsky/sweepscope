@@ -1,4 +1,4 @@
-import { render } from '@testing-library/svelte';
+import { fireEvent, render } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tokenNames } from '../../design-system';
 import Gallery from './Gallery.svelte';
@@ -65,5 +65,19 @@ describe('Gallery', () => {
   it('given the gallery, when a theme is passed, then the root carries the theme attribute', () => {
     render(Gallery, { props: { theme: 'dark' } });
     expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+
+  it('given the Menu section, when mounted, then the trigger has haspopup and is collapsed', () => {
+    const { container } = render(Gallery);
+    const trigger = container.querySelector('[data-component="Menu"] button')!;
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('given the Menu section, when the menu is opened, then the trigger is expanded', async () => {
+    const { container } = render(Gallery);
+    const trigger = container.querySelector('[data-component="Menu"] button')!;
+    await fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
   });
 });

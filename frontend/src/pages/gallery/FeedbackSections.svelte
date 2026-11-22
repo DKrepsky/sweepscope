@@ -2,7 +2,7 @@
   import { Banner, BannerStack } from '../../ui/banner';
   import { Button } from '../../ui/button';
   import { Dialog } from '../../ui/dialog';
-  import { Menu } from '../../ui/menu';
+  import { Menu, menuTriggerAttributes } from '../../ui/menu';
   import { Panel } from '../../ui/panel';
   import { Toast } from '../../ui/toast';
   import { menuItems } from './mock-data';
@@ -94,7 +94,9 @@
 
 <Section component="Menu" note="Items: normal, with badge, disabled with a reason.">
   <Row>
-    <span bind:this={menuHost}><Button onclick={openMenu}>Open menu</Button></span>
+    <span bind:this={menuHost}>
+      <Button onclick={openMenu} {...menuTriggerAttributes(menuAnchor !== null)}>Open menu</Button>
+    </span>
     <span>Selected: {selected}</span>
   </Row>
   {#if menuAnchor}
