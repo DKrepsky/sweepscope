@@ -1,6 +1,6 @@
 # ADR 0003: Backend/frontend contract types generated with ts-rs; the client is hand-written
 
-Status: proposed
+Status: accepted
 Date: 2026-11-21
 Issue: none (requested directly by the human)
 
@@ -32,3 +32,10 @@ covered by contract tests against the fake. `tauri-specta` is not used.
   test from a Rust constant list) so a rename fails CI.
 - Wire quirks to remember: ts-rs maps `u64`/`i64` to `bigint`; we use `f64`, `u32` and `i32` on the wire (architecture
   open item 7 is closed with `f64` for values and times, `f32` for sample payloads).
+
+## Confirmation (M0, #3)
+The ts-rs export was exercised on the `sweepscope-device` types (nested structs, `Vec`, `Option`, camelCase enums, `f64`, `u8`,
+`u32`): `npm run check` and `cargo test --workspace` pass locally, the generated files are unchanged in git and type-check in
+`frontend`. Limits seen: field doc comments are emitted inside the type literal (valid, untidy); `export_to` needs four `..` from
+`features/<name>/src`; `usize` and `u64` are not exported (unused on the wire). tauri-specta was still a release candidate on
+2026-11-22. CI confirmation follows on the pull request of #3; the human's acceptance was conditional on it.

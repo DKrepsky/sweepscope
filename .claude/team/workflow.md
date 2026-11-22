@@ -93,6 +93,7 @@ Each agent keeps `.claude/memory/<agent>.md`: read it first, update it last. Kee
 ## 6. Repository rules
 
 - Work on a feature branch named `feat/<issue>-<slug>` or `fix/<issue>-<slug>`. `main` is protected: changes go through a pull request that the human merges.
+- Spikes (ADR 0008): code on `spike/<issue>-<slug>`, never merged, tagged `spike-<issue>-final`; the report and raw results go to `main` from `docs/spike-<issue>-report`, touching only `docs/spikes/`.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`), with the issue number in the body.
 - Commit and push only after G4, except that developers may commit locally on the feature branch.
 - Anything that publishes (releases, crates, packages) or changes repository security settings needs explicit human confirmation.

@@ -18,3 +18,5 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Derived-store lists that slice for display (notifications) can grow unbounded; check the source list.
 - Playwright: grep for leftover annotations and `waitForTimeout` after test.fail removal.
 - Re-review baseline also includes `git status` for untracked scratch files and `git ls-files` for png/log outside e2e snapshots.
+- Rust crates: check `pub mod` against the spec's re-export list; check `verified`/unverified flags against PRD tables; flag real-time sleeps and wall-clock bounds in tests (use a FakeClock hook); check devices opened before an unplug stay dead after replug.
+- Simulators/fakes: check handle generation after replug, initial Attached on subscribe, finite-value validation, and that test-only helpers are cfg(test).

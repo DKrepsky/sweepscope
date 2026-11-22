@@ -29,3 +29,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Node 24: `node --test "tools/*.test.mjs"`; `npx --prefix` is unreliable, use `npm --prefix X exec --`; `@types/node` only in `e2e/tsconfig.json`.
 - Playwright `test.fail('BUG-n: ...')` marks known bugs; the fixing developer deletes it in the fix commit. Interactive Tauri checks: Xvfb/Xephyr + window manager + isolated XDG_CONFIG_HOME, never the user's session.
 - Spec section 11 holds review/QA rulings; keep appending rounds there instead of rewriting approved sections.
+- M0 (spec docs/specs/m0-spike): ScopeDevice + DeviceCatalog live in feature crate `device` (ADR 0007, blocking, index-based setup, Clock::sleep for fake time); spikes live on unmerged `spike/` branches in standalone workspaces, only reports and raw results go to main (ADR 0008).
+- Driver facts: capture() cannot be cancelled (ACQ-5 "one frame time or 250 ms" covers it); no measured frame cycle in the driver docs; roll overrun is inferred from elapsed time (95 % of 64 KiB span).
+- Tauri Channel raw payloads under 1 KiB take a different path (eval) than larger ones (fetch); measure with frame-sized payloads. Write decision rules into the spec before a spike measures.
+- Dev machine has an NVIDIA RTX 4060 Ti on X11 (WebKitGTK 2.52.6); a second machine for spikes must come from the human.
