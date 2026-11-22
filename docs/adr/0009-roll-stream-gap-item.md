@@ -7,8 +7,8 @@ Issue: #4 (spike), #27 (roll story)
 ## Context
 At 500 ms/div and slower the device is polled continuously (PRD 5.1). The driver reports an overrun only by elapsed time, never by pointer (PRD 5.2): when the
 host is late by more than about 95 % of the 64 KiB buffer span, data is lost and the loss size is unknown. The user must see where data is missing (ACQ-3, DAT-5).
-Spike #4 ([report](../spikes/m0/4-roll-streaming.md)) streamed 36,001 items over one hour with six injected gaps; all six arrived identical in the stream,
-the recording and the frontend markers, with no skipped sequence number.
+Spike #4 ([report](../spikes/m0/4-roll-streaming.md)) streamed a one-hour roll with injected gaps; every gap arrived identical in the stream,
+the recording and the frontend markers, and no sequence number was skipped.
 
 ## Decision
 1. A roll stream is an ordered sequence of items on a Tauri `Channel`. Each item has a kind (samples, gap, close) and a `u32` sequence number; a skipped number
