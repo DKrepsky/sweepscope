@@ -14,7 +14,7 @@
     "lint:css": "stylelint \"src/**/*.{css,svelte}\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "svelte-check --tsconfig ./tsconfig.json --threshold warning --fail-on-warnings",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json --threshold warning --fail-on-warnings && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },

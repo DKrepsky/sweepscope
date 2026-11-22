@@ -13,7 +13,15 @@ const rawColour = [
   { selector: `SvelteLiteral[value=/${RAW_COLOUR}/]`, message: rawColourMessage },
 ];
 
-const restrictImports = (...patterns) => ({ 'no-restricted-imports': ['error', { patterns }] });
+const nodeImports = { group: ['node:*'], message: 'src runs in the browser: no Node imports.' };
+const nodePaths = ['fs', 'path', 'child_process'].map((name) => ({
+  name,
+  message: 'src runs in the browser: no Node imports.',
+}));
+
+const restrictImports = (...patterns) => ({
+  'no-restricted-imports': ['error', { paths: nodePaths, patterns: [...patterns, nodeImports] }],
+});
 const layer = (name) => ({ group: [`**/${name}`, `**/${name}/**`], message: `This layer must not import ${name}.` });
 
 const layerRules = [
@@ -37,13 +45,14 @@ const layerRules = [
       'no-restricted-imports': [
         'error',
         {
-          paths: [{ name: 'svelte', message: 'app is plain TypeScript: only svelte/store is allowed.' }],
+          paths: [...nodePaths, { name: 'svelte', message: 'app is plain TypeScript: only svelte/store is allowed.' }],
           patterns: [
             { group: ['**/*.svelte'], message: 'app never imports components.' },
             { group: ['svelte/*', '!svelte/store'], message: 'app is plain TypeScript: only svelte/store is allowed.' },
             layer('pages'),
             layer('ui'),
             tauriImports,
+            nodeImports,
           ],
         },
       ],
@@ -69,6 +78,17 @@ export default tseslint.config(
     },
   },
   { files: ['**/*.svelte', '**/*.svelte.ts'], languageOptions: { parserOptions: { parser: tseslint.parser } } },
+  {
+    files: ['src/**'],
+    rules: {
+      ...restrictImports(),
+      // vite's own typings drag @types/node into every project, so the compiler cannot catch these.
+      'no-restricted-globals': [
+        'error',
+        ...['process', 'Buffer'].map((name) => ({ name, message: 'src runs in the browser: no Node globals.' })),
+      ],
+    },
+  },
   ...layerRules,
   { files: ['**/*.test.ts', 'e2e/**/*.ts'], rules: { 'max-lines-per-function': 'off', complexity: 'off' } },
 );
