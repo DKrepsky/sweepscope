@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
 /// Requested instrument state. Time base and range are indexes into `Capabilities`; the device converts volts to its own codes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AcquisitionSetup {
@@ -25,19 +28,25 @@ pub struct TriggerSetup {
     pub horizontal_position_percent: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
 pub enum Coupling {
     Ac,
     Dc,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
 pub enum Slope {
     Rising,
     Falling,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
 pub enum Sweep {
     Auto,
     Normal,

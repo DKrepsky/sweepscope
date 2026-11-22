@@ -4,6 +4,7 @@
 mod bus;
 mod clock;
 mod command;
+pub mod contracts;
 mod error;
 mod storage;
 pub mod testing;

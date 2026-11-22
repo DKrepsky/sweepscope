@@ -1,0 +1,17 @@
+[package]
+name = "sweepscope-acquisition"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sweepscope-kernel = { path = "../../kernel" }
+serde = { version = "1", features = ["derive"] }
+ts-rs = "12"
+
+[dev-dependencies]
+serde_json = "1"

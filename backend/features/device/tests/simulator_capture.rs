@@ -288,3 +288,36 @@ fn given_auto_sweep_and_a_timeout_shorter_than_the_cycle_when_captured_then_the_
 
     assert!(frame.is_ok());
 }
+
+#[test]
+fn given_normal_sweep_and_no_trigger_when_force_captured_then_an_auto_frame_returns_after_one_cycle() {
+    let mut rig = rig();
+    let mut config = setup(ALL, TB_200US);
+    config.trigger.sweep = Sweep::Normal;
+    config.trigger.level_volts = 3.0;
+    configured(&mut rig, &config);
+    let before = rig.clock_now();
+
+    let frame = rig.device.force_capture(TIMEOUT).unwrap();
+
+    assert_eq!(frame.trigger, TriggerOutcome::Auto);
+    assert_eq!(rig.clock_now() - before, Duration::from_millis(40));
+}
+
+#[test]
+fn given_an_unconfigured_device_when_force_captured_then_it_is_an_invalid_setting() {
+    let mut rig = rig();
+
+    let result = rig.device.force_capture(TIMEOUT);
+
+    assert!(matches!(result, Err(DeviceError::InvalidSetting(_))));
+}
+
+#[test]
+fn given_an_unplugged_device_when_force_captured_then_it_is_disconnected() {
+    let mut rig = rig();
+    configured(&mut rig, &setup(ALL, TB_200US));
+    rig.control.unplug();
+
+    assert_eq!(rig.device.force_capture(TIMEOUT).err(), Some(DeviceError::Disconnected));
+}

@@ -17,6 +17,8 @@ pub struct TimeBaseStep {
 pub struct VerticalRange {
     pub volts_per_div: f64,
     pub verified: bool,
+    /// Largest vertical offset the hardware can reach on this range, in divisions (positive and negative).
+    pub max_position_divs: f64,
 }
 
 /// What an instrument can do, as data, so the UI never hard-codes a scale table.

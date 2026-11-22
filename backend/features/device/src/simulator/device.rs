@@ -5,14 +5,14 @@ use sweepscope_kernel::Clock;
 
 use super::control::SimulatorControl;
 use super::edge::{self, Direction};
-use super::profile::{self, RECORD_LEN};
+use super::profile;
 use super::signal;
 use super::timing::{self, POLL_INTERVAL};
+use crate::profile::RECORD_LEN;
 use crate::{
     AcquisitionSetup, Capabilities, ChannelData, DeviceError, DeviceIdentity, Frame, ScopeDevice, Slope, Sweep,
     TriggerOutcome,
 };
-
 /// What `configure` derives once, so capture and roll do not recompute it.
 #[derive(Clone)]
 struct Plan {
@@ -231,6 +231,15 @@ impl ScopeDevice for SimulatedDevice {
         }
         self.wait(cycle)?;
         Ok(self.captured(&plan, armed, crossing))
+    }
+
+    fn force_capture(&mut self, _timeout: Duration) -> Result<Frame, DeviceError> {
+        self.ensure_connected()?;
+        let plan = self.plan()?;
+        let armed = self.sim_now().as_secs_f64();
+        let record = timing::record_duration(plan.interval_s, RECORD_LEN);
+        self.wait(timing::frame_cycle(record))?;
+        Ok(self.captured(&plan, armed, None))
     }
 
     fn start_roll(&mut self) -> Result<(), DeviceError> {
