@@ -86,6 +86,38 @@ describe('Toast', () => {
     expect(ondismiss).toHaveBeenCalledOnce();
   });
 
+  it('AC-BN1: given an error Toast, when the dismiss button is clicked, then ondismiss is called once', async () => {
+    const ondismiss = vi.fn();
+    render(Toast, { kind: 'error', text, ondismiss });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(ondismiss).toHaveBeenCalledOnce();
+  });
+
+  it('AC-BN1: given an error Toast, when rendered, then the dismiss button is not focused', () => {
+    render(Toast, { kind: 'error', text, ondismiss: vi.fn() });
+
+    expect(screen.getByRole('button', { name: 'Dismiss' })).not.toHaveFocus();
+  });
+
+  it('AC-BN1: given an info Toast, when rendered, then it has no dismiss button', () => {
+    render(Toast, { kind: 'info', text, ondismiss: vi.fn() });
+
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('AC-BN1: given a warning Toast without timeoutMs, when 8 seconds pass, then it dismisses only at 8 s', () => {
+    const ondismiss = vi.fn();
+    render(Toast, { kind: 'warning', text, ondismiss });
+
+    vi.advanceTimersByTime(7999);
+    expect(ondismiss).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+
+    expect(ondismiss).toHaveBeenCalledOnce();
+  });
+
   it.each([
     ['error', 'alert'],
     ['warning', 'status'],

@@ -9,18 +9,20 @@
     ondismiss: () => void;
   }
 
-  const { kind, text, timeoutMs = 4000, ondismiss }: Props = $props();
+  const { kind, text, timeoutMs, ondismiss }: Props = $props();
+
+  const defaultTimeoutMs = { info: 4000, warning: 8000, error: 0 } as const;
 
   let paused = $state(false);
 
   $effect(() => {
     if (kind === 'error' || paused) return;
-    const timer = setTimeout(ondismiss, timeoutMs);
+    const timer = setTimeout(ondismiss, timeoutMs ?? defaultTimeoutMs[kind]);
     return () => clearTimeout(timer);
   });
 </script>
 
-<!-- Pointer and focus only pause the timer; the toast offers no action. -->
+<!-- Pointer and focus only pause the timer; the toast never takes focus itself. -->
 <div
   class="toast {kind}"
   role={kind === 'error' ? 'alert' : 'status'}
@@ -31,6 +33,11 @@
 >
   <Icon name={kind === 'info' ? 'info' : 'warning'} />
   <span class="text">{@render text()}</span>
+  {#if kind === 'error'}
+    <button type="button" class="dismiss" aria-label="Dismiss" onclick={() => ondismiss()}>
+      <Icon name="close" />
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -55,6 +62,20 @@
     color: var(--ss-color-status-error);
   }
   .text {
+    color: var(--ss-color-text-primary);
+  }
+  .dismiss {
+    display: grid;
+    place-items: center;
+    width: var(--ss-size-control-sm);
+    height: var(--ss-size-control-sm);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ss-color-text-secondary);
+    cursor: pointer;
+  }
+  .dismiss:hover {
     color: var(--ss-color-text-primary);
   }
 </style>
