@@ -21,6 +21,7 @@
     drawerOpen: boolean;
     textScale: TextScalePercent;
     ontogglerun: () => void;
+    onforce: () => void;
     ontoggledrawer: () => void;
     ontextscale: (percent: TextScalePercent) => void;
   }
@@ -33,11 +34,15 @@
     drawerOpen,
     textScale,
     ontogglerun,
+    onforce,
     ontoggledrawer,
     ontextscale,
   }: Props = $props();
 
   const noop = () => {};
+  const LATER = 'Arrives in a later release';
+  const runOff = $derived(toolbar.availability?.enabled === false);
+  const forceOff = $derived(toolbar.force?.enabled === false);
   const persistenceItems = ['Off', '0.5 s', '1 s', '2 s', 'Infinite'].map((label) => ({ id: label, label }));
   const viewOptions = [
     { id: 'yt', label: 'Yt' },
@@ -76,16 +81,30 @@
 
   <div class="group" role="group" aria-label="Run control">
     {#if toolLabels}<span class="ss-caps">Run</span>{/if}
-    <RunButton running={toolbar.running} onclick={ontogglerun} />
+    <RunButton
+      running={toolbar.running}
+      onclick={ontogglerun}
+      disabled={runOff}
+      disabledReason={toolbar.availability?.reason}
+    />
     <Button
       size="lg"
       title="Single shot: arm once, stop after one trigger (S)"
       ariaLabel={runLabels ? undefined : 'Single'}
+      disabled
+      disabledReason={LATER}
     >
       {#snippet left()}<Icon name="single" />{/snippet}
       {#if runLabels}Single{/if}
     </Button>
-    <Button size="lg" title="Force one capture now (F)" ariaLabel={runLabels ? undefined : 'Force'}>
+    <Button
+      size="lg"
+      title="Force one capture now (F)"
+      ariaLabel={runLabels ? undefined : 'Force'}
+      onclick={onforce}
+      disabled={forceOff}
+      disabledReason={toolbar.force?.reason}
+    >
       {#snippet left()}<Icon name="force" />{/snippet}
       {#if runLabels}Force{/if}
     </Button>
@@ -93,6 +112,8 @@
       size="lg"
       title="Pick volts/div and time/div from a short capture (A)"
       ariaLabel={runLabels ? undefined : 'Autoset'}
+      disabled
+      disabledReason={LATER}
     >
       {#snippet left()}<Icon name="autoset" />{/snippet}
       {#if runLabels}Autoset{/if}

@@ -2,9 +2,10 @@
   import type { Readable } from 'svelte/store';
   import { heightCollapse, screenMinimumPx, type LayoutTier } from '../../app/layout';
   import type { Notification } from '../../app/notifications';
-  import type { MainWindowModel } from '../../app/main-window';
+  import type { MainWindowActions, MainWindowModel } from '../../app/main-window';
   import type { TextScalePercent } from '../../app/text-scale';
   import Banner from '../../ui/banner/Banner.svelte';
+  import Button from '../../ui/button/Button.svelte';
   import Toast from '../../ui/toast/Toast.svelte';
   import FrontPanelDock from './FrontPanelDock.svelte';
   import HorizontalReadout from './HorizontalReadout.svelte';
@@ -16,21 +17,21 @@
 
   interface Props {
     model: Readable<MainWindowModel>;
+    actions: MainWindowActions;
     tier: Readable<LayoutTier>;
     textScale: Readable<TextScalePercent>;
     notifications: Readable<Notification[]>;
     onnotificationdismiss: (id: number) => void;
-    ontogglerun: () => void;
     ontextscale: (percent: TextScalePercent) => void;
   }
 
   const {
     model: modelStore,
+    actions: windowActions,
     tier: tierStore,
     textScale: textScaleStore,
     notifications: notificationsStore,
     onnotificationdismiss,
-    ontogglerun,
     ontextscale,
   }: Props = $props();
 
@@ -80,7 +81,8 @@
       drawerButton={compact}
       {drawerOpen}
       {textScale}
-      {ontogglerun}
+      ontogglerun={windowActions.toggleRun}
+      onforce={windowActions.forceTrigger}
       ontoggledrawer={() => (drawerRequested = !drawerRequested)}
       {ontextscale}
     />
@@ -88,6 +90,11 @@
       {#each shownBanners as banner (banner.id)}
         <Banner kind={banner.kind}>
           {#snippet text()}{banner.text}{/snippet}
+          {#snippet actions()}
+            {#each banner.actions as action (action.id)}
+              <Button onclick={() => windowActions.bannerAction(action.id)}>{action.label}</Button>
+            {/each}
+          {/snippet}
         </Banner>
       {/each}
       <div class="floor">
@@ -101,6 +108,7 @@
               trigger={model.trigger}
               cursors={model.cursors}
               dots={model.horizontal.interpolation === 'dots'}
+              actions={windowActions}
             />
             <ScaleStrip
               channels={model.channels}
@@ -111,6 +119,7 @@
               channels={model.channels}
               horizontal={model.horizontal}
               trigger={model.trigger}
+              actions={windowActions}
               wrapped={compact}
               smallRows={collapse.smallRows}
               channelTabs={collapse.channelTabs}
