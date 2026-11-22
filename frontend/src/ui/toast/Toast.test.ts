@@ -1,5 +1,5 @@
 import { createRawSnippet } from 'svelte';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Toast from './Toast.svelte';
 
@@ -47,6 +47,43 @@ describe('Toast', () => {
     expect(toast).not.toHaveAttribute('tabindex');
     expect(toast.querySelector('[autofocus]')).toBeNull();
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('given an error Toast, when a long time passes, then ondismiss is not called', () => {
+    const ondismiss = vi.fn();
+    render(Toast, { kind: 'error', text, ondismiss });
+
+    vi.advanceTimersByTime(60000);
+
+    expect(ondismiss).not.toHaveBeenCalled();
+  });
+
+  it('given an info Toast hovered, when the time passes, then it stays until the pointer leaves', async () => {
+    const ondismiss = vi.fn();
+    render(Toast, { kind: 'info', text, timeoutMs: 1000, ondismiss });
+    const toast = screen.getByRole('status');
+
+    await fireEvent.mouseEnter(toast);
+    vi.advanceTimersByTime(5000);
+    expect(ondismiss).not.toHaveBeenCalled();
+    await fireEvent.mouseLeave(toast);
+    vi.advanceTimersByTime(1000);
+
+    expect(ondismiss).toHaveBeenCalledOnce();
+  });
+
+  it('given a warning Toast with focus inside, when the time passes, then it stays until focus leaves', async () => {
+    const ondismiss = vi.fn();
+    render(Toast, { kind: 'warning', text, timeoutMs: 1000, ondismiss });
+    const toast = screen.getByRole('status');
+
+    await fireEvent.focusIn(toast);
+    vi.advanceTimersByTime(5000);
+    expect(ondismiss).not.toHaveBeenCalled();
+    await fireEvent.focusOut(toast);
+    vi.advanceTimersByTime(1000);
+
+    expect(ondismiss).toHaveBeenCalledOnce();
   });
 
   it.each([

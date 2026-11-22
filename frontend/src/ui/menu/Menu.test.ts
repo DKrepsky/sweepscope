@@ -95,4 +95,27 @@ describe('nextIndex', () => {
   it('given a non navigation key, when navigating, then there is no target', () => {
     expect(nextIndex('a', 0, 3)).toBeNull();
   });
+
+  it('given an open menu, when Tab is pressed, then it closes and focus does not stay inside', async () => {
+    const { onclose } = setup();
+
+    await userEvent.keyboard('{Tab}');
+
+    expect(onclose).toHaveBeenCalledOnce();
+  });
+
+  it('given a menu opened from a button, when it closes, then focus returns to that button', async () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    const view = render(Menu, {
+      props: { items, onselect: vi.fn(), onclose: vi.fn(), open: true, anchor: { x: 0, y: 0 } },
+    });
+    expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveFocus();
+
+    await view.rerender({ open: false });
+
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
 });

@@ -11,13 +11,24 @@
 
   const { kind, text, timeoutMs = 4000, ondismiss }: Props = $props();
 
+  let paused = $state(false);
+
   $effect(() => {
+    if (kind === 'error' || paused) return;
     const timer = setTimeout(ondismiss, timeoutMs);
     return () => clearTimeout(timer);
   });
 </script>
 
-<div class="toast {kind}" role={kind === 'error' ? 'alert' : 'status'}>
+<!-- Pointer and focus only pause the timer; the toast offers no action. -->
+<div
+  class="toast {kind}"
+  role={kind === 'error' ? 'alert' : 'status'}
+  onmouseenter={() => (paused = true)}
+  onmouseleave={() => (paused = false)}
+  onfocusin={() => (paused = true)}
+  onfocusout={() => (paused = false)}
+>
   <Icon name={kind === 'info' ? 'info' : 'warning'} />
   <span class="text">{@render text()}</span>
 </div>

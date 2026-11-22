@@ -18,7 +18,10 @@
   let buttons: HTMLButtonElement[] = $state([]);
 
   $effect(() => {
-    if (open) buttons[0]?.focus();
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    buttons[0]?.focus();
+    return () => opener?.focus();
   });
 
   function activate(entry: MenuItem) {
@@ -28,6 +31,11 @@
 
   function onkeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
+      event.preventDefault();
+      onclose();
+      return;
+    }
+    if (event.key === 'Tab') {
       event.preventDefault();
       onclose();
       return;
