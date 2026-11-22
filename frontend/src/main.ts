@@ -1,3 +1,5 @@
+import './design-system/tokens.css';
+import './design-system/base.css';
 import { mount } from 'svelte';
 import { createTauriClient } from './api';
 import { createTextScaleStore } from './app/text-scale';
