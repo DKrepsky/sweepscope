@@ -1,0 +1,74 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+/* The text scale (app/text-scale) overrides the root font size from JavaScript. */
+html {
+  font-size: 100%;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ss-color-bg-app);
+  color: var(--ss-color-text-primary);
+  font: var(--ss-font-weight-regular) var(--ss-font-size-sm) / var(--ss-line-height-normal) var(--ss-font-ui);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.ss-num {
+  font-family: var(--ss-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ss-caps {
+  white-space: nowrap;
+  font-size: var(--ss-font-size-2xs);
+  letter-spacing: var(--ss-letter-spacing-caps);
+  text-transform: uppercase;
+  color: var(--ss-color-text-muted);
+  font-weight: var(--ss-font-weight-medium);
+}
+
+:focus-visible {
+  outline: var(--ss-border-width-focus) solid var(--ss-color-focus);
+  outline-offset: 1px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ss-color-border-strong) var(--ss-color-bg-inset);
+}
+
+::-webkit-scrollbar {
+  width: var(--ss-space-4);
+  height: var(--ss-space-4);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ss-color-bg-inset);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ss-color-border-strong);
+  border-radius: var(--ss-radius-sm);
+}

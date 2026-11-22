@@ -1,0 +1,26 @@
+{
+  "name": "sweepscope",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "USB oscilloscope application: task scripts for the whole repository",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "check": "npm run check:rust && npm run check:frontend && npm run check:repo",
+    "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+    "check:frontend": "npm --prefix frontend run lint && npm --prefix frontend run lint:css && npm --prefix frontend run format:check && npm --prefix frontend run typecheck",
+    "check:repo": "node tools/check-architecture.mjs && node tools/check-test-names.mjs",
+    "test": "npm run test:rust && npm run test:frontend && npm run test:tools",
+    "test:rust": "cargo test --workspace",
+    "test:frontend": "npm --prefix frontend run test",
+    "test:tools": "node --test \"tools/*.test.mjs\"",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.6"
+  }
+}

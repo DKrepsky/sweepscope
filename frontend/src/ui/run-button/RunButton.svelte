@@ -1,0 +1,30 @@
+<script module lang="ts">
+  import type { Snippet } from 'svelte';
+  import type { ButtonProps } from '../button/Button.svelte';
+
+  export interface RunButtonProps extends Omit<
+    ButtonProps,
+    'size' | 'tone' | 'pressed' | 'left' | 'right' | 'title' | 'children'
+  > {
+    running: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
+    onclick: () => void;
+    /** Replaces the default `Run` / `Stop` label. */
+    children?: Snippet;
+  }
+</script>
+
+<script lang="ts">
+  import Button from '../button/Button.svelte';
+  import Icon from '../icon/Icon.svelte';
+
+  let { running, disabled, disabledReason, onclick, children, ...rest }: RunButtonProps = $props();
+</script>
+
+<Button {...rest} size="lg" tone={running ? 'stop' : 'run'} {disabled} {disabledReason} {onclick}>
+  {#snippet left()}
+    <Icon name={running ? 'stop' : 'play'} />
+  {/snippet}
+  {#if children}{@render children()}{:else}{running ? 'Stop' : 'Run'}{/if}
+</Button>

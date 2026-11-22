@@ -186,7 +186,7 @@ Priority: **M** must (v1.0), **S** should (v1.x), **C** could (later).
 | DSP-3 | Min/max decimation so no glitch is lost when zoomed out. | M |
 | DSP-4 | XY mode (channel pairs). | S |
 | DSP-5 | Persistence with adjustable decay and colour grading. | S |
-| DSP-6 | Dark and light themes; colour-blind-safe default channel colours. | S |
+| DSP-6 | Dark theme only (dark gray, engineering-instrument look, see `design.md`); colour-blind-safe default channel colours. | S |
 | DSP-7 | Waveform display redraws at the display rate (target 60 fps) without dropping frames while acquisition is running on a typical laptop, in the Tauri WebView. | M |
 | DSP-8 | Separate zoom window (second view of the same data, a second Tauri window). | C |
 | DSP-9 | Renderer falls back from WebGL to Canvas 2D when WebGL is unavailable or unstable (WebKitGTK issues). | M |
@@ -391,7 +391,7 @@ end-to-end latency from driver return to pixels, and the roll-mode stream.
 - One-gesture operations: drag the trigger marker, scroll to zoom time, shift-scroll for volts/div, double-click to reset.
 - State is visible: running, stopped, armed, triggered, auto, disconnected. No silent failures.
 - No modal dialogs during acquisition.
-- Accessibility: scalable fonts, colour-blind-safe palette, light and dark themes, keyboard operation of main controls.
+- Accessibility: scalable fonts, colour-blind-safe palette, dark theme only, keyboard operation of main controls.
 
 ### 8.5 Platform and licensing
 
@@ -408,7 +408,7 @@ end-to-end latency from driver return to pixels, and the roll-mode stream.
 | **M1 Live view** | Device manager with hotplug, acquisition thread, Yt display, run/stop, vertical and horizontal controls, edge trigger | US-01, 03, 04, 09 pass on hardware |
 | **M2 Measure** | Cursors, automatic measurements, interpolation, export CSV/PNG, setups | US-06, 12, 13, 17, 18 |
 | **M3 Analyse** | Roll mode, persistence, FFT, math, XY, auto-setup, pulse trigger | US-02, 05, 07, 08, 10, 11, 15, 16 |
-| **M4 Polish** | Calibration wizard, accuracy documentation, packaging, headless mode, themes | US-14, 19; AppImage and .deb builds |
+| **M4 Polish** | Calibration wizard, accuracy documentation, packaging, headless mode | US-14, 19; AppImage and .deb builds |
 | **Later** | Second device, SCPI server, mask test, deep-memory devices, Windows/macOS | |
 
 ## 10. Risks and open questions

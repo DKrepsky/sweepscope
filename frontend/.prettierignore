@@ -1,0 +1,8 @@
+dist
+node_modules
+package-lock.json
+src/api/generated
+src/design-system/tokens.generated.ts
+tools/lint-fixtures
+test-results
+playwright-report

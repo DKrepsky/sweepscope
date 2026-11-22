@@ -1,0 +1,103 @@
+import { describe, expect, it, vi } from 'vitest';
+import { get } from 'svelte/store';
+import { createFakeClient } from '../../api';
+import type { UiStateEntry } from '../../api';
+import { createNotifications } from '../notifications';
+import { chooseTextScale, createTextScaleStore, setTextScale } from './text-scale';
+
+const stored = (json: string, version = 1): UiStateEntry => ({ namespace: 'app.text-scale', version, json });
+
+function setup(loaded: UiStateEntry | null = null) {
+  const client = createFakeClient();
+  client.respond('load_ui_state', () => loaded);
+  client.respond('save_ui_state', () => null);
+  const applyRootFontPercent = vi.fn();
+  const store = createTextScaleStore({ client, applyRootFontPercent });
+  return { client, store, applyRootFontPercent };
+}
+
+describe('text scale load', () => {
+  it('given no stored entry, when load runs, then the store is 100 and the root font size is 100 percent', async () => {
+    const { store, applyRootFontPercent } = setup(null);
+    await store.load();
+    expect(get(store)).toBe(100);
+    expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(100);
+  });
+
+  it('given a stored percent of 150, when load runs, then the store is 150 and the root font is applied once', async () => {
+    const { store, applyRootFontPercent } = setup(stored('{"percent":150}'));
+    await store.load();
+    expect(get(store)).toBe(150);
+    expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(150);
+  });
+
+  it.each(['not json', '{"percent":130}', '{"percent":"150"}', '{}', 'null'])(
+    'given stored garbage %s, when load runs, then the store is 100 without throwing',
+    async (json) => {
+      const { store } = setup(stored(json));
+      await store.load();
+      expect(get(store)).toBe(100);
+    },
+  );
+
+  it('given an unknown entry version, when load runs, then the store is 100', async () => {
+    const { store } = setup(stored('{"percent":150}', 2));
+    await store.load();
+    expect(get(store)).toBe(100);
+  });
+
+  it('given the namespace app.text-scale, when load runs, then that namespace is requested', async () => {
+    const { client, store } = setup(null);
+    await store.load();
+    expect(client.calls).toEqual([{ name: 'load_ui_state', args: { namespace: 'app.text-scale' } }]);
+  });
+});
+
+describe('set text scale', () => {
+  it('given the store at 100, when setTextScale 125 runs, then the entry is saved, the store is 125 and the result is saved', async () => {
+    const { client, store, applyRootFontPercent } = setup();
+    const result = await setTextScale(store, 125);
+    expect(result).toBe('saved');
+    expect(client.calls).toEqual([{ name: 'save_ui_state', args: { entry: stored('{"percent":125}') } }]);
+    expect(get(store)).toBe(125);
+    expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(125);
+  });
+
+  it('given a save that has not resolved, when setTextScale 125 runs, then the scale already applies', () => {
+    const { client, store } = setup();
+    client.respond('save_ui_state', () => new Promise(() => {}));
+    void setTextScale(store, 125);
+    expect(get(store)).toBe(125);
+  });
+
+  it('given the backend rejects the save, when setTextScale 125 runs, then it resolves not-saved and the scale still applies', async () => {
+    const { client, store, applyRootFontPercent } = setup();
+    client.respond('save_ui_state', () => Promise.reject({ category: 'recoverable', message: 'disk full' }));
+    await expect(setTextScale(store, 125)).resolves.toBe('not-saved');
+    expect(get(store)).toBe(125);
+    expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(125);
+  });
+});
+
+describe('choose text scale', () => {
+  it('given the backend rejects the save, when 125 is chosen, then a warning says it resets on restart', async () => {
+    const { client, store } = setup();
+    client.respond('save_ui_state', () => Promise.reject({ category: 'recoverable', message: 'disk full' }));
+    const notifications = createNotifications();
+
+    await chooseTextScale(store, notifications, 125);
+
+    expect(get(notifications).map(({ kind, text }) => ({ kind, text }))).toEqual([
+      { kind: 'warning', text: 'Text size changed but could not be saved. It resets when the app restarts.' },
+    ]);
+  });
+
+  it('given a successful save, when 125 is chosen, then there is no notification', async () => {
+    const { store } = setup();
+    const notifications = createNotifications();
+
+    await chooseTextScale(store, notifications, 125);
+
+    expect(get(notifications)).toEqual([]);
+  });
+});

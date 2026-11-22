@@ -1,0 +1,14 @@
+{
+  "ignoreFiles": ["src/design-system/**", "node_modules/**", "dist/**"],
+  "overrides": [{ "files": ["**/*.svelte", "**/*.html"], "customSyntax": "postcss-html" }],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color"],
+    "unit-disallowed-list": ["px"],
+    "declaration-property-value-disallowed-list": {
+      "font-family": ["/^(?!var\\()/"],
+      "font": ["/^(?!var\\()/"]
+    }
+  }
+}
