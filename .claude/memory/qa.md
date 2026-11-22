@@ -79,3 +79,16 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Check simulator tables against PRD 5.1 (time base verified indexes 0-22, 24, 25, 27, 30; ranges 50 mV to 1 V) and that events match the real monitor
   (it replays already connected scopes). Test plan and report: `docs/specs/m0-spike/`.
 - Retest pattern: after a fix round run `cargo test --workspace`, loop `cargo test -p sweepscope-device` 20x (filter `^test result` for non-"0 failed"), `npm run check` at root. Device crate has 110 tests at 30ef39c. The main tree is /home/kr/workspace/sweepscope (agent worktrees may be on other branches).
+
+## Spike harness review (M0 #2)
+- Review a spike by `git archive <commit> | tar -x -C <scratch>` (clean copy, no build artefacts), then follow the README literally. Xvfb needs an unused display
+  number (check `/tmp/.X11-unix`), isolated HOME/XDG dirs, `GDK_BACKEND=x11`, `unset WAYLAND_DISPLAY`. Full release build took about 70 s.
+- Harness has no duration override: cut `web/scenarios.json` (warmupS, durationS) in the scratch copy for 4 s runs. Test failure paths with `--binary /bin/false`
+  and a copy of run-all.sh with a short `run_timeout_s`. Software-rendered numbers are invalid; never keep them.
+- Screenshots of Xvfb windows are safe; real desktops are not (see root-screenshot rule above).
+
+## Spike harness checks (#2, spikes/2-frame-streaming)
+- Xvfb run: isolated HOME breaks rustup: also export RUSTUP_HOME=/home/kr/.rustup CARGO_HOME=/home/kr/.cargo; no CARGO_TARGET_DIR (run-all hardcodes target/release). Use Xvfb from /tmp/claude-1000/xv/root with `:94`-style unused display (X0 is the user's, others may run too).
+- Background jobs ignore SIGINT: to test Ctrl+C use python Popen(start_new_session, SIGINT default) and os.killpg. `timeout` puts the app in its own group (run-all did not stop on Ctrl+C at e34f3a9).
+- Never `pkill -f` patterns (kills own shell, exit 144); use pgrep and kill by PID.
+- Synthetic summarize checks: clone a real JSON, drop quickRun, set configuredDurationS 60, vary drawMs.mean / ipcMs.p99 (4 ms floor, 1.5 ratio, ipc-only rule).

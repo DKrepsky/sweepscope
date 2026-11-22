@@ -18,3 +18,11 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Developers leave scratch files (pw.tmp.config.ts, src/zz.ts): check `git status` before committing.
 - Interactive GUI checks must run under Xvfb with an isolated HOME, never on the user's display.
 - Visible look changes forced by accessibility (control outlines, Stop red) must be surfaced to the human at the gate.
+
+## M0 lessons (2026-11)
+- Human decisions: spike results (raw data and measured figures) are never committed, reports hold rule outcomes only (ADR 0008). Human accepts "you merge it" for docs PRs when told to; default stays that the human merges. Shorter runs preferred (5 min cap for manual measurements).
+- Human has one Linux machine only; do not plan two-machine criteria. Close spikes as "done on one machine" with the gap stated in the report.
+- Check PR state before pushing to a branch: PR #43 merged while late commits were still pushed to it; late docs need a new PR.
+- Never repeat a subagent's comparison unchecked: I mis-stated the Channel as the cause of the Rust memory growth; the staff engineer found windows of different length. Verify attributions before relaying.
+- Xvfb is not installed and sudo is unavailable: extract the .deb to the scratchpad; NVIDIA EGL segfaults under Xvfb, force Mesa.
+- Parallel developers on one branch: give each its own worktree and branch, merge afterwards.
