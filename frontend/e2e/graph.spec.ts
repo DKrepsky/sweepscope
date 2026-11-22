@@ -79,7 +79,7 @@ for (const scale of SCALES) {
     }) => {
       test.skip(browserName !== 'chromium', 'Snapshots are stored for Chromium only');
       await openWithFreshGraticule(page);
-      await expect(page.locator(SCOPE_SCREEN)).toHaveScreenshot(`scope-screen-${scale}.png`);
+      await expect(page.locator(SCOPE_SCREEN)).toHaveScreenshot(`scope-screen-${scale}.png`, { scale: 'device' });
     });
   });
 }

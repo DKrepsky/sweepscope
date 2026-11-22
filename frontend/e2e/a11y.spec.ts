@@ -27,8 +27,8 @@ async function findings(page: Page): Promise<Finding[]> {
   }));
 }
 
-/** BUG-10 (label in name) is open: the general checks ignore it, a dedicated check tracks it. */
-const isKnownLabel = (f: Finding) => f.id === 'label-content-name-mismatch';
+/** WCAG 2.5.3 label in name (BUG-10, fixed): checked by the general runs and by a dedicated case. */
+const isLabelInName = (f: Finding) => f.id === 'label-content-name-mismatch';
 
 /** The `text-disabled` token (#5f666d) is only used by disabled controls, which are exempt from 1.4.3. */
 const withoutDisabledText = (f: Finding): Finding => ({
@@ -37,7 +37,7 @@ const withoutDisabledText = (f: Finding): Finding => ({
 });
 
 async function violations(page: Page): Promise<Finding[]> {
-  return (await findings(page)).map(withoutDisabledText).filter((f) => f.nodes.length > 0 && !isKnownLabel(f));
+  return (await findings(page)).map(withoutDisabledText).filter((f) => f.nodes.length > 0);
 }
 
 test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
@@ -105,6 +105,6 @@ test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
     page,
   }) => {
     await openMain(page);
-    expect((await findings(page)).filter(isKnownLabel)).toEqual([]);
+    expect((await findings(page)).filter(isLabelInName)).toEqual([]);
   });
 });

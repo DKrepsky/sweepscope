@@ -37,8 +37,24 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Tests that compare to the screen minimum must measure against the stage (`[data-region="scope"]`), not only the screen box: the
   stage clips with overflow hidden.
 
-## Status of the scaffold step (as of QA report)
-- Open majors: graticule vanishes after redraw (Graph canvas width reset), screen minimum in px not rem, screen clipped below its
-  minimum (1024x576). Minors listed in `docs/specs/scaffold-and-design-system/qa-report.md`. Retest = remove `test.fail` annotations
-  (grep `BUG-` in `frontend/e2e`) and rerun the full suite.
-- Window minimum is 1024 x 576 (ADR 0005), not the 1280 x 720 of design 3.2 text.
+## Xvfb GUI checks without sudo (worked, retest round 2)
+- `apt-get download xvfb openbox libobrender32v5 libobt2v5 libstartup-notification0 libimlib2t64 xdotool libxdo3`, `dpkg -x` into a scratch dir, set
+  `LD_LIBRARY_PATH` to its `usr/lib/x86_64-linux-gnu`. Start `Xvfb :77`, then `openbox` under `dbus-run-session`, with isolated `HOME`,
+  `XDG_CONFIG_HOME`, `XDG_RUNTIME_DIR`, `GDK_BACKEND=x11`, `WEBKIT_DISABLE_DMABUF_RENDERER=1`, `WEBKIT_DISABLE_COMPOSITING_MODE=1`.
+- Debug app (`cargo build -p sweepscope-app`) loads `devUrl` 5173, so start `npm --prefix frontend run dev` first. Right click, Inspect Element
+  opens docked devtools; type into the console prompt with `xdotool type` one command at a time (a second command typed at once is lost).
+  `window.__TAURI_INTERNALS__.invoke(...)` tests the capability. Window minimum: `xdotool windowsize <id> W H` is clamped by size hints.
+- Stop everything by PID afterwards (app, openbox, Xvfb, vite) and delete the temp HOME.
+
+## Pitfalls added in round 2
+- `toHaveScreenshot` defaults to `scale: 'css'`: HiDPI snapshots need `{ scale: 'device' }` or they cannot show device-pixel changes.
+- The gallery snapshot test stops at the first mismatch: fix one section, rerun, others may be hidden behind it.
+- Playwright `page.clock` does not work with the Svelte timers here (elements never appear); measure Toast timing with real timers and a margin.
+- `addInitScript` order matters: a wrapper of `__TAURI_INTERNALS__.invoke` must be added after `stubTauri`, and `openMain` adds the stub again, so
+  for failing saves call `stubTauri`, then the wrapper, then `page.goto` yourself.
+- Layout thresholds: tests in `tiers.spec.ts` for each calibrated height at, and 1 px below; re-run them whenever dock or toolbar content changes.
+
+## Status of the scaffold step
+- Retest round 2 verdict PASS: BUG-1..10 and C-2, C-3 closed; open cosmetic C-1 (channel row alignment), C-4 (Marker aria-valuenow, unverified), C-5
+  (Settings popover labels wrap in WebKitGTK). Window minimum is 1024 x 720 (content floor 64 x 45 rem), Stop is #f2766f.
+- Known limit: banners are not counted in the height thresholds.

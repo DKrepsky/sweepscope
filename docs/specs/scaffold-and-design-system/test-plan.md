@@ -116,7 +116,7 @@ Hardware needed is "no" for every case.
 
 | ID | Item | Kind |
 |---|---|---|
-| KD-1 | StatusBar `wrapPriorityAtLeast`: spec text says items whose priority is below the threshold wrap; code wraps items with priority at or above it. Behaviour is what the design wants (low-priority items wrap, connection and rate stay). Check semantic against spec text and the unit test, report | E, doc |
+| KD-1 | StatusBar `wrapPriorityAtLeast`: items with a priority number at or above the threshold wrap (0 is the most important). Spec text fixed (resolved); the unit test is the reference | E, doc |
 | KD-2 | Tooltip is not linked with `aria-describedby` (see G-10) | E |
 | KD-3 | Toolbar labels hidden at w3 for Single, Force, Autoset and the brand (design says only the secondary tools lose text at W2) | E, UI |
 | KD-4 | H3 at 1024 x 576: the scope screen is clipped below its 410 px minimum | E |
@@ -134,6 +134,38 @@ Hardware needed is "no" for every case.
 | M-4 | given the CSP in `tauri.conf.json`, when the page tries to load a remote script or image, then it is blocked and a violation is logged (checked in the browser with the same CSP header, and in the Tauri window where possible) | M, E | WP4 |
 | M-5 | given the window minimum in `tauri.conf.json`, then it matches the design 3.2 minimum or floor; drag below it and observe | M | WP4, 3.2 |
 | M-6 | given a corrupt `settings.json`, when the app starts, then the window opens at 100 % without crashing | M | WP2 |
+
+### Retest round 2 (after the fix rounds and the human decisions: minimum 1024 x 720, Stop `#f2766f`, W3 labels hidden, error Toast persists)
+
+| ID | Case | Kind | Source |
+|---|---|---|---|
+| L-1 | given each calibrated height threshold of `layout-calibration.md` (wide 756, 740 px at 1440 wide; narrow 944, 912, 804 px at 1024 wide; the same in rem at 125 % and 1280 wide) and one pixel below it, then the tier is the expected one and AC-L1 holds (screen 10:8, at least 32 x 25.6 rem, inside the stage, no content scroll, essentials visible) | E (`tiers.spec.ts`) | AC-L1, 11.10 |
+| L-2 | given 1024 x 720 at 100 % then h4 with the whole screen; given 1024 x 719 then `scroll` and the screen keeps its minimum | E | D-L1, AC-L2 |
+| L-3 | given the banners (unverified hardware, notifications), then they are not counted in the height thresholds (documented known limit, design 3.2); no automated case | doc | design 3.2 |
+| TO-1 | given an info Toast, then it is shown at 3.4 s and gone by 4.8 s; given a warning Toast (failed text-size save), shown at 7.4 s and gone by 8.8 s; pointer over it keeps it past 8.8 s | E (`feedback.spec.ts`) | 11.4 |
+| TO-2 | given an error Toast, then it never auto-dismisses and has a dismiss button | unit only (no UI producer of an error Toast exists in the shell) | 11.4 |
+| MN-1 | given the persistence button in the real Toolbar, then `aria-haspopup="menu"` and `aria-expanded` follow open and close, Escape and Tab close it and focus returns to the button | E | BUG-5, review |
+| TP-1 | given the disabled Video option in the real Trigger group, when focused, then it is described (`aria-describedby`) by the Tooltip and the link is removed when it closes | E | BUG-4 |
+| S-1 | given snapshots that recorded old behaviour, then each diff is inspected and intended before `--update-snapshots`; scope-screen snapshots are taken at device resolution (`scale: 'device'`) so line width is visible | UI, E | BUG-2, BUG-6, BUG-8, C-3 |
+| CB-1 | given the main window and the channel, status and math colours under protanopia, deuteranopia and tritanopia simulation (Machado 2009, severity 1.0), then channels stay distinguishable (pairwise CIE76 distance) and nothing relies on colour alone | UI | AC-T3 |
+| M-2/3/5 | the Tauri window on Xvfb with openbox and an isolated HOME and XDG_CONFIG_HOME: change and restore the text scale across restart, a command outside the manifest is refused, the window cannot be resized below 1024 x 720 | M | see the QA report |
+
+### Guidance: interactive checks of the Tauri window on a virtual display (Xvfb or Xephyr)
+Never inject input into the user's live session. Run the app on its own display:
+- Start `Xvfb :99 -screen 0 1600x1000x24 &` (headless), or `Xephyr :99 -screen 1600x1000` when someone wants to watch. Set `DISPLAY=:99`,
+  `GDK_BACKEND=x11` and unset `WAYLAND_DISPLAY` for every command of the run (`xvfb-run -a` does this for one command).
+- A window manager is needed to honour the window minimum and to resize (for example `openbox` on `:99`); without one the minimum
+  of M-5 cannot be tested. WebKitGTK may need `WEBKIT_DISABLE_COMPOSITING_MODE=1` (or `WEBKIT_DISABLE_DMABUF_RENDERER=1`) in a virtual display.
+- Isolate the settings: `XDG_CONFIG_HOME=$(mktemp -d)` so the user's `settings.json` is neither read nor written; for M-2 restart the
+  app with the same `XDG_CONFIG_HOME` and read the file back. For M-6 write a corrupt file there first.
+- Drive and observe with `xdotool` (only with `DISPLAY=:99` set explicitly) and `import -window root` or `xwd`; keep screenshots in
+  `.claude/tmp/<issue>/`. Devtools for M-3 need a dev build (`npm run dev`).
+- Cases M-2, M-3, M-5 and M-6 use this method; mark each result with the display and the window manager used. Not a CI job
+  now (a later story may adopt `tauri-driver`).
+
+### Guidance: known-bug annotations
+Playwright `test.fail(cond, 'BUG-n: reason')` marks an open bug. The fixing developer removes it with the fix (spec 11.7); at G4 no blocker
+or major bug may carry one. Snapshots recorded with a bug are regenerated by QA after the fix. CI snapshots are the arbiter (spec 11.6).
 
 ## Entry and exit criteria
 

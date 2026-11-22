@@ -353,3 +353,62 @@ test.describe('content floor (AC-L1 to AC-L3)', () => {
     expect(settings.x + settings.width).toBeLessThanOrEqual(901);
   });
 });
+
+test.describe('AC-L1 at every calibrated height threshold and one pixel below it', () => {
+  // [width, scale, height in px, expected height tier]; rem thresholds from layout-calibration.md, px = rem x 16 x scale.
+  const rows: [number, TextScale, number, string][] = [
+    // wide column (1440 px, W1): h1 47.25 rem, h2 46.25 rem, h4 from the floor 45 rem.
+    [1440, 100, 756, 'h1'],
+    [1440, 100, 755, 'h2'],
+    [1440, 100, 740, 'h2'],
+    [1440, 100, 739, 'h4'],
+    [1440, 100, 720, 'h4'],
+    // narrow column (1024 px, W3): h1 59 rem, h2 57 rem, h3 50.25 rem, h4 from the floor.
+    [1024, 100, 944, 'h1'],
+    [1024, 100, 943, 'h2'],
+    [1024, 100, 912, 'h2'],
+    [1024, 100, 911, 'h3'],
+    [1024, 100, 804, 'h3'],
+    [1024, 100, 803, 'h4'],
+    [1024, 100, 720, 'h4'],
+    // the same thresholds in rem at text scale 125 % (1280 px = 64 rem, W3): px = rem x 20.
+    [1280, 125, 1180, 'h1'],
+    [1280, 125, 1179, 'h2'],
+    [1280, 125, 1140, 'h2'],
+    [1280, 125, 1139, 'h3'],
+    [1280, 125, 1005, 'h3'],
+    [1280, 125, 1004, 'h4'],
+    [1280, 125, 900, 'h4'],
+  ];
+  for (const [width, scale, height, expected] of rows) {
+    test(`given ${width} x ${height} at ${scale} %, when loaded, then the tier is ${expected} and AC-L1 holds (whole screen, no scrolling, essentials visible)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page, scale);
+      await page.waitForTimeout(150);
+      expect((await tiers(page)).height).toBe(expected);
+      const rem = (16 * scale) / 100;
+      const screen = await box(page, SCOPE_SCREEN);
+      const stage = await box(page, '[data-region="scope"]');
+      expect(Math.abs(screen.width / screen.height - 1.25)).toBeLessThan(0.01);
+      expect(screen.width).toBeGreaterThanOrEqual(32 * rem - 1);
+      expect(screen.height).toBeGreaterThanOrEqual(25.6 * rem - 1);
+      expect(screen.y).toBeGreaterThanOrEqual(stage.y - 1);
+      expect(screen.y + screen.height).toBeLessThanOrEqual(stage.y + stage.height + 1);
+      expect(await contentScrolls(page)).toBe(false);
+      await expectEssentialsVisible(page);
+    });
+  }
+
+  test('given 1024 x 719 at 100 % (one pixel under the floor), when loaded, then the tier is scroll and the screen keeps its minimum', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 719 });
+    await openMain(page, 100);
+    expect((await tiers(page)).height).toBe('scroll');
+    const screen = await box(page, SCOPE_SCREEN);
+    expect(screen.width).toBeGreaterThanOrEqual(512 - 1);
+    expect(screen.height).toBeGreaterThanOrEqual(409.6 - 1);
+  });
+});
