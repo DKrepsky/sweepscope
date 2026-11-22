@@ -2,8 +2,14 @@
   import type { StatusModel } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
   import StatusBar from '../../ui/status-bar/StatusBar.svelte';
-  import StatusChip from '../../ui/status-chip/StatusChip.svelte';
+  import StatusChip, { type StatusChipKind } from '../../ui/status-chip/StatusChip.svelte';
   import AnchoredPopover from './AnchoredPopover.svelte';
+
+  const CONNECTION_KINDS: Record<string, StatusChipKind> = {
+    Error: 'error',
+    Disconnected: 'disconnected',
+    Connecting: 'info',
+  };
 
   interface Props {
     status: StatusModel;
@@ -32,7 +38,8 @@
 
 {#snippet connection()}
   <span class="connection" title={status.connection.tooltip}>
-    <StatusChip kind="ok">{status.connection.state}</StatusChip>
+    <StatusChip kind={CONNECTION_KINDS[status.connection.state] ?? 'ok'}>{status.connection.state}</StatusChip>
+    {#if status.connection.simulated}<StatusChip kind="info">Simulator</StatusChip>{/if}
     <span class="k">{status.connection.detail}</span>
   </span>
 {/snippet}

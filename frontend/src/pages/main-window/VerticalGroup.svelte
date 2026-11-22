@@ -1,16 +1,17 @@
 <script lang="ts">
-  import type { ChannelModel } from '../../app/main-window';
+  import type { ChannelModel, MainWindowActions } from '../../app/main-window';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import ChannelRow from './ChannelRow.svelte';
   import DockGroup from './DockGroup.svelte';
 
   interface Props {
     channels: ChannelModel[];
+    actions: MainWindowActions;
     /** H3: only the chosen channel's row is shown, with channel tabs. */
     tabs: boolean;
   }
 
-  const { channels, tabs }: Props = $props();
+  const { channels, actions, tabs }: Props = $props();
 
   let chosen = $state<string | null>(null);
   const shown = $derived(chosen ?? String(channels.find((channel) => channel.selected)?.number ?? 1));
@@ -28,7 +29,7 @@
   {/snippet}
   <div class="rows">
     {#each visible as channel (channel.number)}
-      <ChannelRow {channel} />
+      <ChannelRow {channel} {actions} />
     {/each}
   </div>
 </DockGroup>

@@ -213,3 +213,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A default parameter value applies when `undefined` is passed: use an option flag to model "no instrument" in test setups.
 - `api/index.ts` exports few generated types; derive them (`InstrumentState['controls']['run']`) instead of editing WP9 files.
 - Model sources: `LiveMainWindow` = `Readable<MainWindowModel> & MainWindowActions` (same shape as the mock); selectors are pure `select-*.ts`; test the model through writable fake stores.
+## WP11 pages wiring and main.ts (developer-6)
+- Pages take one `actions: MainWindowActions` prop (MainWindow aliases it `windowActions` because a `{#snippet actions()}` for Banner would shadow it). `ReasonStepper` wraps `Stepper` + `Tooltip` for blocked directions; Stepper has no reason prop of its own. Marker drags emit on `oncommit` only (key nudges fire both `ondrag` and `oncommit`).
+- Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
+- e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
+- Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.

@@ -45,12 +45,14 @@ test.describe('main window shell', () => {
     expect(failures).toEqual([]);
   });
 
-  test('given the Run button, when clicked, then its label toggles between Stop and Run', async ({ page }) => {
+  test('given a running scope, when Stop is clicked, then set_running is sent with running false', async ({ page }) => {
     await openMain(page);
     const stop = page.getByRole('button', { name: /^Stop/ });
     await expect(stop).toBeVisible();
     await stop.click();
-    await expect(page.getByRole('button', { name: /^Run/ })).toBeVisible();
+    await expect
+      .poll(async () => (await ipcLog(page)).filter((call) => call.command === 'set_running'))
+      .toEqual([{ command: 'set_running', args: { running: false } }]);
   });
 
   test('given the shell, when checked, then the placeholder note is visible', async ({ page }) => {

@@ -1,5 +1,12 @@
 <script lang="ts">
-  import type { CursorsModel, GraphModel, TriggerModel, ChannelModel } from '../../app/main-window';
+  import {
+    divisionsFromFraction,
+    type ChannelModel,
+    type CursorsModel,
+    type GraphModel,
+    type MainWindowActions,
+    type TriggerModel,
+  } from '../../app/main-window';
   import Badge from '../../ui/badge/Badge.svelte';
   import Graph from '../../ui/graph/Graph.svelte';
   import { screenMinimumPx } from '../../app/layout';
@@ -13,11 +20,15 @@
     trigger: TriggerModel;
     cursors: CursorsModel;
     dots: boolean;
+    actions: MainWindowActions;
     /** 1 rem in px (layout store): the screen minimum is in rem. */
     rootFontPx: number;
   }
 
-  const { graph, channels, trigger, cursors, dots, rootFontPx }: Props = $props();
+  const { graph, channels, trigger, cursors, dots, actions, rootFontPx }: Props = $props();
+
+  const triggerOff = $derived(trigger.availability?.enabled === false);
+  const triggerReason = $derived(trigger.availability?.reason);
 
   let stageSize = $state({ width: 0, height: 0 });
   let stage: HTMLElement;
@@ -54,7 +65,7 @@
       {#snippet overlay()}
         <CursorOverlay {cursors} />
         <div class="corner">
-          <Badge kind="software" tooltip="Interpolation is computed in software">sin(x)/x SW</Badge>
+          <Badge kind="software" tooltip="Interpolation is computed in software">{dots ? 'Dots' : 'Linear SW'}</Badge>
         </div>
       {/snippet}
       {#snippet gutterLeft()}
@@ -65,16 +76,37 @@
             label={String(channel.number)}
             name="Channel {channel.number} ground"
             color="var(--ss-color-ch{channel.number})"
+            disabled={channel.availability?.enabled === false}
+            disabledReason={channel.availability?.reason}
+            oncommit={(fraction) => actions.setChannelPosition(channel.number, divisionsFromFraction(fraction))}
+            onreset={() => actions.setChannelPosition(channel.number, 0)}
           />
         {/each}
       {/snippet}
       {#snippet gutterRight()}
-        <Marker kind="trigger-level" position={trigger.levelPosition} label="T" name="Trigger level">
+        <Marker
+          kind="trigger-level"
+          position={trigger.levelPosition}
+          label="T"
+          name="Trigger level"
+          disabled={triggerOff}
+          disabledReason={triggerReason}
+          oncommit={(fraction) => actions.setTriggerLevel(divisionsFromFraction(fraction))}
+          onreset={actions.resetTriggerLevel}
+        >
           {#snippet tag()}{trigger.levelTag}{/snippet}
         </Marker>
       {/snippet}
       {#snippet gutterTop()}
-        <Marker kind="trigger-position" position={trigger.timePosition} label="T" name="Trigger position">
+        <Marker
+          kind="trigger-position"
+          position={trigger.timePosition}
+          label="T"
+          name="Trigger position"
+          disabled={triggerOff}
+          disabledReason={triggerReason}
+          oncommit={actions.setTriggerPosition}
+        >
           {#snippet tag()}{trigger.positionTag}{/snippet}
         </Marker>
       {/snippet}

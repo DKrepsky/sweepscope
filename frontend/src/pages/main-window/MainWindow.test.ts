@@ -8,6 +8,7 @@ import { createMockMainWindow } from '../../app/main-window';
 import { createTextScaleStore, setTextScale, type TextScalePercent } from '../../app/text-scale';
 import { createRecordingContext } from '../../ui/graph/recording-context';
 import MainWindow from './MainWindow.svelte';
+import { spyActions } from './test-support';
 
 const tiers = {
   w1: { width: 'w1', height: 'h1', rootFontPx: 16 },
@@ -26,7 +27,6 @@ beforeEach(() => {
 function renderShell(
   tier: LayoutTier,
   overrides: {
-    ontogglerun?: () => void;
     ontextscale?: (p: TextScalePercent) => void;
     notifications?: Readable<Notification[]>;
   } = {},
@@ -37,7 +37,7 @@ function renderShell(
     textScale: writable<TextScalePercent>(100),
     notifications: writable<Notification[]>([]),
     onnotificationdismiss: () => {},
-    ontogglerun: () => {},
+    actions: spyActions(),
     ontextscale: () => {},
     ...overrides,
   };
@@ -104,15 +104,6 @@ describe('MainWindow tiers', () => {
 });
 
 describe('MainWindow behaviour', () => {
-  it('given the run button, when clicked, then the shell asks to toggle run', async () => {
-    const ontogglerun = vi.fn();
-    renderShell(tiers.w1, { ontogglerun });
-
-    await userEvent.setup().click(screen.getByRole('button', { name: /Stop/ }));
-
-    expect(ontogglerun).toHaveBeenCalledOnce();
-  });
-
   it('given the text-scale control, when 150 is selected, then SaveUiState is sent and the root font is applied', async () => {
     const send = vi.fn(async () => undefined);
     const client = { send } as never;
@@ -126,7 +117,7 @@ describe('MainWindow behaviour', () => {
         textScale: store,
         notifications: writable<Notification[]>([]),
         onnotificationdismiss: () => {},
-        ontogglerun: () => {},
+        actions: spyActions(),
         ontextscale: (percent: TextScalePercent) => void setTextScale(store, percent),
       },
     });
