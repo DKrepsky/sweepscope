@@ -26,3 +26,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Never repeat a subagent's comparison unchecked: I mis-stated the Channel as the cause of the Rust memory growth; the staff engineer found windows of different length. Verify attributions before relaying.
 - Xvfb is not installed and sudo is unavailable: extract the .deb to the scratchpad; NVIDIA EGL segfaults under Xvfb, force Mesa.
 - Parallel developers on one branch: give each its own worktree and branch, merge afterwards.
+
+## M1 lessons (2026-11)
+- Stories #5-#12 were approved as one milestone (one spec, one G3). Human accepts recommended defaults in bulk; D1 (roll steps disabled, #10 AC1 = 25 steps) amended an AC.
+- Developers' worktrees start on old branches: always say "create branch from feat/m1-live-view"; merges conflict only in .claude/memory/developer.md (keep both sides).
+- Tests that stub Tauri hide missing capabilities (BUG-1: event listen). Real-window QA is needed for IPC changes.
+- QA opened the real scope by accident: always set SWEEPSCOPE_NO_HARDWARE=1 and hide USB for automated app runs; tell the human when it happens.
+- Visual baselines are regenerated on CI after push; QA cannot do it before.
