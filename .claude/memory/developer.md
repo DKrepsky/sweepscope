@@ -191,3 +191,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A fresh worktree has no `frontend/node_modules`: run `npm ci --prefer-offline` there (a symlink to another checkout breaks vite's fs allow list). The Bash tool refuses long heredoc chains in worktrees: use Write/Edit for files, short separate commands otherwise.
 - `commands.ts` is hand-extended (commands, `EVENTS`, `STREAMS`) until WP8 regenerates it; `tauriCommandNames`/`tauriStreamCommands` are exhaustive Records tested against the lists. `TauriTransport.openChannel(command, onMessage)` wraps `Channel` (messages may be ArrayBuffer or number[]).
 - `app/instrument`: one `createSlice` owns the revision rule; selectors are pure functions of slice values (`isAcquiring(conn, instr)`, `graphState(conn, instr, hasFrame)`, `statusChips`, `connectionChip`); `test-data.ts` has slice builders for tests.
+
+## WP10 lessons (live model, waveform)
+- `src/**` lint bans `node:` imports, and vite `fs.allow` blocks files outside `frontend/` (`?inline` of `backend/...` fails): cross-repo fixture tests live in `frontend/tools/*.test.ts` (vitest includes `tools/**`), with `// @vitest-environment node` and `/// <reference types="node" />`.
+- ESLint `max-lines-per-function` is 40: split action maps into group builders. Prettier reformats long one-liners, run it before lint.
+- A default parameter value applies when `undefined` is passed: use an option flag to model "no instrument" in test setups.
+- `api/index.ts` exports few generated types; derive them (`InstrumentState['controls']['run']`) instead of editing WP9 files.
+- Model sources: `LiveMainWindow` = `Readable<MainWindowModel> & MainWindowActions` (same shape as the mock); selectors are pure `select-*.ts`; test the model through writable fake stores.
