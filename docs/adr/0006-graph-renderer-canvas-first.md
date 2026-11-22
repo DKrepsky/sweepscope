@@ -1,6 +1,6 @@
 # ADR 0006: The Graph is built on Canvas 2D behind a renderer interface; WebGL2 follows the M0 spike
 
-Status: proposed
+Status: accepted (Canvas 2D is the M1 renderer; WebGL2 with persistence in M3, approved at G3 of M1)
 Date: 2026-11-21
 Issue: none (requested directly by the human)
 
