@@ -1,0 +1,21 @@
+{
+  "machineId": "i5-9600kf-xvfb-software",
+  "os": "Linux Mint 22.3",
+  "kernel": "7.0.0-43-generic",
+  "cpu": "Intel Core i5-9600KF @ 3.70 GHz, 6 cores",
+  "memoryMiB": 32024,
+  "display": "Xvfb 1280x720x24, software rendering (the real display is NVIDIA RTX 4060 Ti on X11, not used)",
+  "webkitgtk": "2.52.6",
+  "tauri": "2.12.7",
+  "env": {
+    "GDK_BACKEND": "x11",
+    "WEBKIT_DISABLE_DMABUF_RENDERER": "1",
+    "WEBKIT_DISABLE_COMPOSITING_MODE": "1",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "SPIKE_SPEED": "1",
+    "SPIKE_DURATION_S": "3600",
+    "SPIKE_INJECT_EVERY_S": "600",
+    "SPIKE_MEMORY_EVERY_S": "10"
+  },
+  "note": "Isolated HOME and XDG_* directories; run by tools/soak.sh app"
+}
