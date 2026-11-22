@@ -229,3 +229,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
 - e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
 - Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.
+
+## M1 shell fix round (developer-3)
+- Capability needs `core:event:allow-listen` and `allow-unlisten` for the frontend to receive backend events; browser stubs hide this, so a manifest test pins the exact `core:` permissions (the commands test filters `core:` out).
+- `SWEEPSCOPE_NO_HARDWARE=1` skips `HantekCatalog::start` (`choose_hardware` takes the starter as a closure, so the test proves it is never called). Docs: README, docs/troubleshooting.md (DMABUF workaround), docs/usb-permissions.md. Prettier covers only `frontend/`, not the root README.

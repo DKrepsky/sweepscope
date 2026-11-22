@@ -11,6 +11,7 @@ use sweepscope_kernel::{Bus, Clock, FileStorage, KernelError, Storage, SystemClo
 use sweepscope_settings::{SettingsDeps, SettingsModule};
 
 const SIMULATOR_VARIABLE: &str = "SWEEPSCOPE_SIMULATOR";
+const NO_HARDWARE_VARIABLE: &str = "SWEEPSCOPE_NO_HARDWARE";
 
 /// The wired backend. Modules are kept alive here; the bus is the only way in.
 /// Fields drop in declaration order, so consumers stop before the producers they read from.
@@ -66,7 +67,10 @@ pub fn compose_on_disk(config_dir: PathBuf) -> Result<Backend, KernelError> {
     let start_plugged = simulator_requested(std::env::var(SIMULATOR_VARIABLE).ok().as_deref());
     compose(Wiring {
         storage: Arc::new(FileStorage::new(config_dir)),
-        hardware: hardware_catalog(),
+        hardware: choose_hardware(
+            hardware_disabled(std::env::var(NO_HARDWARE_VARIABLE).ok().as_deref()),
+            hardware_catalog,
+        ),
         simulator: Some(simulator_source(Arc::clone(&clock), start_plugged)),
         clock,
         unix_time_us,
@@ -75,6 +79,22 @@ pub fn compose_on_disk(config_dir: PathBuf) -> Result<Backend, KernelError> {
 
 pub fn simulator_requested(value: Option<&str>) -> bool {
     value == Some("1")
+}
+
+pub fn hardware_disabled(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+/// Takes the discovery as a function so a disabled run never touches USB, and a test can prove it.
+fn choose_hardware(
+    disabled: bool,
+    start: impl FnOnce() -> Option<Box<dyn DeviceCatalog>>,
+) -> Option<Box<dyn DeviceCatalog>> {
+    if disabled {
+        log::info!("hardware discovery is off ({NO_HARDWARE_VARIABLE}=1)");
+        return None;
+    }
+    start()
 }
 
 /// The simulator is always available to `use_simulator`; it starts plugged in only when asked for.
@@ -144,6 +164,38 @@ mod tests {
         assert!(!simulator_requested(None));
         assert!(!simulator_requested(Some("0")));
         assert!(!simulator_requested(Some("true")));
+    }
+
+    #[test]
+    fn given_the_no_hardware_variable_is_one_when_read_then_hardware_is_disabled() {
+        assert!(hardware_disabled(Some("1")));
+        assert!(!hardware_disabled(None));
+        assert!(!hardware_disabled(Some("0")));
+    }
+
+    #[test]
+    fn given_hardware_is_disabled_when_the_catalog_is_chosen_then_discovery_is_never_started() {
+        let mut started = false;
+
+        let catalog = choose_hardware(true, || {
+            started = true;
+            None
+        });
+
+        assert!(catalog.is_none());
+        assert!(!started);
+    }
+
+    #[test]
+    fn given_hardware_is_enabled_when_the_catalog_is_chosen_then_discovery_is_started() {
+        let mut started = false;
+
+        choose_hardware(false, || {
+            started = true;
+            None
+        });
+
+        assert!(started);
     }
 
     #[test]

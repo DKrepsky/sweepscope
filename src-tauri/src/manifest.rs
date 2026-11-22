@@ -183,9 +183,24 @@ mod tests {
             .as_array()
             .expect("permissions")
             .iter()
+            .filter(|p| !p.as_str().expect("string").starts_with("core:"))
             .map(|p| p.as_str().expect("string").replace("allow-", "").replace('-', "_"))
             .collect();
         assert_eq!(sorted(allowed), registered_names());
+    }
+
+    #[test]
+    fn given_the_capability_when_read_then_it_grants_only_event_listening_from_the_core() {
+        let capability: serde_json::Value =
+            serde_json::from_str(include_str!("../capabilities/main.json")).expect("capability json");
+        let core: Vec<String> = capability["permissions"]
+            .as_array()
+            .expect("permissions")
+            .iter()
+            .map(|p| p.as_str().expect("string").to_owned())
+            .filter(|p| p.starts_with("core:"))
+            .collect();
+        assert_eq!(sorted(core), ["core:event:allow-listen", "core:event:allow-unlisten"]);
     }
 
     #[test]
