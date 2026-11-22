@@ -206,3 +206,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `SimulatorControl::new()` starts plugged; the shell must `unplug()` it before building the module unless `SWEEPSCOPE_SIMULATOR=1`. A simulator `Attached` publishes `simulator_active` together with the following state (`defer_simulator_active` + `flush`) to avoid an extra event.
 - Tests: `tests/module_support/mod.rs` (`Source` with `Hooks`: open/capture error injection, a capture gate, live-device and configure counters). Subscribe a recorder before `DeviceModule::new` to see the first `Disconnected`. The thread-count test lives alone in its file because it counts process threads.
 - `cargo fmt --all` before clippy; clippy `too_many_lines` limit is 40 per function.
+
+## WP10 lessons (live model, waveform)
+- `src/**` lint bans `node:` imports, and vite `fs.allow` blocks files outside `frontend/` (`?inline` of `backend/...` fails): cross-repo fixture tests live in `frontend/tools/*.test.ts` (vitest includes `tools/**`), with `// @vitest-environment node` and `/// <reference types="node" />`.
+- ESLint `max-lines-per-function` is 40: split action maps into group builders. Prettier reformats long one-liners, run it before lint.
+- A default parameter value applies when `undefined` is passed: use an option flag to model "no instrument" in test setups.
+- `api/index.ts` exports few generated types; derive them (`InstrumentState['controls']['run']`) instead of editing WP9 files.
+- Model sources: `LiveMainWindow` = `Readable<MainWindowModel> & MainWindowActions` (same shape as the mock); selectors are pure `select-*.ts`; test the model through writable fake stores.
