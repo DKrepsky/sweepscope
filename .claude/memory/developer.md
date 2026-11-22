@@ -158,3 +158,11 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## Simulator pure parts (WP3.2, developer-2)
 - Verify modules before the crate exists: scratch crate in the scratchpad whose lib.rs pulls the files with `#[path = "<abs>"] pub mod x;` nested in `pub mod simulator` (so `crate::simulator::...` imports work); run rustfmt on the real files with the repo config.
 - `edge::Direction` is local (no WP3.1 `Slope` dependency); WP3.3 maps Slope to Direction. Roll `stride` = ADC channel count (1, 2, 4, 4).
+
+## Device crate (WP3.1, developer-1)
+- `sweepscope-device` (backend/features/device): ts-rs `export_to = "../../../../frontend/src/api/generated/"`; test names must be full given_/when_/then_ (check-test-names). `Clock::sleep` is a required trait method (FakeClock advances). Root `npm run check` is the full gate (no `check` in frontend/).
+
+## Simulator device (WP3.3, developer-1)
+- Time-base indexes: 0 = 2 ns, 15 = 200 us, 24 = 200 ms, 25 = 500 ms (streaming); range 8 = 1 V. Count 1-2-5 steps before hard-coding an index in tests.
+- Capture model: cycle = `frame_cycle(wait for edge + record)`, slept in <= 20 ms slices that check the unplug flag; Normal sweep with no edge in time sleeps exactly `timeout` then `Timeout`. Edge search is capped at two signal periods (the waveform repeats).
+- Integration tests share `tests/common/mod.rs` (`rig()`, `setup()`); `FakeClock` is in `sweepscope_kernel::testing` (public, not feature gated).
