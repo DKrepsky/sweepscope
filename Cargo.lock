@@ -3154,6 +3154,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sweepscope-device"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
 name = "sweepscope-kernel"
 version = "0.1.0"
 dependencies = [

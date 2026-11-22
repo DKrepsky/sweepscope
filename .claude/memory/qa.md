@@ -72,3 +72,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - CI renders are deterministic (two runs gave 0 differing pixels). Graph scope-screen snapshots passed on CI unchanged.
 - Working tree may hold another agent's uncommitted edits: use a `git worktree add --detach` in the scratchpad and push `HEAD:<branch>`.
 - Gallery crops use `maxDiffPixelRatio: 0.01` (global 0.002 stays for full-window shots): Dialog text differed by 518 px between two CI runs.
+
+## Backend-only stories (M0 #3, device crate)
+- No UI: verify by `cargo test -p sweepscope-device` (repeat 20x for flakiness), `npm run check` at the REPO ROOT (frontend has no `check` script), and inspection
+  against PRD 5.1 verification markers and the driver docs (`/home/kr/workspace/hantek6xx4-lib/docs/protocol.md`, `crates/*/src/hotplug.rs`).
+- Check simulator tables against PRD 5.1 (time base verified indexes 0-22, 24, 25, 27, 30; ranges 50 mV to 1 V) and that events match the real monitor
+  (it replays already connected scopes). Test plan and report: `docs/specs/m0-spike/`.
+- Retest pattern: after a fix round run `cargo test --workspace`, loop `cargo test -p sweepscope-device` 20x (filter `^test result` for non-"0 failed"), `npm run check` at root. Device crate has 110 tests at 30ef39c. The main tree is /home/kr/workspace/sweepscope (agent worktrees may be on other branches).
