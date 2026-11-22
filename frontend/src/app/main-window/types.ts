@@ -46,6 +46,8 @@ export type Interpolation = 'sinc' | 'linear' | 'dots';
 
 export interface HorizontalModel {
   timePerDiv: ScaleQuantity;
+  /** Marker text when the selected time base step has not been measured on the hardware. */
+  unverified?: string;
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;

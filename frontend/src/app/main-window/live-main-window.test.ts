@@ -171,6 +171,18 @@ describe('live main window model: horizontal and trigger', () => {
     });
   });
 
+  it('given a verified time base, when read, then the horizontal model carries no unverified marker', () => {
+    const { window } = setup();
+    expect(model(window).horizontal.unverified).toBeUndefined();
+  });
+
+  it('given an unverified time base, when read, then the horizontal model carries the unverified marker text', () => {
+    const state = instrumentState();
+    const timeBase = { ...state.horizontal.timeBase, verified: false };
+    const { window } = setup({ instrument: { ...state, horizontal: { ...state.horizontal, timeBase } } });
+    expect(model(window).horizontal.unverified).toBe('Unverified (see accuracy note).');
+  });
+
   it('given facts with a rate and an interval, when read, then the rate note shows them', () => {
     const { window, facts } = setup();
     facts.set(instrumentFacts({ sampleRate: value('250', 'MS/s'), sampleInterval: value('4.00', 'ns') }));

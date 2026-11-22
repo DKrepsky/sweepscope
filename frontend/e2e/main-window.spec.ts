@@ -178,6 +178,23 @@ test.describe('main window shell', () => {
   });
 });
 
+test.describe('unverified time base', () => {
+  test('given a measured time base, when the window opens, then no Unverified badge shows in Horizontal', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toHaveCount(0);
+  });
+
+  test('given an unmeasured time base, when the window opens, then the Horizontal group and the readout show Unverified', async ({
+    page,
+  }) => {
+    await openMain(page, 100, { unverifiedTimeBase: true });
+    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toBeVisible();
+    await expect(page.locator('[data-region="readout"]').getByText('Unverified')).toBeVisible();
+  });
+});
+
 test.describe('security', () => {
   test('given the page, when a command outside the manifest is invoked, then it is refused', async ({ page }) => {
     await openMain(page);

@@ -240,3 +240,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Permission banner command embeds the udev rule text (`include_str!` of `packaging/udev/...`) via `printf | sudo tee`, so it works from any directory and without a checkout.
 - `createTauriClient(transport, report)`: background rejections (listen, open channel, close) go to an injected reporter (default `console.error`); `BackendClient` interface unchanged.
 - Thread tests: replace sleeps with a channel handshake or no delay (result must hold in any order); `testing::eventually` for conditions. CSP `unsafe-inline` rationale lives in docs/architecture.md section on Tauri security (JSON has no comments).
+## BUG-3 unverified time base (developer-8)
+- `HorizontalModel.unverified?: string` (text 'Unverified (see accuracy note).' from design 8; backend sends only `ScaleChoice.verified`); `Unverified` warning Badge next to the Time/div stepper and in the readout. e2e stub: `stubTauri(page, settings, { unverifiedTimeBase: true })`, `openMain(page, 100, options)`.
+- Bash tool in a worktree refuses compound commands with `cd` + git/rm; run `cd <abs>/frontend && ...` as its own call, and run npx playwright from `frontend/` (else it fetches a stray playwright).

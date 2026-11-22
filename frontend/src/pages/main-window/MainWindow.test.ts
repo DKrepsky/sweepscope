@@ -4,7 +4,7 @@ import { get, writable, type Readable } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutTier } from '../../app/layout';
 import type { Notification } from '../../app/notifications';
-import { createMockMainWindow } from '../../app/main-window';
+import { createMockMainWindow, type MainWindowModel } from '../../app/main-window';
 import { createTextScaleStore, setTextScale, type TextScalePercent } from '../../app/text-scale';
 import { createRecordingContext } from '../../ui/graph/recording-context';
 import MainWindow from './MainWindow.svelte';
@@ -29,6 +29,7 @@ function renderShell(
   overrides: {
     ontextscale?: (p: TextScalePercent) => void;
     notifications?: Readable<Notification[]>;
+    model?: Readable<MainWindowModel>;
   } = {},
 ) {
   const props = {
@@ -225,6 +226,30 @@ describe('MainWindow behaviour', () => {
     renderShell(tiers.w1);
 
     expect(screen.getByText('Illustrative numbers (placeholders)')).toBeInTheDocument();
+  });
+});
+
+describe('MainWindow unverified time base', () => {
+  it('given a verified time base, when rendered, then the Horizontal group has no unverified badge', () => {
+    renderShell(tiers.w1);
+
+    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
+    expect(within(group).queryByText('Unverified')).not.toBeInTheDocument();
+  });
+
+  it('given an unverified time base, when rendered, then the Horizontal group and the readout show the badge', () => {
+    const model = createMockMainWindow();
+    const unverified = {
+      ...get(model),
+      horizontal: { ...get(model).horizontal, unverified: 'Unverified (see accuracy note).' },
+    };
+
+    renderShell(tiers.w1, { model: writable(unverified) });
+
+    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
+    const readout = document.querySelector<HTMLElement>('[data-region="readout"]')!;
+    expect(within(group).getByText('Unverified')).toBeInTheDocument();
+    expect(within(readout).getByText('Unverified')).toBeInTheDocument();
   });
 });
 
