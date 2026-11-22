@@ -66,5 +66,5 @@ export default tseslint.config(
   },
   { files: ['**/*.svelte', '**/*.svelte.ts'], languageOptions: { parserOptions: { parser: tseslint.parser } } },
   ...layerRules,
-  { files: ['**/*.test.ts'], rules: { 'max-lines-per-function': 'off' } },
+  { files: ['**/*.test.ts', 'e2e/**/*.ts'], rules: { 'max-lines-per-function': 'off', complexity: 'off' } },
 );
