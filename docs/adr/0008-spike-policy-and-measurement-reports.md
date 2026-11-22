@@ -20,24 +20,25 @@ protected and changes go through pull requests (workflow section 6).
    `spike-<issue>-final` and the tag is pushed so the code stays reachable. Product code that comes out of a spike is
    rewritten under the normal rules in its own story (the spike teaches, it does not donate).
 3. **What reaches `main`.** A pull request from a separate branch `docs/spike-<issue>-report` carries only
-   `docs/spikes/m0/` (the report and the run instructions). No raw results and no per-run data are committed.
+   `docs/spikes/m0/` (the report and the run instructions). No raw results, per-run data or measured figures are committed.
 4. **Report format.** `docs/spikes/m0/<issue>-<slug>.md` with these sections, in order: Question and decision rule
    (copied from the implementation spec, fixed before measuring); Method (spike tag and commit, exact commands,
    scenarios, what each metric means, known measurement limits); Environments (one table row per machine, see below);
-   Results (one table per metric, medians and percentiles, never only averages); Findings; Decision (go or no-go
+   Results (the outcome of each decision rule in words, pass or fail, with no measured figures); Findings; Decision (go or no-go
    against the rule, with reasons); Changes requested (to ADRs, PRD requirements, the driver); Open points.
-5. **Where measurements are recorded.** Raw data and per-run data (JSON per run, CSV series, `environment.json`,
-   screenshots, recordings) are kept locally by whoever ran the measurement and are never committed, in any branch.
-   The report carries the numbers: its tables hold the summary statistics and the run configuration, and its
-   Environments table is the committed environment record. A machine is named by a slug of CPU/GPU class and display
-   server (`nvidia-rtx4060ti-x11`), never a host or user name; the report text is checked for host names, user names,
-   home paths and serial numbers before commit. Tables are produced from the local data by a script kept on the spike
-   branch, so the maintainer can regenerate them.
+5. **Where measurements are recorded.** Measured figures, raw data and per-run data (JSON per run, CSV series, tables of
+   statistics, `environment.json`, screenshots, recordings) are kept locally by whoever ran the measurement and are
+   never committed, in any branch. The committed report states conclusions and rule outcomes (pass, fail, by how much in
+   words), the decision and its reasons; it may quote the thresholds of the PRD and of the decision rules but not
+   measured values. A machine is named by a slug of CPU/GPU class and display server (`nvidia-rtx4060ti-x11`), never a
+   host or user name; the report text is checked for host names, user names, home paths and serial numbers before commit.
+   The local tables are produced from the local data by a script kept on the spike branch, so the maintainer can
+   regenerate them.
 6. **Environment record** per machine: distribution and kernel, CPU, GPU and driver version, display server (X11 or
    Wayland), display refresh rate and scale factor, WebKitGTK version, Tauri version, relevant environment variables.
 7. **Decision rules are written before the first measurement** in the implementation spec, so the result cannot be
    bent afterwards. A deviation is written into the report with its reason.
-8. **Ownership.** Developers build the spike and fill the data tables. The staff engineer writes Decision and Changes
+8. **Ownership.** Developers build the spike and keep the measured data locally. The staff engineer writes Decision and Changes
    requested; the human approves them (they may change an ADR or PRD requirement).
 
 ## Alternatives considered
