@@ -172,3 +172,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - u64 fields need `#[ts(type = "number")]` (default is bigint); optional patch fields use `#[ts(optional)]` on `Option<T>` to get `x?: T`.
 - Tooling in this sandbox refuses `cd X && python3 - <<EOF` / heredoc-with-git style compound commands in a worktree; use the Write/Edit tools, plain commands, and `git add -A <paths>` separately.
 - Generated-types freshness is checked in CI by `git status --porcelain frontend/src/api/generated`; commit generated files with the code.
+## engineering-format (M1 WP2, developer-2)
+- Crate `engineering-format` (`backend/libs/`), API `format(f64, Quantity) -> Formatted{value,text,unit}`; units use `us` for micro, points are `pts` with k/M/G, percent and divisions take no prefix (3 significant digits, so 0.5 div is `0.500`). Scale quantities trim zeros via `{:.6}`.
+- The M1 spec and bus live only in the main checkout (`/home/kr/workspace/sweepscope/docs/specs/m1-live-view`, `.claude/bus`); an agent worktree starts from an old branch: create the WP branch from `feat/m1-live-view` with `git checkout -b`. `cargo test --offline -p <crate>` works in the full workspace here.
+- `StepBy<RangeInclusive>` is not reversible: iterate group indexes and multiply.
