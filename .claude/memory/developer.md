@@ -186,3 +186,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
 - Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
 - `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
+
+## Device module facts (M1 WP3)
+- `device/src/module/`: `manager.rs` (state machine thread, one inbox `Msg`), `worker.rs` + `control.rs` (per-session thread, intent in `WorkerControl` with a Condvar, latest setup wins), `connection.rs` (`ConnectionStore` owns revision and publishes only on change), `session.rs` (`end()` joins within 250 ms via a done channel), `issue.rs` (error to banner).
+- Catalog events are forwarded by one thread per catalog that polls a stop flag every 20 ms (catalog `Receiver` cannot be woken); `DeviceModule::drop` joins them.
+- `SimulatorControl::new()` starts plugged; the shell must `unplug()` it before building the module unless `SWEEPSCOPE_SIMULATOR=1`. A simulator `Attached` publishes `simulator_active` together with the following state (`defer_simulator_active` + `flush`) to avoid an extra event.
+- Tests: `tests/module_support/mod.rs` (`Source` with `Hooks`: open/capture error injection, a capture gate, live-device and configure counters). Subscribe a recorder before `DeviceModule::new` to see the first `Disconnected`. The thread-count test lives alone in its file because it counts process threads.
+- `cargo fmt --all` before clippy; clippy `too_many_lines` limit is 40 per function.
