@@ -233,3 +233,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## Copy confirmation (developer-6, BUG-4)
 - `app/clipboard.createCopyText({ write, notify })` raises an info Toast "Command copied" (error toast on refusal); `main.ts` composes it. Notification `kind` info is allowed through `notifications.notify`, though the `notify` dep of the app layers is error-only.
 - Tool sandbox refuses compound commands with `git -C`/`cd` plus git; run git plain and split commands. QA's uncommitted e2e files (live.spec.ts, support/frames.ts, tauri-stub.ts, graph.spec.ts) were copied into the fix branch to edit them.
+## M1 shell fix round (developer-3)
+- Capability needs `core:event:allow-listen` and `allow-unlisten` for the frontend to receive backend events; browser stubs hide this, so a manifest test pins the exact `core:` permissions (the commands test filters `core:` out).
+- `SWEEPSCOPE_NO_HARDWARE=1` skips `HantekCatalog::start` (`choose_hardware` takes the starter as a closure, so the test proves it is never called). Docs: README, docs/troubleshooting.md (DMABUF workaround), docs/usb-permissions.md. Prettier covers only `frontend/`, not the root README.

@@ -42,3 +42,5 @@ SWEEPSCOPE_SIMULATOR=1 npm run dev
 
 Without the variable the simulator stays off until it is chosen from the banner. `RUST_LOG=debug` prints the driver and
 adapter logs.
+
+To make sure a run never opens a connected scope, add `SWEEPSCOPE_NO_HARDWARE=1`.

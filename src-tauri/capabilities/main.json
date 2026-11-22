@@ -18,6 +18,8 @@
     "allow-use-simulator",
     "allow-retry-connection",
     "allow-open-frame-stream",
-    "allow-close-frame-stream"
+    "allow-close-frame-stream",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
   ]
 }
