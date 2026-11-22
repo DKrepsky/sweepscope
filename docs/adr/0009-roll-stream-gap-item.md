@@ -32,6 +32,6 @@ the recording and the frontend markers, and no sequence number was skipped.
 
 ## Consequences
 - The UI must treat `missed` as approximate (soft edge, "about"); exports and measurements must not use samples inside a gap.
-- Sequence numbers make loss between Rust and WebView detectable at no real cost (about 2.3 KB/s).
+- Sequence numbers make loss between Rust and WebView detectable at negligible cost (a few KB per second).
 - Binary layout is little-endian and `Channel`-based; the large-payload path of Tauri applies (items over 1 KiB), which the spike measured as sufficient.
-- The Rust RSS growth found by the spike (1.2 KiB/s, unattributed) is a condition on the roll story, not on this format (see report, Decision).
+- The Rust RSS growth found by the spike is a condition on the roll story, not on this format (see report, Decision).
