@@ -51,3 +51,9 @@ protected and changes go through pull requests (workflow section 6).
   (percentiles, ring buffer, payload codec) still gets small unit tests so the numbers can be trusted.
 - The workflow's branch naming (`feat/`, `fix/`) gains `spike/` and `docs/spike-`; `.claude/team/workflow.md` section 6
   needs one added line after approval.
+
+## Amendment (2026-11-22, #2 harness review)
+Item 5 is changed: a run stores its summary statistics (counts, mean, median, percentiles, maximum) and, for every timing metric, a
+histogram in 1 ms buckets (0 to 99 ms plus overflow) in the JSON. Per-sample CSV series are not required. Reason: the statistics and the
+histogram reproduce every table of the report and reveal stalls, at a few kilobytes per run, and the harness measures at 1 ms clock
+resolution so per-sample values add little. Time series that are time series by nature (the #4 `memory.csv`) are still stored.

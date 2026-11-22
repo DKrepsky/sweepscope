@@ -229,13 +229,13 @@ Metrics per run (JSON, `save_result`), definitions fixed here:
 | `framesSent`, `framesReceived` | counts after warm-up; `seqGaps` = missing sequence numbers = dropped in transport; `coalesced` = received and replaced before a draw |
 | `fps` | animation frames drawn per second, after warm-up |
 | `intervalMs` | time between consecutive animation frame callbacks: median, p95, p99, max, count over 20 ms, count over 33.3 ms |
-| `drawMs` | time from callback start to the end of the draw call (and the one-pixel read when `gpu sync`): median, p99, max |
-| `ipcMs` | `receive time - sent timestamp`: median, p99, max |
+| `drawMs` | time from callback start to the end of the draw call (and the one-pixel read when `gpu sync`): **mean**, median, p99, max. Timer resolution is 1 ms, so the mean (error about 0.3 ms divided by the square root of the frame count) is the comparison figure; median and p99 are informative |
+| `ipcMs` | `time of the channel.onmessage call - sent timestamp`: median, p99, max. It includes main-thread queueing: a message that arrives while the thread is drawing waits. In the ipc-only scenarios the thread is idle, so there it is the transport time |
 | `e2eMs` | `(timestamp at the first animation frame callback after the draw) - sent timestamp`: median, p99, max |
 | `sendJitterMs` | Rust pacing error against the absolute deadline: median, p99, max |
 | `webgl2Available` | `canvas.getContext('webgl2') != null` |
 
-Percentiles use the nearest-rank method on the sorted samples. Clock for latency: Rust `SystemTime` and JavaScript `performance.timeOrigin +
+Every timing metric (`intervalMs`, `drawMs`, `ipcMs`, `e2eMs`) also stores a histogram: 1 ms buckets from 0 to 99 ms plus an overflow count (ADR 0008 amendment). Percentiles use the nearest-rank method on the sorted samples. Clock for latency: Rust `SystemTime` and JavaScript `performance.timeOrigin +
 performance.now()`; both are wall-clock on one machine. WebKit may coarsen `performance.now` (the report states the observed resolution; if it is
 coarser than 1 ms the latency tables carry that as an error bar).
 
@@ -348,12 +348,12 @@ These are the pass and decision rules for the reports.
 |---|---|
 | Frame rate | at least 58 fps on a 60 Hz display (against the refresh rate when higher) |
 | Frame time | no animation frame interval over 33.3 ms (PRD 8.3); at most 0.1 % over 20 ms is marginal |
-| Transport | `seqGaps` = 0; `ipcMs` p99 below 16 ms |
+| Transport | `seqGaps` = 0 in every scenario; `ipcMs` p99 below 16 ms **in the ipc-only scenarios** (idle main thread). In render scenarios `ipcMs` is informative (it includes queueing behind the draw); the latency rule below covers it |
 | Latency | `e2eMs` p99 plus one refresh interval below 100 ms (PRD 8.3) |
 
 **Decision for WebGL2 (go / no-go):**
-- *Go* if WebGL2 creates a context and meets the rules on every measured machine (in the default or the documented workaround environment), and either Canvas 2D with persistence fails a rule on at least one machine, or Canvas 2D has a `drawMs` p99 at least 1.5 x that of WebGL2 in the sync runs.
-- *No-go for now* if Canvas 2D with persistence meets the rules everywhere and WebGL2 does not improve `drawMs` p99 by 1.5 x: Canvas 2D stays primary and the report proposes making WebGL2 optional (a change to PRD DSP-7 and DSP-9, and ADR 0006 consequences).
+- *Go* if WebGL2 creates a context and meets the rules on every measured machine (in the default or the documented workaround environment), and either Canvas 2D with persistence fails a rule on at least one machine, or, in the sync runs, Canvas 2D mean `drawMs` is at least 1.5 x that of WebGL2 **and** at least 4 ms (a quarter of the 16.7 ms frame budget; below that, a ratio of two small numbers is not a material gain and the 1 ms timer makes it unstable).
+- *No-go for now* if Canvas 2D with persistence meets the rules everywhere and WebGL2 does not improve mean `drawMs` by 1.5 x or Canvas 2D mean `drawMs` stays under 4 ms: Canvas 2D stays primary and the report proposes making WebGL2 optional (a change to PRD DSP-7 and DSP-9, and ADR 0006 consequences).
 - Canvas 2D stays as the fallback in both cases (DSP-9). If WebGL2 is unavailable or unstable on the NVIDIA machine even with the workaround, the report says so and proposes the product default.
 - **DMABUF workaround** is confirmed if `dmabuf-off` turns a failing `default` (blank or unstable view, lost WebGL2) into a passing one, or shows no harm where `default` already passes; corrected otherwise (the report names what works instead, and where the product sets it: launcher environment or process start before the window is created).
 
@@ -407,3 +407,14 @@ overruns inferred from elapsed time, hotplug with settle time (catalog events), 
 - Verified flags follow PRD 5.1 for both time bases and vertical ranges (section 2.3).
 - Catalog sends an initial `Attached`, handles die with re-enumeration, `Auto` sweep ignores the timeout (ADR 0007 consequences).
 - ADR 0003 accepted; CI confirmation follows on the #3 pull request.
+
+### Round 2 (QA review of the #2 harness at e8ef411, D3-1..7, D4-1..5)
+Rulings by the staff engineer (rules in section 6 and the metric table in 2.5 are edited above; this lists what changes in code).
+- **D4-1 (timer quantised to 1 ms): ruled.** The comparison figure is the mean `drawMs` in the sync runs with the absolute floor of 4 ms, never a ratio of p99 values. Frame rate and interval counts (over 20 ms, over 33.3 ms) are unaffected by the quantisation at that scale and stay the primary rules. Change for developer-4: add `mean` to `drawMs`; add the 1 ms histograms; `summarize.mjs` (developer-3) prints mean and the ratio with the floor applied.
+- **D4-2 (ipcMs fails by construction): ruled.** A JavaScript receive stamp before the main thread is free does not exist (a Tauri channel is bound to the window, not to a worker). The transport rule is therefore evaluated on the ipc-only scenarios and on `seqGaps`; in render scenarios `ipcMs` is reported and labelled "includes main-thread queueing". Changes: developer-4 documents this in `web/` and the result JSON field comments; developer-3 labels the column in `summary.md` and the README. If the ipc-only p99 is above 16 ms on a real machine that is a real finding, not a harness defect.
+- **D3-7 / D4-5 (per-sample series): ruled, ADR 0008 item 5 amended** (see the ADR): the harness stores summary statistics plus 1 ms histograms per timing metric, no CSV series. Percentiles, means and counts are reproducible from them, and a histogram shows stalls. The #4 `memory.csv` stays (it is a time series by nature).
+- **D3-1: accepted, required before H1** (privacy): window-only capture (X11: `xdotool getactivewindow` or `xwininfo -id` with `import -window <id>`; Wayland: `grim -g` or `gnome-screenshot -w`), and the README tells the human to review any screenshot before copying it.
+- **D3-2: accepted.** `--quick` (or `SPIKE_DURATION_S`) shortens runs; the duration is stamped in each JSON and `summarize.mjs` marks such runs INVALID for committed results; README says to run `--quick --scenarios gl2-plain` first (about a minute).
+- **D3-3, D3-5: accepted** (README totals including build; what to do with a blank window, what Ctrl+C leaves behind; file name comments). **D3-4 (a to f): accepted** (validate arguments before running; no duplicate variant; unknown scenario ids and bare `--machine` fail with a message; non-zero exit when any variant crashed or timed out; clear the variant folder before re-running). **D3-6: accepted** (strip lspci flags and subsystem; whole-word matching in `strip()`).
+- **D4-3: accepted** (probe the clock for a fixed 20 ms). **D4-4: accepted** (unknown scenario ids fail).
+- Priority: D3-1, D3-2, D4-1, D4-2, D3-7/D4-5 before H1; the others in the same round if cheap, otherwise before H2.
