@@ -27,8 +27,7 @@ async function findings(page: Page): Promise<Finding[]> {
   }));
 }
 
-/** BUG-9 (Stop text contrast) and BUG-10 (label in name) are open: the general checks ignore them, dedicated checks track them. */
-const isKnownStop = (f: Finding) => f.id === 'color-contrast' && f.nodes.every((n) => n.startsWith('.stop'));
+/** BUG-10 (label in name) is open: the general checks ignore it, a dedicated check tracks it. */
 const isKnownLabel = (f: Finding) => f.id === 'label-content-name-mismatch';
 
 /** The `text-disabled` token (#5f666d) is only used by disabled controls, which are exempt from 1.4.3. */
@@ -38,9 +37,7 @@ const withoutDisabledText = (f: Finding): Finding => ({
 });
 
 async function violations(page: Page): Promise<Finding[]> {
-  return (await findings(page))
-    .map(withoutDisabledText)
-    .filter((f) => f.nodes.length > 0 && !isKnownStop(f) && !isKnownLabel(f));
+  return (await findings(page)).map(withoutDisabledText).filter((f) => f.nodes.length > 0 && !isKnownLabel(f));
 }
 
 test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
@@ -98,9 +95,10 @@ test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
   test('given the Stop button and chip, when axe checks colour contrast, then the Stop text meets 4.5:1', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-9: status-stop (#e5534b) on bg-raised is 3.63:1 for 12 px text');
     await openMain(page);
-    expect((await findings(page)).filter(isKnownStop)).toEqual([]);
+    expect(
+      (await findings(page)).filter((f) => f.id === 'color-contrast' && f.nodes.some((n) => n.startsWith('.stop'))),
+    ).toEqual([]);
   });
 
   test('given the channel row and scale strip buttons, when axe checks label in name, then the visible text is part of the accessible name', async ({

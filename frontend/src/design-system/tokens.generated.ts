@@ -39,7 +39,7 @@ export const themes = {
     'color-ch3-tint': '#34304a',
     'color-ch4-tint': '#433030',
     'color-status-run': '#4fd18b',
-    'color-status-stop': '#e5534b',
+    'color-status-stop': '#f2766f',
     'color-status-armed': '#f5a524',
     'color-status-triggered': '#8be0b0',
     'color-status-auto': '#a2aeff',
