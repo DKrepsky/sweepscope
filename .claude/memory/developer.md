@@ -213,3 +213,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A default parameter value applies when `undefined` is passed: use an option flag to model "no instrument" in test setups.
 - `api/index.ts` exports few generated types; derive them (`InstrumentState['controls']['run']`) instead of editing WP9 files.
 - Model sources: `LiveMainWindow` = `Readable<MainWindowModel> & MainWindowActions` (same shape as the mock); selectors are pure `select-*.ts`; test the model through writable fake stores.
+## Acquisition module facts (M1 WP6)
+- `acquisition/src/module/`: `core.rs` (all state and rules, returns `Effects` of outputs and device calls, never touches the bus), `shared.rs` (`turn` lock orders whole steps so the device sees setups in revision order; `core` lock never held across a bus call), `handlers.rs` (weak refs to `Shared`: bus handlers live forever, a strong ref would be a cycle), consumer thread in `mod.rs` (drains `ConnectionChanged` first, then `recv_timeout(20 ms)` on `CaptureCompleted`, tick refreshes facts).
+- The architecture check counts dev-dependencies, so a feature crate cannot dev-depend on `device`: module tests use a `FakeDevice` on the bus (`tests/module_support`); the real `DeviceModule` plus `AcquisitionModule` integration test belongs in `src-tauri` (WP8). The shell must create `AcquisitionModule` before `DeviceModule` (no way to ask for the current connection).
+- Test sync: events are handled FIFO, so a sentinel frame published after the event under test proves it was handled; advance `FakeClock` only after the consumer processed the previous frame, or all frames get the same instant.
+- Clippy `large_enum_variant` hits `Output` enums holding slices: box the big variants.
