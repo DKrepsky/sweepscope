@@ -99,7 +99,6 @@ impl WorkerControl {
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
-    use std::time::Duration;
 
     use super::*;
     use crate::{ChannelSetup, Coupling, Slope, Sweep, TriggerSetup};
@@ -214,8 +213,12 @@ mod tests {
         let control = Arc::new(WorkerControl::new());
         control.set_capturing(true);
         let waiting = Arc::clone(&control);
-        let worker = std::thread::spawn(move || waiting.next_work(false));
-        std::thread::sleep(Duration::from_millis(20));
+        let (started, worker_started) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            started.send(()).unwrap();
+            waiting.next_work(false)
+        });
+        worker_started.recv().unwrap();
 
         control.apply_setup(1, setup(0));
 

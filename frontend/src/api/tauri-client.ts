@@ -47,26 +47,45 @@ function toArrayBuffer(message: unknown): ArrayBuffer {
   return new Uint8Array(message as ArrayLike<number>).buffer;
 }
 
-function unsubscribeWhenReady(pending: Promise<() => void>): () => void {
-  return () => {
-    void pending.then((unlisten) => unlisten());
-  };
-}
+/** Receives failures of background transport calls that have no caller to reject to. */
+export type ErrorReporter = (what: string, error: unknown) => void;
 
-export function createTauriClient(transport: TauriTransport = tauriTransport): BackendClient {
+const reportToConsole: ErrorReporter = (what, error) => {
+  console.error(`${what} failed`, error);
+};
+
+export function createTauriClient(
+  transport: TauriTransport = tauriTransport,
+  report: ErrorReporter = reportToConsole,
+): BackendClient {
+  const unsubscribeWhenReady = (event: string, pending: Promise<() => void>): (() => void) => {
+    const unlisten = pending.catch((error: unknown) => {
+      report(`listen ${event}`, error);
+      return () => {};
+    });
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  };
+
   return {
     send: (name, args) => transport.invoke(tauriCommandNames[name], args) as Promise<never>,
     subscribe: (name, listener) =>
-      unsubscribeWhenReady(transport.listen(name, (payload) => listener(payload as never))),
+      unsubscribeWhenReady(
+        name,
+        transport.listen(name, (payload) => listener(payload as never)),
+      ),
     openStream: (kind, onMessage) => {
       const commands = tauriStreamCommands[kind];
       let open = true;
-      void transport.openChannel(commands.open, (message) => open && onMessage(toArrayBuffer(message)));
+      transport
+        .openChannel(commands.open, (message) => open && onMessage(toArrayBuffer(message)))
+        .catch((error: unknown) => report(commands.open, error));
       return {
         close: () => {
           if (!open) return;
           open = false;
-          void transport.invoke(commands.close, {});
+          transport.invoke(commands.close, {}).catch((error: unknown) => report(commands.close, error));
         },
       };
     },

@@ -108,17 +108,14 @@ fn given_a_subscriber_waiting_when_an_event_is_published_from_another_thread_the
     let bus = Bus::new();
     let subscription = bus.subscribe::<Ping>();
     let publisher = bus.clone();
-    let started = Instant::now();
 
     let handle = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(30));
         publisher.publish(Ping(5));
     });
     let received = subscription.recv_timeout(Duration::from_secs(5));
     handle.join().unwrap();
 
     assert_eq!(received, Some(Ping(5)));
-    assert!(started.elapsed() < Duration::from_secs(2));
 }
 
 #[test]
@@ -161,7 +158,6 @@ fn given_a_latest_subscription_when_it_waits_then_it_wakes_on_publish() {
     let publisher = bus.clone();
 
     let handle = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(20));
         publisher.publish(Ping(9));
     });
     let received = subscription.recv_timeout(Duration::from_secs(5));
@@ -175,7 +171,6 @@ fn given_a_condition_that_becomes_true_when_eventually_polls_then_it_returns_tru
     let flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let setter = flag.clone();
     let handle = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(20));
         setter.store(true, std::sync::atomic::Ordering::SeqCst);
     });
 

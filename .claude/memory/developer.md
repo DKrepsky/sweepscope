@@ -229,3 +229,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
 - e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
 - Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.
+
+## M1 review fix round (developer-1)
+- Permission banner command embeds the udev rule text (`include_str!` of `packaging/udev/...`) via `printf | sudo tee`, so it works from any directory and without a checkout.
+- `createTauriClient(transport, report)`: background rejections (listen, open channel, close) go to an injected reporter (default `console.error`); `BackendClient` interface unchanged.
+- Thread tests: replace sleeps with a channel handshake or no delay (result must hold in any order); `testing::eventually` for conditions. CSP `unsafe-inline` rationale lives in docs/architecture.md section on Tauri security (JSON has no comments).

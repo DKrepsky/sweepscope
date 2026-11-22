@@ -3,15 +3,23 @@ use sweepscope_kernel::contracts::{ConnectionIssue, ConnectionIssueKind, Permiss
 use crate::DeviceError;
 
 const RULE_FILE: &str = "packaging/udev/99-hantek6xx4.rules";
+const RULE_NAME: &str = "99-hantek6xx4.rules";
+const RULE_CONTENT: &str = include_str!("../../../../../packaging/udev/99-hantek6xx4.rules");
 const DOC: &str = "docs/usb-permissions.md";
 
-/// The command installs the shipped rule file; `uaccess` in it grants the logged-in user access without a group change.
+/// The command writes the shipped rule text itself, so it works from any directory and for an installed app that has
+/// no repository checkout. `uaccess` in the rule grants the logged-in user access without a group change.
+fn install_command() -> String {
+    format!(
+        "printf '%s' '{RULE_CONTENT}' | sudo tee /etc/udev/rules.d/{RULE_NAME} > /dev/null \
+&& sudo udevadm control --reload-rules && sudo udevadm trigger"
+    )
+}
+
 fn permission_help() -> PermissionHelp {
     PermissionHelp {
         rule_file: RULE_FILE.to_owned(),
-        install_command: format!(
-            "sudo cp {RULE_FILE} /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger"
-        ),
+        install_command: install_command(),
         doc: DOC.to_owned(),
     }
 }
@@ -47,9 +55,30 @@ mod tests {
 
         let help = issue.help.unwrap();
         assert_eq!(issue.kind, ConnectionIssueKind::PermissionDenied);
-        assert!(help.install_command.contains(&help.rule_file), "{help:?}");
-        assert!(help.install_command.contains("/etc/udev/rules.d/"), "{help:?}");
+        assert!(
+            help.install_command.contains("/etc/udev/rules.d/99-hantek6xx4.rules"),
+            "{help:?}"
+        );
         assert_eq!(help.doc, "docs/usb-permissions.md");
+    }
+
+    #[test]
+    fn given_the_install_command_when_it_is_read_then_it_does_not_depend_on_the_working_directory() {
+        let command = install_command();
+
+        assert!(!command.contains("sudo cp"), "{command}");
+        assert!(!command.contains("packaging/"), "{command}");
+    }
+
+    #[test]
+    fn given_the_install_command_when_it_is_read_then_it_writes_the_shipped_rule_text() {
+        let command = install_command();
+
+        assert!(
+            command.contains(r#"ATTRS{idVendor}=="04b5", ATTRS{idProduct}=="6cde""#),
+            "{command}"
+        );
+        assert!(command.contains(RULE_CONTENT), "{command}");
     }
 
     #[test]

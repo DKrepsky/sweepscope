@@ -103,4 +103,41 @@ describe('tauri client contract', () => {
     handle.close();
     expect(transport.invoke).toHaveBeenCalledOnce();
   });
+
+  it('given the transport cannot listen, when subscribed, then the failure is reported and unsubscribing is harmless', async () => {
+    const failure = new Error('no listener');
+    const report = vi.fn();
+    const transport = fakeTransport({ listen: vi.fn().mockRejectedValue(failure) });
+
+    const unsubscribe = createTauriClient(transport, report).subscribe('x' as never, () => {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('listen x', failure);
+    expect(() => unsubscribe()).not.toThrow();
+  });
+
+  it('given the transport cannot open the channel, when a stream is opened, then the failure is reported', async () => {
+    const failure = new Error('no channel');
+    const report = vi.fn();
+    const transport = fakeTransport({ openChannel: vi.fn().mockRejectedValue(failure) });
+
+    createTauriClient(transport, report).openStream('frames', () => {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('open_frame_stream', failure);
+  });
+
+  it('given the close command fails, when a stream is closed, then the failure is reported', async () => {
+    const failure = new Error('no close');
+    const report = vi.fn();
+    const transport = fakeTransport({ invoke: vi.fn().mockRejectedValue(failure) });
+
+    createTauriClient(transport, report).openStream('frames', () => {}).close();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('close_frame_stream', failure);
+  });
 });
