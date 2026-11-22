@@ -1,0 +1,106 @@
+import type { ChannelModel, MainWindowModel, MeasurementsModel } from './types';
+import { sineWave, squareWave, triangleWave } from './mock-signals';
+
+/** Illustrative placeholders from the design prototype; not hardware statements. */
+
+const channel = (overrides: Partial<ChannelModel> & Pick<ChannelModel, 'number'>): ChannelModel => ({
+  enabled: true,
+  selected: false,
+  voltsPerDiv: { value: '1', unit: 'V/div' },
+  position: { value: '0.00', unit: 'div' },
+  coupling: 'dc',
+  bandwidthLimit: false,
+  probe: '1×',
+  inverted: false,
+  groundPosition: 0.5,
+  ...overrides,
+});
+
+export const mockChannels = (): ChannelModel[] => [
+  channel({
+    number: 1,
+    selected: true,
+    voltsPerDiv: { value: '500', unit: 'mV/div' },
+    position: { value: '−2.00', unit: 'div' },
+    groundPosition: 0.25,
+  }),
+  channel({
+    number: 2,
+    voltsPerDiv: { value: '20', unit: 'mV/div' },
+    position: { value: '+3.00', unit: 'div' },
+    groundPosition: 0.875,
+    unverified: 'Unverified range: below 50 mV/div. Accuracy up to about 5 % of a division.',
+  }),
+  channel({
+    number: 3,
+    voltsPerDiv: { value: '2', unit: 'V/div' },
+    unverified: 'Unverified range: above 1 V/div.',
+  }),
+  channel({
+    number: 4,
+    enabled: false,
+    enableReason: 'Channel 4 off. Enabling it keeps 250 MS/s (3 or 4 channels).',
+  }),
+];
+
+const valid = (text: string, unit?: string) => ({ state: 'valid' as const, text, unit });
+const unverified = (text: string, unit: string) => ({ state: 'unverified' as const, text, unit });
+const unavailable = (footnote: number) => ({ state: 'invalid' as const, text: '', footnote });
+
+function measurementRows(): MeasurementsModel['rows'] {
+  const row = (
+    id: string,
+    label: string,
+    ch1: MeasurementsModel['rows'][number]['cells'][string],
+    ch2 = ch1,
+    ch3 = ch1,
+  ) => ({
+    id,
+    label,
+    cells: { ch1, ch2, ch3 },
+  });
+  return [
+    row('frequency', 'Frequency', valid('1.000', 'kHz'), valid('2.000', 'kHz'), unavailable(2)),
+    row('period', 'Period', valid('1.000', 'ms'), valid('500.0', 'µs'), unavailable(2)),
+    row('vpp', 'Vpp', valid('1.91', 'V'), unverified('32.0', 'mV'), unverified('4.02', 'V')),
+    row('vmax', 'Vmax', valid('1.93', 'V'), unverified('16.0', 'mV'), unverified('2.01', 'V')),
+    row('vmin', 'Vmin', valid('20.0', 'mV'), unverified('−16.0', 'mV'), unverified('−2.01', 'V')),
+    row('vmean', 'Vmean', valid('960', 'mV'), unverified('−0.3', 'mV'), unverified('−10', 'mV')),
+    row('vrms', 'Vrms', valid('1.35', 'V'), unverified('11.3', 'mV'), unverified('1.15', 'V')),
+    row('width', '+Width', valid('500.0', 'µs'), valid('250.0', 'µs'), unavailable(2)),
+    row('duty', 'Duty', valid('50.0', '%'), valid('50.0', '%'), unavailable(2)),
+    row('rise', 'Rise time', unavailable(1), unavailable(3), unavailable(3)),
+    row('fall', 'Fall time', unavailable(1), unavailable(3), unavailable(3)),
+  ];
+}
+
+export const mockMeasurements = (): MeasurementsModel => ({
+  columns: [
+    { id: 'ch1', label: 'CH1', color: 'color-ch1' },
+    { id: 'ch2', label: 'CH2', color: 'color-ch2' },
+    { id: 'ch3', label: 'CH3', color: 'color-ch3' },
+  ],
+  rows: measurementRows(),
+  footnotes: [
+    { key: 1, text: 'Reason text from the backend (example: not measurable at this setting).' },
+    { key: 2, text: 'Reason text from the backend (example: fewer than one period).' },
+    { key: 3, text: 'Reason text from the backend (example: not a two-level pulse).' },
+  ],
+  statistics: {
+    title: 'CH1 Vpp · last 50 frames',
+    headers: ['Now', 'Min', 'Mean', 'Max', 'σ'],
+    values: ['1.91 V', '1.90 V', '1.91 V', '1.92 V', '4.1 mV'],
+  },
+});
+
+export const mockGraph = (): MainWindowModel['graph'] => ({
+  state: 'live',
+  selected: 1,
+  channels: [
+    { channel: 3, samples: triangleWave() },
+    { channel: 2, samples: sineWave() },
+    { channel: 1, samples: squareWave() },
+  ],
+  summary:
+    'Yt display, 10 by 8 divisions. CH1 square wave 1.91 V peak to peak at 500 mV per division, CH2 sine 32 mV peak to peak at 20 mV per division, CH3 triangle at 2 V per division. Triggered on CH1 rising edge at 900 mV.',
+});
