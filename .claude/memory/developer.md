@@ -191,3 +191,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A fresh worktree has no `frontend/node_modules`: run `npm ci --prefer-offline` there (a symlink to another checkout breaks vite's fs allow list). The Bash tool refuses long heredoc chains in worktrees: use Write/Edit for files, short separate commands otherwise.
 - `commands.ts` is hand-extended (commands, `EVENTS`, `STREAMS`) until WP8 regenerates it; `tauriCommandNames`/`tauriStreamCommands` are exhaustive Records tested against the lists. `TauriTransport.openChannel(command, onMessage)` wraps `Channel` (messages may be ArrayBuffer or number[]).
 - `app/instrument`: one `createSlice` owns the revision rule; selectors are pure functions of slice values (`isAcquiring(conn, instr)`, `graphState(conn, instr, hasFrame)`, `statusChips`, `connectionChip`); `test-data.ts` has slice builders for tests.
+## M1 WP5 lessons (acquisition domain)
+- Spec 3.2 geometry examples are inconsistent (start 797, 80.54 %); the formula gives start 798, 19.48 / 80.52 %. Tests pin the formula and the 50 % = 50.0 and symmetry properties.
+- Shared integration-test helpers live in `tests/domain_support/mod.rs` (directory form, so cargo does not build it as a test crate).
+- Worktree-isolated shells refuse long compound commands (heredocs with `cd`); use the Write tool per file.
+- Edits are validated on a cloned model and committed whole (`Instrument::edit`), so a rejected patch never half-applies.

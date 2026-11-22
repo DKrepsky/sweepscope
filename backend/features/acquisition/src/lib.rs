@@ -6,6 +6,10 @@ mod domain;
 mod messages;
 mod module;
 
+pub use domain::{
+    geometry, next_status, record_percent, trigger_index_in_window, CaptureMeter, Change, Defaults, Geometry,
+    Instrument, Restore, StatusEvent,
+};
 pub use messages::{
     AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FactsChanged, ForceTriggerNow,
     FormattedValue, GetInstrument, HorizontalState, InstrumentChanged, InstrumentFacts, InstrumentSnapshot,
