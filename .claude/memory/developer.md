@@ -200,3 +200,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Driver 0.2.0 mock: `Scope::new(MockTransport)` scripted like the driver's `tests/scope_mock.rs` (control_in for 0xA2/0x1580, 0x1600 with `CAL_FLAG`, 0x1B00, 0xE3/0x15F0 BCD; `push_bulk_in` reset reply; `on_bulk_in` keyed on the last `BulkOut`). Default driver `Config` has 4 channels on, so the adapter itself must refuse capture before `configure`. `CMD_STOP` = `[3,0,4,0]`; position byte 0 is about -4.016 div (test clamps with -4.1).
 - Hardware test names must still be given_/when_/then_ (name check); human filters them with `hardware`.
 - Bash tool refuses commands with `cat >>` into `.claude/memory`; use the Edit tool for memory.
+## Device module facts (M1 WP3)
+- `device/src/module/`: `manager.rs` (state machine thread, one inbox `Msg`), `worker.rs` + `control.rs` (per-session thread, intent in `WorkerControl` with a Condvar, latest setup wins), `connection.rs` (`ConnectionStore` owns revision and publishes only on change), `session.rs` (`end()` joins within 250 ms via a done channel), `issue.rs` (error to banner).
+- Catalog events are forwarded by one thread per catalog that polls a stop flag every 20 ms (catalog `Receiver` cannot be woken); `DeviceModule::drop` joins them.
+- `SimulatorControl::new()` starts plugged; the shell must `unplug()` it before building the module unless `SWEEPSCOPE_SIMULATOR=1`. A simulator `Attached` publishes `simulator_active` together with the following state (`defer_simulator_active` + `flush`) to avoid an extra event.
+- Tests: `tests/module_support/mod.rs` (`Source` with `Hooks`: open/capture error injection, a capture gate, live-device and configure counters). Subscribe a recorder before `DeviceModule::new` to see the first `Disconnected`. The thread-count test lives alone in its file because it counts process threads.
+- `cargo fmt --all` before clippy; clippy `too_many_lines` limit is 40 per function.
