@@ -118,7 +118,7 @@
     display: inline-flex;
     align-items: stretch;
     height: var(--ss-size-control-md);
-    border: var(--ss-border-width) solid var(--ss-color-border);
+    border: var(--ss-border-width) solid var(--ss-color-border-control);
     border-radius: var(--ss-radius-sm);
     background: var(--ss-color-bg-inset);
   }
@@ -136,11 +136,11 @@
   }
 
   button:first-child {
-    border-right: var(--ss-border-width) solid var(--ss-color-border);
+    border-right: var(--ss-border-width) solid var(--ss-color-border-control);
   }
 
   button:last-of-type {
-    border-left: var(--ss-border-width) solid var(--ss-color-border);
+    border-left: var(--ss-border-width) solid var(--ss-color-border-control);
   }
 
   button:hover {

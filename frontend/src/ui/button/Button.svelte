@@ -87,7 +87,7 @@
     height: var(--ss-size-control-md);
     padding: 0 var(--ss-space-4);
     background: var(--ss-color-bg-raised);
-    border: var(--ss-border-width) solid var(--ss-color-border);
+    border: var(--ss-border-width) solid var(--ss-color-border-control);
     border-radius: var(--ss-radius-sm);
     font-size: var(--ss-font-size-sm);
     white-space: nowrap;

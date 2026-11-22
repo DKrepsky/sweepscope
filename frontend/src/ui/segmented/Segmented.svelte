@@ -77,13 +77,13 @@
 <style>
   .seg {
     display: inline-flex;
-    border: var(--ss-border-width) solid var(--ss-color-border);
+    border: var(--ss-border-width) solid var(--ss-color-border-control);
     border-radius: var(--ss-radius-sm);
     background: var(--ss-color-bg-raised);
   }
 
   .seg > :global(* + *) {
-    border-left: var(--ss-border-width) solid var(--ss-color-border);
+    border-left: var(--ss-border-width) solid var(--ss-color-border-control);
   }
 
   button {

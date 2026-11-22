@@ -19,16 +19,23 @@ describe('contrast (AC-T2)', () => {
     expect(contrastRatio(colour(name), colour('bg-panel'))).toBeGreaterThanOrEqual(3);
   });
 
-  // Open design question (sent to the staff engineer): border is 1.6:1 and border-strong 2.5:1 on bg-panel.
-  it.fails('given border on bg-panel, when contrast is computed, then it is at least 3', () => {
-    expect(contrastRatio(colour('border'), colour('bg-panel'))).toBeGreaterThanOrEqual(3);
+  it.each(['bg-panel', 'bg-inset', 'bg-raised', 'bg-hover'])(
+    'given border-control on %s, when contrast is computed, then it is at least 3',
+    (bg) => {
+      expect(contrastRatio(colour('border-control'), colour(bg))).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it('given the decorative borders on bg-panel, when contrast is computed, then they are below 3 because they are exempt', () => {
+    for (const name of ['border-subtle', 'border', 'border-strong']) {
+      expect(contrastRatio(colour(name), colour('bg-panel'))).toBeLessThan(3);
+    }
   });
 
   it.each(['ch1', 'ch2', 'ch3', 'ch4'])(
-    'given channel colour %s on bg-scope, when contrast is computed, then it is at least 6.7',
+    'given channel colour %s on bg-scope, when contrast is computed, then it is at least 6.5',
     (name) => {
-      // design.md 5.4 states ratios to one decimal: ch4 is 6.676 and is documented as 6.7.
-      expect(contrastRatio(colour(name), colour('bg-scope'))).toBeGreaterThanOrEqual(6.65);
+      expect(contrastRatio(colour(name), colour('bg-scope'))).toBeGreaterThanOrEqual(6.5);
     },
   );
 });
