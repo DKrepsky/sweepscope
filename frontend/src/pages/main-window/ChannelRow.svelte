@@ -60,7 +60,9 @@
     {#snippet left()}<small>POS</small>{/snippet}
     {#snippet unit()}<small>{channel.position.unit}</small>{/snippet}
   </NumberField>
-  <Segmented value={channel.coupling} options={coupling} onchange={noop} ariaLabel="{name} coupling" />
+  <span class="coupling" class:dim={off}>
+    <Segmented value={channel.coupling} options={coupling} onchange={noop} ariaLabel="{name} coupling" />
+  </span>
   <Button
     pressed={channel.bandwidthLimit}
     disabled={off}
@@ -95,10 +97,12 @@
 </div>
 
 <style>
+  /* The columns come from the parent grid (VerticalGroup), so every row shares them. */
   .row {
-    display: flex;
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
     align-items: center;
-    gap: var(--ss-space-3);
     padding: var(--ss-space-1) var(--ss-space-2) var(--ss-space-1) 0;
     border-inline-start: calc(var(--ss-border-width) * 3) solid var(--chc);
   }
@@ -122,7 +126,14 @@
     color: var(--chc);
     background: var(--ss-color-bg-inset);
   }
+  .coupling {
+    display: inline-flex;
+  }
+  /* Same dimming as the Stepper's off state, so a disabled row reads as one. */
+  .coupling.dim {
+    opacity: 0.45;
+  }
   .badge {
-    margin-inline-start: auto;
+    justify-self: end;
   }
 </style>
