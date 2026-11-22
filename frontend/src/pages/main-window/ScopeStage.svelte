@@ -2,7 +2,8 @@
   import type { CursorsModel, GraphModel, TriggerModel, ChannelModel } from '../../app/main-window';
   import Badge from '../../ui/badge/Badge.svelte';
   import Graph from '../../ui/graph/Graph.svelte';
-  import { DEFAULT_ROOT_FONT_PX, fitScreen } from '../../ui/graph/fit-screen';
+  import { screenMinimumPx } from '../../app/layout';
+  import { fitScreen } from '../../ui/graph/fit-screen';
   import Marker from '../../ui/marker/Marker.svelte';
   import CursorOverlay from './CursorOverlay.svelte';
 
@@ -12,25 +13,26 @@
     trigger: TriggerModel;
     cursors: CursorsModel;
     dots: boolean;
+    /** 1 rem in px (layout store): the screen minimum is in rem. */
+    rootFontPx: number;
   }
 
-  const { graph, channels, trigger, cursors, dots }: Props = $props();
+  const { graph, channels, trigger, cursors, dots, rootFontPx }: Props = $props();
 
   let stageSize = $state({ width: 0, height: 0 });
-  let rootFontPx = $state(DEFAULT_ROOT_FONT_PX);
   let stage: HTMLElement;
 
-  const screen = $derived(fitScreen(stageSize, rootFontPx));
+  const screen = $derived.by(() => {
+    const minimum = screenMinimumPx(rootFontPx);
+    const fitted = fitScreen(stageSize, rootFontPx);
+    return { width: Math.max(fitted.width, minimum.width), height: Math.max(fitted.height, minimum.height) };
+  });
   const enabled = $derived(channels.filter((channel) => channel.enabled));
 
   $effect(() => {
-    const measure = (width: number, height: number) => {
-      rootFontPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || DEFAULT_ROOT_FONT_PX;
-      stageSize = { width, height };
-    };
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) measure(entry.contentRect.width, entry.contentRect.height);
+      if (entry) stageSize = { width: entry.contentRect.width, height: entry.contentRect.height };
     });
     observer.observe(stage);
     return () => observer.disconnect();
@@ -85,6 +87,7 @@
     display: grid;
     place-items: center;
     min-block-size: 0;
+    min-inline-size: 0;
     overflow: hidden;
     padding: 1.25rem 2rem 1rem;
     background: var(--ss-color-bg-scope);

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ChannelModel, HorizontalModel, TriggerModel } from '../../app/main-window';
+  import Segmented from '../../ui/segmented/Segmented.svelte';
   import HorizontalGroup from './HorizontalGroup.svelte';
   import TriggerGroup from './TriggerGroup.svelte';
   import VerticalGroup from './VerticalGroup.svelte';
@@ -14,15 +15,35 @@
     smallRows: boolean;
     /** H3: Vertical shows one channel row with tabs. */
     channelTabs: boolean;
+    /** Last resort (h4): one group at a time, chosen with tabs. */
+    groupTabs: boolean;
   }
 
-  const { channels, horizontal, trigger, wrapped, smallRows, channelTabs }: Props = $props();
+  const { channels, horizontal, trigger, wrapped, smallRows, channelTabs, groupTabs }: Props = $props();
+
+  const groupOptions = [
+    { id: 'vertical', label: 'Vertical' },
+    { id: 'horizontal', label: 'Horizontal' },
+    { id: 'trigger', label: 'Trigger' },
+  ];
+  let chosenGroup = $state('vertical');
+  const shows = (group: string) => !groupTabs || chosenGroup === group;
 </script>
 
-<div class="dock" class:wrapped class:small={smallRows}>
-  <VerticalGroup {channels} tabs={channelTabs} />
-  <HorizontalGroup {horizontal} />
-  <TriggerGroup {trigger} {channels} />
+<div class="dock" class:wrapped class:small={smallRows} class:tabbed={groupTabs} data-dock-tabs={groupTabs}>
+  {#if groupTabs}
+    <div class="tabs">
+      <Segmented
+        value={chosenGroup}
+        options={groupOptions}
+        onchange={(id) => (chosenGroup = id)}
+        ariaLabel="Dock groups"
+      />
+    </div>
+  {/if}
+  {#if shows('vertical')}<VerticalGroup {channels} tabs={channelTabs} />{/if}
+  {#if shows('horizontal')}<HorizontalGroup {horizontal} />{/if}
+  {#if shows('trigger')}<TriggerGroup {trigger} {channels} />{/if}
 </div>
 
 <style>
@@ -38,6 +59,13 @@
   }
   .dock.wrapped > :global(:first-child) {
     grid-column: 1 / -1;
+  }
+  .dock.tabbed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tabs {
+    padding: var(--ss-space-2) var(--ss-space-4);
+    background: var(--ss-color-bg-panel);
   }
   .dock.small {
     --ss-size-control-md: var(--ss-size-control-sm);

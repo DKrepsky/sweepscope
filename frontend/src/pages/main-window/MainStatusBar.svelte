@@ -9,14 +9,17 @@
     status: StatusModel;
     /** W3 and below: everything after connection and sample rate may wrap. */
     wrap: boolean;
+    /** h3 and below: only connection and sample rate stay (they never drop, design 3.2). */
+    essentialOnly: boolean;
   }
 
-  const { status, wrap }: Props = $props();
+  const { status, wrap, essentialOnly }: Props = $props();
 
   let accuracyOpen = $state(false);
 
   /** Order is the prototype's; priorities let items below `Never wrapped` stay on the first row (design 3.2). */
-  const items = $derived([
+  const ESSENTIAL_PRIORITY = 1;
+  const allItems = $derived([
     { id: 'connection', priority: 0, content: connection },
     { id: 'sample-rate', priority: 1, content: sampleRate },
     { id: 'record', priority: 2, content: record },
@@ -24,6 +27,7 @@
     { id: 'renderer', priority: 4, content: renderer },
     { id: 'accuracy', priority: 5, content: accuracy },
   ]);
+  const items = $derived(allItems.filter((item) => !essentialOnly || item.priority <= ESSENTIAL_PRIORITY));
 </script>
 
 {#snippet connection()}

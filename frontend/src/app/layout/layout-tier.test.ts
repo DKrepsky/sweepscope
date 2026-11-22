@@ -1,6 +1,12 @@
 import { get, writable } from 'svelte/store';
 import { describe, expect, it } from 'vitest';
-import { createLayoutTierStore, layoutTierFor, type ViewportSize, type ViewportSource } from './layout-tier';
+import {
+  createLayoutTierStore,
+  layoutTierFor,
+  screenMinimumPx,
+  type ViewportSize,
+  type ViewportSource,
+} from './layout-tier';
 import { createResizeObserverViewport } from './viewport-source';
 
 const rootFont = (scale: number) => (16 * scale) / 100;
@@ -46,12 +52,42 @@ describe('layoutTierFor', () => {
   });
 
   it.each([
-    [56, 'h1'],
-    [55.99, 'h2'],
-    [45, 'h2'],
-    [44.99, 'h3'],
-  ])('given a height of %s rem, when the tier is computed, then it is %s', (rem, tier) => {
+    [47.25, 'h1'],
+    [47.24, 'h2'],
+    [46.25, 'h2'],
+    [46.24, 'h4'],
+    [45, 'h4'],
+    [44.99, 'scroll'],
+  ])('given a wide window %s rem high, when the tier is computed, then it is %s', (rem, tier) => {
     expect(layoutTierFor(1920, rem * 16, 16).height).toBe(tier);
+  });
+
+  it.each([
+    [59, 'h1'],
+    [58.99, 'h2'],
+    [57, 'h2'],
+    [56.99, 'h3'],
+    [50.25, 'h3'],
+    [50.24, 'h4'],
+    [45, 'h4'],
+    [44.99, 'scroll'],
+  ])('given a narrow window %s rem high, when the tier is computed, then it is %s', (rem, tier) => {
+    expect(layoutTierFor(1024, rem * 16, 16).height).toBe(tier);
+  });
+
+  it('given the root font size, when the tier is computed, then it carries it', () => {
+    expect(layoutTierFor(1920, 1080, 24).rootFontPx).toBe(24);
+  });
+});
+
+describe('screenMinimumPx', () => {
+  it.each([
+    [16, 512, 410],
+    [20, 640, 512],
+    [24, 768, 615],
+    [32, 1024, 820],
+  ])('given a root font of %s px, when converted, then the minimum is %s x %s px', (root, width, height) => {
+    expect(screenMinimumPx(root)).toEqual({ width, height });
   });
 });
 
@@ -88,7 +124,7 @@ describe('createLayoutTierStore', () => {
 
     textScale.set(200);
 
-    expect(get(store)).toEqual({ width: 'scroll', height: 'h3' });
+    expect(get(store)).toMatchObject({ width: 'scroll', rootFontPx: 32 });
     stop();
   });
 });

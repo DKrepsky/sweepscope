@@ -1,6 +1,6 @@
 import { writable, type Readable } from 'svelte/store';
 import type { BackendClient, UiStateEntry } from '../../api';
-import type { NoticeStore } from '../notice';
+import type { Notifications } from '../notifications';
 import { loadUiState, saveUiState } from '../ui-state';
 
 export type TextScalePercent = 100 | 125 | 150 | 200;
@@ -10,10 +10,12 @@ const NAMESPACE = 'app.text-scale';
 const VERSION = 1;
 const DEFAULT_PERCENT: TextScalePercent = 100;
 
+export type SaveResult = 'saved' | 'not-saved';
+
 export interface TextScaleStore extends Pick<Readable<TextScalePercent>, 'subscribe'> {
   load(): Promise<void>;
-  /** Persists first, then updates the value; use `setTextScale`. */
-  persist(percent: TextScalePercent): Promise<void>;
+  /** Applies the scale for the session, then saves it; never rejects. Use `setTextScale`. */
+  persist(percent: TextScalePercent): Promise<SaveResult>;
 }
 
 export interface TextScaleDeps {
@@ -44,26 +46,30 @@ export function createTextScaleStore({ client, applyRootFontPercent }: TextScale
       adopt(parsePercent(await loadUiState(client, NAMESPACE)));
     },
     async persist(percent) {
-      await saveUiState(client, { namespace: NAMESPACE, version: VERSION, json: JSON.stringify({ percent }) });
       adopt(percent);
+      try {
+        await saveUiState(client, { namespace: NAMESPACE, version: VERSION, json: JSON.stringify({ percent }) });
+        return 'saved';
+      } catch {
+        return 'not-saved';
+      }
     },
   };
 }
 
-export function setTextScale(store: TextScaleStore, percent: TextScalePercent): Promise<void> {
+export function setTextScale(store: TextScaleStore, percent: TextScalePercent): Promise<SaveResult> {
   return store.persist(percent);
 }
 
-/** A failed save keeps the old value (the store only adopts after saving) and tells the user. */
+export const NOT_SAVED_TEXT = 'Text size changed but could not be saved. It resets when the app restarts.';
+
+/** A failed save keeps the new scale for the session and tells the user (spec 11.4). */
 export async function chooseTextScale(
   store: TextScaleStore,
-  notices: NoticeStore,
+  notifications: Notifications,
   percent: TextScalePercent,
 ): Promise<void> {
-  notices.dismiss();
-  try {
-    await setTextScale(store, percent);
-  } catch {
-    notices.show({ kind: 'error', text: 'Could not save text size' });
+  if ((await setTextScale(store, percent)) === 'not-saved') {
+    notifications.notify({ kind: 'warning', text: NOT_SAVED_TEXT });
   }
 }

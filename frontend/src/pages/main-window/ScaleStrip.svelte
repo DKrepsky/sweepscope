@@ -6,9 +6,11 @@
   interface Props {
     channels: ChannelModel[];
     cursorSource: ChannelNumber;
+    /** Shown while the dock hides the Trigger group (h4), so the trigger state stays at a glance. */
+    triggerSummary?: string;
   }
 
-  const { channels, cursorSource }: Props = $props();
+  const { channels, cursorSource, triggerSummary }: Props = $props();
 
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
@@ -38,6 +40,7 @@
     </button>
   {/each}
   <span class="grow"></span>
+  {#if triggerSummary}<span class="note" data-trigger-summary>{triggerSummary}</span>{/if}
   <span class="note">
     Cursor values follow <b class="ss-num" style={channelStyle(cursorSource)}>CH{cursorSource}</b>
   </span>

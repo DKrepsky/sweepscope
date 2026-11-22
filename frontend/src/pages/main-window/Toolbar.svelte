@@ -5,6 +5,7 @@
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
   import Menu from '../../ui/menu/Menu.svelte';
+  import { menuTriggerAttributes } from '../../ui/menu';
   import RunButton from '../../ui/run-button/RunButton.svelte';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import StatusChip from '../../ui/status-chip/StatusChip.svelte';
@@ -114,7 +115,11 @@
     {#if toolLabels}<span class="ss-caps">View</span>{/if}
     <Segmented value={toolbar.view} options={viewOptions} onchange={noop} ariaLabel="View" />
     <span class="anchor" bind:this={persistenceHost}>
-      <Button title="Persistence decay: Off, 0.5 s, 1 s, 2 s, infinite" onclick={openPersistence}>
+      <Button
+        title="Persistence decay: Off, 0.5 s, 1 s, 2 s, infinite"
+        onclick={openPersistence}
+        {...menuTriggerAttributes(persistenceAnchor !== null)}
+      >
         {toolbar.persistence}
         {#snippet right()}<Icon name="chevron" />{/snippet}
       </Button>
@@ -148,6 +153,9 @@
         {#snippet left()}<Icon name="cursors" />{/snippet}
       </Button>
     {/if}
+  </div>
+
+  <div class="pinned">
     <span class="anchor">
       <Button
         title="Settings"
@@ -210,6 +218,19 @@
   }
   .grow {
     flex: 1;
+  }
+  /* Stays at the right edge of the viewport when the window is narrower than the content floor, so the text size is always reachable. */
+  .pinned {
+    position: sticky;
+    inset-inline-end: 0;
+    z-index: var(--ss-z-overlay);
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    padding-inline: var(--ss-space-4);
+    margin-inline-end: calc(-1 * var(--ss-space-4));
+    background: var(--ss-color-bg-panel);
+    border-inline-start: var(--ss-border-width) solid var(--ss-color-border-subtle);
   }
   .anchor {
     position: relative;

@@ -3,18 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { get, writable, type Readable } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutTier } from '../../app/layout';
-import type { Notice } from '../../app/notice';
+import type { Notification } from '../../app/notifications';
 import { createMockMainWindow } from '../../app/main-window';
 import { createTextScaleStore, setTextScale, type TextScalePercent } from '../../app/text-scale';
 import { createRecordingContext } from '../../ui/graph/recording-context';
 import MainWindow from './MainWindow.svelte';
 
 const tiers = {
-  w1: { width: 'w1', height: 'h1' },
-  w2: { width: 'w2', height: 'h1' },
-  w3: { width: 'w3', height: 'h1' },
-  h2: { width: 'w1', height: 'h2' },
-  h3: { width: 'w1', height: 'h3' },
+  w1: { width: 'w1', height: 'h1', rootFontPx: 16 },
+  w2: { width: 'w2', height: 'h1', rootFontPx: 16 },
+  w3: { width: 'w3', height: 'h1', rootFontPx: 16 },
+  h2: { width: 'w1', height: 'h2', rootFontPx: 16 },
+  h3: { width: 'w1', height: 'h3', rootFontPx: 16 },
+  h4: { width: 'w3', height: 'h4', rootFontPx: 16 },
 } satisfies Record<string, LayoutTier>;
 
 beforeEach(() => {
@@ -27,15 +28,15 @@ function renderShell(
   overrides: {
     ontogglerun?: () => void;
     ontextscale?: (p: TextScalePercent) => void;
-    notice?: Readable<Notice | null>;
+    notifications?: Readable<Notification[]>;
   } = {},
 ) {
   const props = {
     model: createMockMainWindow(),
     tier: writable(tier),
     textScale: writable<TextScalePercent>(100),
-    notice: writable<Notice | null>(null),
-    onnoticedismiss: () => {},
+    notifications: writable<Notification[]>([]),
+    onnotificationdismiss: () => {},
     ontogglerun: () => {},
     ontextscale: () => {},
     ...overrides,
@@ -123,8 +124,8 @@ describe('MainWindow behaviour', () => {
         model: createMockMainWindow(),
         tier: writable(tiers.w1),
         textScale: store,
-        notice: writable<Notice | null>(null),
-        onnoticedismiss: () => {},
+        notifications: writable<Notification[]>([]),
+        onnotificationdismiss: () => {},
         ontogglerun: () => {},
         ontextscale: (percent: TextScalePercent) => void setTextScale(store, percent),
       },
@@ -180,16 +181,53 @@ describe('MainWindow behaviour', () => {
     expect(screen.getByRole('button', { name: /^Accuracy/ })).toHaveFocus();
   });
 
-  it('given a notice, when rendered, then it is announced as an alert', () => {
-    renderShell(tiers.w1, { notice: writable<Notice | null>({ kind: 'error', text: 'Could not save text size' }) });
+  it('given an error notification, when rendered, then it is announced as an alert', () => {
+    renderShell(tiers.w1, {
+      notifications: writable<Notification[]>([{ id: 1, kind: 'error', text: 'Could not save text size' }]),
+    });
 
     expect(screen.getByRole('alert')).toHaveTextContent('Could not save text size');
   });
 
-  it('given no notice, when rendered, then there is no alert', () => {
+  it('given two notifications, when rendered, then both show with the first one on top', () => {
+    renderShell(tiers.w1, {
+      notifications: writable<Notification[]>([
+        { id: 2, kind: 'warning', text: 'newest' },
+        { id: 1, kind: 'info', text: 'older' },
+      ]),
+    });
+
+    const texts = screen.getAllByRole('status').map((element) => element.textContent?.trim());
+    expect(texts.indexOf('newest')).toBeLessThan(texts.indexOf('older'));
+  });
+
+  it('given no notifications, when rendered, then there is no alert', () => {
     renderShell(tiers.w1);
 
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('given tier h4, when rendered, then the dock shows one group at a time and the Trigger group is one click away', async () => {
+    const { container } = renderShell(tiers.h4);
+    expect(container.querySelector('[data-region="trigger"]')).toBeNull();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Trigger' }));
+
+    expect(container.querySelector('[data-region="trigger"]')).not.toBeNull();
+    expect(container.querySelector('[data-region="vertical"]')).toBeNull();
+  });
+
+  it('given tier h4, when rendered, then the scale strip carries the trigger summary', () => {
+    const { container } = renderShell(tiers.h4);
+
+    expect(container.querySelector('[data-trigger-summary]')).toHaveTextContent(/^Trigger CH\d/);
+  });
+
+  it('given tier h3, when rendered, then only connection and sample rate remain in the status bar', () => {
+    const { container } = renderShell({ ...tiers.h3, width: 'w3' });
+
+    const items = [...container.querySelectorAll('[data-item]')].map((item) => item.getAttribute('data-item'));
+    expect(items).toEqual(['connection', 'sample-rate']);
   });
 
   it('given the mock model, when rendered, then the illustrative-numbers note is visible', () => {

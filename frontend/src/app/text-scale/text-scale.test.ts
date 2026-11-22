@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { createFakeClient } from '../../api';
 import type { UiStateEntry } from '../../api';
-import { createNoticeStore } from '../notice';
+import { createNotifications } from '../notifications';
 import { chooseTextScale, createTextScaleStore, setTextScale } from './text-scale';
 
 const stored = (json: string, version = 1): UiStateEntry => ({ namespace: 'app.text-scale', version, json });
@@ -54,51 +54,50 @@ describe('text scale load', () => {
 });
 
 describe('set text scale', () => {
-  it('given the store at 100, when setTextScale 125 runs, then the entry is saved and afterwards the store is 125', async () => {
+  it('given the store at 100, when setTextScale 125 runs, then the entry is saved, the store is 125 and the result is saved', async () => {
     const { client, store, applyRootFontPercent } = setup();
-    await setTextScale(store, 125);
+    const result = await setTextScale(store, 125);
+    expect(result).toBe('saved');
     expect(client.calls).toEqual([{ name: 'save_ui_state', args: { entry: stored('{"percent":125}') } }]);
     expect(get(store)).toBe(125);
     expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(125);
   });
 
-  it('given a save that has not resolved, when setTextScale 125 runs, then the store is still 100', async () => {
+  it('given a save that has not resolved, when setTextScale 125 runs, then the scale already applies', () => {
     const { client, store } = setup();
     client.respond('save_ui_state', () => new Promise(() => {}));
     void setTextScale(store, 125);
-    expect(get(store)).toBe(100);
+    expect(get(store)).toBe(125);
   });
 
-  it('given the backend rejects the save, when setTextScale 125 runs, then the store stays 100 and the error is thrown', async () => {
+  it('given the backend rejects the save, when setTextScale 125 runs, then it resolves not-saved and the scale still applies', async () => {
     const { client, store, applyRootFontPercent } = setup();
-    const failure = { category: 'recoverable', message: 'disk full' };
-    client.respond('save_ui_state', () => Promise.reject(failure));
-    await expect(setTextScale(store, 125)).rejects.toBe(failure);
-    expect(get(store)).toBe(100);
-    expect(applyRootFontPercent).not.toHaveBeenCalled();
+    client.respond('save_ui_state', () => Promise.reject({ category: 'recoverable', message: 'disk full' }));
+    await expect(setTextScale(store, 125)).resolves.toBe('not-saved');
+    expect(get(store)).toBe(125);
+    expect(applyRootFontPercent).toHaveBeenCalledExactlyOnceWith(125);
   });
 });
 
 describe('choose text scale', () => {
-  it('given the backend rejects the save, when 125 is chosen, then an error notice is shown and the store stays 100', async () => {
+  it('given the backend rejects the save, when 125 is chosen, then a warning says it resets on restart', async () => {
     const { client, store } = setup();
     client.respond('save_ui_state', () => Promise.reject({ category: 'recoverable', message: 'disk full' }));
-    const notices = createNoticeStore();
+    const notifications = createNotifications();
 
-    await chooseTextScale(store, notices, 125);
+    await chooseTextScale(store, notifications, 125);
 
-    expect(get(notices)).toEqual({ kind: 'error', text: 'Could not save text size' });
-    expect(get(store)).toBe(100);
+    expect(get(notifications).map(({ kind, text }) => ({ kind, text }))).toEqual([
+      { kind: 'warning', text: 'Text size changed but could not be saved. It resets when the app restarts.' },
+    ]);
   });
 
-  it('given an earlier failure notice, when a save then succeeds, then the notice is cleared and the store is 125', async () => {
+  it('given a successful save, when 125 is chosen, then there is no notification', async () => {
     const { store } = setup();
-    const notices = createNoticeStore();
-    notices.show({ kind: 'error', text: 'Could not save text size' });
+    const notifications = createNotifications();
 
-    await chooseTextScale(store, notices, 125);
+    await chooseTextScale(store, notifications, 125);
 
-    expect(get(notices)).toBeNull();
-    expect(get(store)).toBe(125);
+    expect(get(notifications)).toEqual([]);
   });
 });
