@@ -12,14 +12,27 @@
 
   const { label, placement, onclose, title, children }: Props = $props();
 
+  let popover: HTMLElement;
+
   function onkeydown(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
     event.stopPropagation();
     onclose();
   }
+
+  $effect(() => {
+    const opener = document.activeElement;
+    popover.focus();
+    return () => {
+      const focusLost = document.activeElement === document.body || popover.contains(document.activeElement);
+      if (focusLost && opener instanceof HTMLElement) opener.focus();
+    };
+  });
 </script>
 
-<div class="popover {placement}" role="dialog" aria-label={label} tabindex="-1" {onkeydown}>
+<svelte:window {onkeydown} />
+
+<div class="popover {placement}" role="dialog" aria-label={label} tabindex="-1" bind:this={popover}>
   <Panel header={title} body={children} ontoggle={onclose} />
 </div>
 

@@ -18,8 +18,11 @@ describe('ChannelRow', () => {
 
     expect({ classes: disabledRow.className, children: disabledRow.children.length }).toEqual(enabledShape);
     expect(screen.getByRole('button', { name: 'Channel 2 enabled' })).toHaveClass('outline');
-    expect(screen.getByRole('button', { name: 'Channel 2 bandwidth limit' })).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByRole('button', { name: 'Channel 2 invert' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'BW, Channel 2 bandwidth limit' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Inv, Channel 2 invert' })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('textbox', { name: /vertical position/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
@@ -27,6 +30,6 @@ describe('ChannelRow', () => {
     render(ChannelRow, { props: { channel: mockChannels()[0]! } });
 
     expect(screen.getByRole('button', { name: 'Channel 1 enabled' })).not.toHaveClass('outline');
-    expect(screen.getByRole('button', { name: 'Channel 1 invert' })).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByRole('button', { name: 'Inv, Channel 1 invert' })).not.toHaveAttribute('aria-disabled');
   });
 });

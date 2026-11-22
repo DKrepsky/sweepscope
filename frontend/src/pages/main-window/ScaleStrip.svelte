@@ -12,6 +12,11 @@
 
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
+  const shownText = (channel: ChannelModel) => (channel.enabled ? summary(channel) : 'off');
+  const unverified = (channel: ChannelModel) => (channel.enabled && channel.unverified ? ' Unverified' : '');
+  /** WCAG 2.5.3: the name starts with the visible text. */
+  const accessibleName = (channel: ChannelModel) =>
+    `${channel.number} ${shownText(channel)}${unverified(channel)}, channel ${channel.number} scale`;
 </script>
 
 <div class="strip" data-region="scale-strip" role="group" aria-label="Channel scales">
@@ -23,10 +28,10 @@
       style={channelStyle(channel.number)}
       aria-pressed={channel.selected}
       aria-disabled={channel.enabled ? undefined : 'true'}
-      aria-label="Channel {channel.number}: {channel.enabled ? summary(channel) : 'off'}"
+      aria-label={accessibleName(channel)}
     >
       <b>{channel.number}</b>
-      <span class="ss-num">{channel.enabled ? summary(channel) : 'off'}</span>
+      <span class="ss-num">{shownText(channel)}</span>
       {#if channel.enabled && channel.unverified}
         <Badge kind="warning" tooltip={channel.unverified}>Unverified</Badge>
       {/if}

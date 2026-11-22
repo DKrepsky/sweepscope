@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { createFakeClient } from '../../api';
 import type { UiStateEntry } from '../../api';
-import { createTextScaleStore, setTextScale } from './text-scale';
+import { createNoticeStore } from '../notice';
+import { chooseTextScale, createTextScaleStore, setTextScale } from './text-scale';
 
 const stored = (json: string, version = 1): UiStateEntry => ({ namespace: 'app.text-scale', version, json });
 
@@ -75,5 +76,29 @@ describe('set text scale', () => {
     await expect(setTextScale(store, 125)).rejects.toBe(failure);
     expect(get(store)).toBe(100);
     expect(applyRootFontPercent).not.toHaveBeenCalled();
+  });
+});
+
+describe('choose text scale', () => {
+  it('given the backend rejects the save, when 125 is chosen, then an error notice is shown and the store stays 100', async () => {
+    const { client, store } = setup();
+    client.respond('save_ui_state', () => Promise.reject({ category: 'recoverable', message: 'disk full' }));
+    const notices = createNoticeStore();
+
+    await chooseTextScale(store, notices, 125);
+
+    expect(get(notices)).toEqual({ kind: 'error', text: 'Could not save text size' });
+    expect(get(store)).toBe(100);
+  });
+
+  it('given an earlier failure notice, when a save then succeeds, then the notice is cleared and the store is 125', async () => {
+    const { store } = setup();
+    const notices = createNoticeStore();
+    notices.show({ kind: 'error', text: 'Could not save text size' });
+
+    await chooseTextScale(store, notices, 125);
+
+    expect(get(notices)).toBeNull();
+    expect(get(store)).toBe(125);
   });
 });

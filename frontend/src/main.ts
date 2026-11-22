@@ -4,7 +4,8 @@ import { mount } from 'svelte';
 import { createTauriClient } from './api';
 import { createLayoutTierStore, createResizeObserverViewport } from './app/layout';
 import { createMockMainWindow } from './app/main-window';
-import { createTextScaleStore, setTextScale } from './app/text-scale';
+import { createNoticeStore } from './app/notice';
+import { chooseTextScale, createTextScaleStore } from './app/text-scale';
 import MainWindow from './pages/main-window/MainWindow.svelte';
 
 const applyRootFontPercent = (percent: number) => {
@@ -19,6 +20,7 @@ async function start(): Promise<void> {
     viewport: createResizeObserverViewport(document.documentElement),
     textScale,
   });
+  const notices = createNoticeStore();
   const model = createMockMainWindow();
   const target = document.getElementById('app');
   if (!target) throw new Error('Missing #app mount point');
@@ -28,8 +30,10 @@ async function start(): Promise<void> {
       model,
       tier,
       textScale,
+      notice: notices,
+      onnoticedismiss: notices.dismiss,
       ontogglerun: model.toggleRun,
-      ontextscale: (percent) => void setTextScale(textScale, percent),
+      ontextscale: (percent) => void chooseTextScale(textScale, notices, percent),
     },
   });
 }

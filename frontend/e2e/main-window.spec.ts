@@ -81,7 +81,6 @@ test.describe('main window shell', () => {
   test('given the Settings popover opened from its button, when Escape is pressed with focus still on the button, then it closes', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-3: the popover handles Escape only when focus is inside it, and opening does not move focus');
     await openMain(page);
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.keyboard.press('Escape');

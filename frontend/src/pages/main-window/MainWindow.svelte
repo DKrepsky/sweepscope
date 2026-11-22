@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { Readable } from 'svelte/store';
   import type { LayoutTier } from '../../app/layout';
+  import type { Notice } from '../../app/notice';
   import type { MainWindowModel } from '../../app/main-window';
   import type { TextScalePercent } from '../../app/text-scale';
   import Banner from '../../ui/banner/Banner.svelte';
+  import Toast from '../../ui/toast/Toast.svelte';
   import FrontPanelDock from './FrontPanelDock.svelte';
   import HorizontalReadout from './HorizontalReadout.svelte';
   import MainStatusBar from './MainStatusBar.svelte';
@@ -16,17 +18,28 @@
     model: Readable<MainWindowModel>;
     tier: Readable<LayoutTier>;
     textScale: Readable<TextScalePercent>;
+    notice: Readable<Notice | null>;
+    onnoticedismiss: () => void;
     ontogglerun: () => void;
     ontextscale: (percent: TextScalePercent) => void;
   }
 
-  const { model: modelStore, tier: tierStore, textScale: textScaleStore, ontogglerun, ontextscale }: Props = $props();
+  const {
+    model: modelStore,
+    tier: tierStore,
+    textScale: textScaleStore,
+    notice: noticeStore,
+    onnoticedismiss,
+    ontogglerun,
+    ontextscale,
+  }: Props = $props();
 
   const MAX_BANNERS = 2;
 
   const model = $derived($modelStore);
   const tier = $derived($tierStore);
   const textScale = $derived($textScaleStore);
+  const notice = $derived($noticeStore);
 
   const compact = $derived(tier.width === 'w3' || tier.width === 'scroll');
   let drawerRequested = $state(false);
@@ -102,9 +115,23 @@
     </div>
     <MainStatusBar status={model.status} wrap={compact} />
   </div>
+  {#if notice}
+    <div class="toasts">
+      <Toast kind={notice.kind} ondismiss={onnoticedismiss}>
+        {#snippet text()}{notice.text}{/snippet}
+      </Toast>
+    </div>
+  {/if}
 </div>
 
 <style>
+  .toasts {
+    position: fixed;
+    inset-block-end: var(--ss-space-6);
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    z-index: var(--ss-z-toast);
+  }
   .viewport {
     block-size: 100vh;
     overflow: auto;

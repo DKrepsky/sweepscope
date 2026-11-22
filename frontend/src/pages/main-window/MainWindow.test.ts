@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { get, writable } from 'svelte/store';
+import { get, writable, type Readable } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutTier } from '../../app/layout';
+import type { Notice } from '../../app/notice';
 import { createMockMainWindow } from '../../app/main-window';
 import { createTextScaleStore, setTextScale, type TextScalePercent } from '../../app/text-scale';
 import { createRecordingContext } from '../../ui/graph/recording-context';
@@ -23,12 +24,18 @@ beforeEach(() => {
 
 function renderShell(
   tier: LayoutTier,
-  overrides: { ontogglerun?: () => void; ontextscale?: (p: TextScalePercent) => void } = {},
+  overrides: {
+    ontogglerun?: () => void;
+    ontextscale?: (p: TextScalePercent) => void;
+    notice?: Readable<Notice | null>;
+  } = {},
 ) {
   const props = {
     model: createMockMainWindow(),
     tier: writable(tier),
     textScale: writable<TextScalePercent>(100),
+    notice: writable<Notice | null>(null),
+    onnoticedismiss: () => {},
     ontogglerun: () => {},
     ontextscale: () => {},
     ...overrides,
@@ -116,6 +123,8 @@ describe('MainWindow behaviour', () => {
         model: createMockMainWindow(),
         tier: writable(tiers.w1),
         textScale: store,
+        notice: writable<Notice | null>(null),
+        onnoticedismiss: () => {},
         ontogglerun: () => {},
         ontextscale: (percent: TextScalePercent) => void setTextScale(store, percent),
       },
@@ -127,6 +136,60 @@ describe('MainWindow behaviour', () => {
     await vi.waitFor(() => expect(applyRootFontPercent).toHaveBeenCalledWith(150));
     expect(send).toHaveBeenCalledWith('save_ui_state', expect.anything());
     expect(get(store)).toBe(150);
+  });
+
+  it('given the Settings button, when it is activated, then focus moves into the popover', async () => {
+    const user = userEvent.setup();
+    renderShell(tiers.w1);
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toHaveFocus();
+  });
+
+  it('given the Settings popover open with focus on the opener, when Escape is pressed, then it closes', async () => {
+    const user = userEvent.setup();
+    renderShell(tiers.w1);
+    const opener = screen.getByRole('button', { name: 'Settings' });
+    await user.click(opener);
+    opener.focus();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Settings' })).toBeNull();
+  });
+
+  it('given the Settings popover with focus inside, when Escape closes it, then focus returns to the Settings button', async () => {
+    const user = userEvent.setup();
+    renderShell(tiers.w1);
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus();
+  });
+
+  it('given the Accuracy popover open, when Escape is pressed, then it closes and focus returns to its button', async () => {
+    const user = userEvent.setup();
+    renderShell(tiers.w1);
+    await user.click(screen.getByRole('button', { name: /^Accuracy/ }));
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Accuracy note' })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Accuracy/ })).toHaveFocus();
+  });
+
+  it('given a notice, when rendered, then it is announced as an alert', () => {
+    renderShell(tiers.w1, { notice: writable<Notice | null>({ kind: 'error', text: 'Could not save text size' }) });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save text size');
+  });
+
+  it('given no notice, when rendered, then there is no alert', () => {
+    renderShell(tiers.w1);
+
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('given the mock model, when rendered, then the illustrative-numbers note is visible', () => {

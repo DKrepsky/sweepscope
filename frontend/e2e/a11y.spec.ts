@@ -106,7 +106,6 @@ test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
   test('given the channel row and scale strip buttons, when axe checks label in name, then the visible text is part of the accessible name', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-10: aria-label of BW, Inv and the channel scale buttons does not contain the visible text');
     await openMain(page);
     expect((await findings(page)).filter(isKnownLabel)).toEqual([]);
   });

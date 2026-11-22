@@ -1,5 +1,6 @@
 import { writable, type Readable } from 'svelte/store';
 import type { BackendClient, UiStateEntry } from '../../api';
+import type { NoticeStore } from '../notice';
 import { loadUiState, saveUiState } from '../ui-state';
 
 export type TextScalePercent = 100 | 125 | 150 | 200;
@@ -51,4 +52,18 @@ export function createTextScaleStore({ client, applyRootFontPercent }: TextScale
 
 export function setTextScale(store: TextScaleStore, percent: TextScalePercent): Promise<void> {
   return store.persist(percent);
+}
+
+/** A failed save keeps the old value (the store only adopts after saving) and tells the user. */
+export async function chooseTextScale(
+  store: TextScaleStore,
+  notices: NoticeStore,
+  percent: TextScalePercent,
+): Promise<void> {
+  notices.dismiss();
+  try {
+    await setTextScale(store, percent);
+  } catch {
+    notices.show({ kind: 'error', text: 'Could not save text size' });
+  }
 }

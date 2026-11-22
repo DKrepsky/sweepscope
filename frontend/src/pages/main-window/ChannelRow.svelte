@@ -66,14 +66,25 @@
     disabled={off}
     disabledReason={reason}
     title="20 MHz bandwidth limit"
-    ariaLabel="{name} bandwidth limit"
+    ariaLabel="BW, {name} bandwidth limit"
   >
     BW
   </Button>
-  <Button disabled={off} disabledReason={reason} title="Probe attenuation" ariaLabel="{name} probe attenuation">
+  <Button
+    disabled={off}
+    disabledReason={reason}
+    title="Probe attenuation"
+    ariaLabel="{channel.probe}, {name} probe attenuation"
+  >
     {channel.probe}
   </Button>
-  <Button pressed={channel.inverted} disabled={off} disabledReason={reason} title="Invert" ariaLabel="{name} invert">
+  <Button
+    pressed={channel.inverted}
+    disabled={off}
+    disabledReason={reason}
+    title="Invert"
+    ariaLabel="Inv, {name} invert"
+  >
     Inv
   </Button>
   {#if channel.unverified}
