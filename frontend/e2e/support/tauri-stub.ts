@@ -7,19 +7,33 @@ export interface IpcCall {
 }
 
 /** A connected simulator with channels 1 to 3 on and 4 off, so the dock shows both row states. */
-const readySnapshot = () => {
+const readySnapshot = (unverifiedTimeBase: boolean) => {
   const base = instrumentState();
+  const timeBase = { ...base.horizontal.timeBase, verified: !unverifiedTimeBase };
   return stateSnapshot({
-    instrument: { ...base, channels: base.channels.map((channel) => ({ ...channel, enabled: channel.number < 4 })) },
+    instrument: {
+      ...base,
+      channels: base.channels.map((channel) => ({ ...channel, enabled: channel.number < 4 })),
+      horizontal: { ...base.horizontal, timeBase },
+    },
   });
 };
+
+export interface StubOptions {
+  /** The selected time base step is one the hardware has not been measured at. */
+  unverifiedTimeBase?: boolean;
+}
 
 /**
  * Replaces the Tauri IPC bridge in the page: a fixed ready snapshot, event listening and the frame stream accepted
  * (no frames arrive), and every other control command logged and acknowledged. The two settings commands work against
  * `sessionStorage` (so a reload behaves like a restart); an unknown command is refused like the real capability does.
  */
-export async function stubTauri(page: Page, initialSettings?: Record<string, unknown>): Promise<void> {
+export async function stubTauri(
+  page: Page,
+  initialSettings?: Record<string, unknown>,
+  options: StubOptions = {},
+): Promise<void> {
   await page.addInitScript(
     ([initial, snapshot]) => {
       const KEY = '__ss_settings';
@@ -58,7 +72,7 @@ export async function stubTauri(page: Page, initialSettings?: Record<string, unk
         },
       };
     },
-    [initialSettings, readySnapshot()] as const,
+    [initialSettings, readySnapshot(options.unverifiedTimeBase ?? false)] as const,
   );
 }
 

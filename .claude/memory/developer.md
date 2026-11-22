@@ -229,3 +229,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
 - e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
 - Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.
+
+## BUG-3 unverified time base (developer-8)
+- `HorizontalModel.unverified?: string` (text 'Unverified (see accuracy note).' from design 8; backend sends only `ScaleChoice.verified`); `Unverified` warning Badge next to the Time/div stepper and in the readout. e2e stub: `stubTauri(page, settings, { unverifiedTimeBase: true })`, `openMain(page, 100, options)`.
+- Bash tool in a worktree refuses compound commands with `cd` + git/rm; run `cd <abs>/frontend && ...` as its own call, and run npx playwright from `frontend/` (else it fetches a stray playwright).

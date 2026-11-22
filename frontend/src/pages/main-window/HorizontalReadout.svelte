@@ -17,6 +17,9 @@
   <Readout value={horizontal.timePerDiv.value} unit={horizontal.timePerDiv.unit}>
     {#snippet label()}Horizontal{/snippet}
   </Readout>
+  {#if horizontal.unverified}
+    <Badge kind="warning" tooltip={horizontal.unverified}>Unverified</Badge>
+  {/if}
   <span class="sep">|</span>
   <Readout value={horizontal.triggerPosition.value} unit={horizontal.triggerPosition.unit}>
     {#snippet label()}Trig pos{/snippet}

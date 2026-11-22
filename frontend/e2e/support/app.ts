@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { stubTauri } from './tauri-stub';
+import { stubTauri, type StubOptions } from './tauri-stub';
 
 export type TextScale = 100 | 125 | 150 | 200;
 
@@ -8,8 +8,8 @@ export const tauriSettings = (percent: TextScale) => ({
 });
 
 /** Opens the main window with the IPC stub; `percent` is the stored text scale (a restart with that setting). */
-export async function openMain(page: Page, percent: TextScale = 100): Promise<void> {
-  await stubTauri(page, percent === 100 ? undefined : tauriSettings(percent));
+export async function openMain(page: Page, percent: TextScale = 100, options: StubOptions = {}): Promise<void> {
+  await stubTauri(page, percent === 100 ? undefined : tauriSettings(percent), options);
   await page.goto('/');
   await expect(page.getByTestId('main-window')).toBeVisible();
   await expect
