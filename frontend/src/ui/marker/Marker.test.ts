@@ -21,6 +21,29 @@ const up = (el: Element) => fireEvent(el, new MouseEvent('pointerup', { bubbles:
 
 afterEach(() => vi.restoreAllMocks());
 
+describe('Marker disabled reason', () => {
+  it('given a disabled marker with a reason, when it receives keyboard focus, then the reason shows as a tooltip describing it', async () => {
+    const { marker } = setup({ disabled: true, disabledReason: 'Trigger not available: offline' });
+    await userEvent.tab();
+    const tip = screen.getByRole('tooltip');
+    expect(tip).toHaveTextContent('Trigger not available: offline');
+    expect(marker).toHaveAttribute('aria-describedby', tip.id);
+  });
+
+  it('given the reason is shown, when focus leaves, then the tooltip is removed', async () => {
+    setup({ disabled: true, disabledReason: 'why' });
+    await userEvent.tab();
+    await userEvent.tab();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('given an enabled marker, when it receives focus, then no tooltip shows', async () => {
+    setup({ disabledReason: 'why' });
+    await userEvent.tab();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+});
+
 describe('Marker drag', () => {
   it('AC-MK1: given a draggable marker, when the pointer moves while captured, then ondrag gets each clamped position and release commits the last once', async () => {
     const { marker, ondrag, oncommit } = setup();

@@ -38,6 +38,9 @@
   }: Props = $props();
 
   const axis = $derived(axisOf(kind));
+  const reasonId = $props.id();
+  let focused = $state(false);
+  const showReason = $derived(disabled && focused && !!disabledReason);
   let dragPosition = $state<number | null>(null);
   let lastPosition: number | null = null;
   const shown = $derived(dragPosition ?? position);
@@ -99,6 +102,9 @@
   aria-valuenow={position}
   aria-disabled={disabled}
   title={disabled ? disabledReason : undefined}
+  aria-describedby={showReason ? reasonId : undefined}
+  onfocus={() => (focused = true)}
+  onblur={() => (focused = false)}
   style="{placement}; {color ? `--marker-colour: ${color}` : ''}"
   {onpointerdown}
   {onpointermove}
@@ -112,6 +118,9 @@
     <span class="tag">...</span>
   {:else if tag}
     <span class="tag">{@render tag()}</span>
+  {/if}
+  {#if showReason}
+    <span class="reason" role="tooltip" id={reasonId}>{disabledReason}</span>
   {/if}
 </div>
 
@@ -210,6 +219,27 @@
     color: var(--marker-colour);
     white-space: nowrap;
     pointer-events: none;
+  }
+
+  .reason {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
+    z-index: var(--ss-z-popover);
+    inline-size: max-content;
+    max-inline-size: 18rem;
+    padding: var(--ss-space-3) var(--ss-space-4);
+    background: var(--ss-color-bg-raised);
+    border: var(--ss-border-width) solid var(--ss-color-border-strong);
+    border-radius: var(--ss-radius-sm);
+    box-shadow: var(--ss-shadow-popover);
+    color: var(--ss-color-text-primary);
+    font: var(--ss-font-size-xs) / 1.3 var(--ss-font-ui);
+    pointer-events: none;
+  }
+
+  .ground .reason {
+    inset-inline: auto 0;
   }
 
   .ground .tag {

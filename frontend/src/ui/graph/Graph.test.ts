@@ -55,6 +55,18 @@ describe('Graph', () => {
     expect(draws).toEqual([]);
   });
 
+  it('given a drawn graph, when a new frame arrives at the same size, then the bitmaps are not reassigned and so not cleared', async () => {
+    stubScreenSize(500, 400);
+    const widthSet = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+    const { renderer, draws } = fakeRenderer();
+    const { rerender } = render(Graph, { summary: 's', frame, createRenderer: () => renderer });
+    await vi.waitFor(() => expect(draws).toHaveLength(1));
+    const assignmentsAfterFirstDraw = widthSet.mock.calls.length;
+    await rerender({ summary: 's', frame: { ...frame, state: 'stopped' } });
+    await vi.waitFor(() => expect(draws).toHaveLength(2));
+    expect(widthSet.mock.calls.length).toBe(assignmentsAfterFirstDraw);
+  });
+
   it('given an unmounted graph, when it is destroyed, then the renderer is disposed', () => {
     const { renderer } = fakeRenderer();
     const { unmount } = render(Graph, { summary: 's', createRenderer: () => renderer });

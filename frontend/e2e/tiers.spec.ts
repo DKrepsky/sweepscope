@@ -162,8 +162,6 @@ test.describe('layout per width tier', () => {
 });
 
 test.describe('scope screen sizing (design 3.3)', () => {
-  // BUG-1: MIN_SCREEN in fit-screen.ts is 512 x 410 px, not 32 x 25.6 rem, so the screen is below its minimum when the text scale is above 100 %.
-  const belowMinimumAbove100 = (scale: TextScale) => scale > 100;
   const sizes: [number, number, TextScale][] = [
     [3840, 2160, 100],
     [2560, 1440, 100],
@@ -181,7 +179,10 @@ test.describe('scope screen sizing (design 3.3)', () => {
     test(`given ${width} x ${height} at ${scale} %, when checked, then the scope screen is 10:8 and at least 32 x 25.6 rem and fully inside the stage`, async ({
       page,
     }) => {
-      test.fail(belowMinimumAbove100(scale), 'BUG-1: minimum screen size is not in rem');
+      test.fail(
+        width === 1280 && height === 900 && scale === 125,
+        'BUG-2: the stage is smaller than the minimum screen',
+      );
       await page.setViewportSize({ width, height });
       await openMain(page, scale);
       await page.waitForTimeout(150);

@@ -2,7 +2,7 @@
   import type { CursorsModel, GraphModel, TriggerModel, ChannelModel } from '../../app/main-window';
   import Badge from '../../ui/badge/Badge.svelte';
   import Graph from '../../ui/graph/Graph.svelte';
-  import { fitScreen } from '../../ui/graph/fit-screen';
+  import { DEFAULT_ROOT_FONT_PX, fitScreen } from '../../ui/graph/fit-screen';
   import Marker from '../../ui/marker/Marker.svelte';
   import CursorOverlay from './CursorOverlay.svelte';
 
@@ -17,13 +17,17 @@
   const { graph, channels, trigger, cursors, dots }: Props = $props();
 
   let stageSize = $state({ width: 0, height: 0 });
+  let rootFontPx = $state(DEFAULT_ROOT_FONT_PX);
   let stage: HTMLElement;
 
-  const screen = $derived(fitScreen(stageSize));
+  const screen = $derived(fitScreen(stageSize, rootFontPx));
   const enabled = $derived(channels.filter((channel) => channel.enabled));
 
   $effect(() => {
-    const measure = (width: number, height: number) => (stageSize = { width, height });
+    const measure = (width: number, height: number) => {
+      rootFontPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || DEFAULT_ROOT_FONT_PX;
+      stageSize = { width, height };
+    };
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
       if (entry) measure(entry.contentRect.width, entry.contentRect.height);

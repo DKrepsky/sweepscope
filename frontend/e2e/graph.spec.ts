@@ -90,10 +90,6 @@ test.describe('graticule redraw', () => {
   test('given the scope screen with its graticule, when the Run button is toggled, then the graticule is still drawn', async ({
     page,
   }) => {
-    test.fail(
-      true,
-      'BUG-6: the Graph clears both canvases on every redraw but redraws the graticule only on a size change',
-    );
     await openMain(page);
     await page.waitForTimeout(300);
     const gridPixels = () =>
@@ -111,7 +107,6 @@ test.describe('graticule redraw', () => {
   });
 
   test('given the gallery graphs, when loaded, then every graph shows its graticule', async ({ page }) => {
-    test.fail(true, 'BUG-6: the gallery graticule layers are blank after the first redraw');
     await openGallery(page);
     await page.waitForTimeout(300);
     const blank = await page.evaluate(
@@ -183,7 +178,6 @@ test.describe('graph semantics', () => {
   test('given a disabled Marker, when it receives keyboard focus, then the reason shows in a Tooltip', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-7: the Marker reason is a native title attribute, which keyboard focus never shows');
     await openGallery(page);
     const marker = page.locator('[data-component="Marker"]').getByRole('slider', { name: /disabled/ });
     await marker.focus();

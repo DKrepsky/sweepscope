@@ -63,12 +63,17 @@
 
   $effect(() => watchDevicePixelRatio(window, (next) => (ratio = next)));
 
+  /** Assigning width or height clears a canvas even for the same value, which would erase the cached graticule. */
+  function resizeBitmap(canvas: HTMLCanvasElement, css: { width: number; height: number }, scale: number) {
+    const width = deviceExtent(css.width, scale);
+    const height = deviceExtent(css.height, scale);
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+  }
+
   $effect(() => {
     if (!renderer || box.width === 0 || box.height === 0) return;
-    for (const canvas of [graticuleCanvas, tracesCanvas]) {
-      canvas.width = deviceExtent(box.width, ratio);
-      canvas.height = deviceExtent(box.height, ratio);
-    }
+    for (const canvas of [graticuleCanvas, tracesCanvas]) resizeBitmap(canvas, box, ratio);
     renderer.draw({ ...frame, dots: dots || frame.dots }, { ...box, ratio });
   });
 </script>
