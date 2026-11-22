@@ -92,7 +92,7 @@ test('given it.todo with a good title, when check-test-names runs, then it passe
 });
 
 test('given a Playwright test.fail annotation inside a test, when check-test-names runs, then it is not a declaration', () => {
-  const text = "test('given a, when b, then c', async () => {\n  test.fail(true, 'BUG-3: reason');\n  test.fail('BUG-4');\n});";
+  const text = "test('given a, when b, then c', async () => {\n  test.fail(true, 'BUG-3: reason');\n  test.fail('BUG-4: other');\n});";
 
   assert.deepEqual(titlesOf(text), []);
 });
@@ -119,4 +119,28 @@ test('given a bad title in frontend e2e, when check-test-names scans a tree, the
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("given test.fail with a description that has no BUG number, when check-test-names runs, then it fails", () => {
+  const failures = checkTypeScriptSource('a.spec.ts', "test('given a, when b, then c', async () => {\n  test.fail(true, 'flaky');\n});");
+
+  assert.deepEqual(failures.map((f) => [f.name, f.line]), [['flaky', 2]]);
+});
+
+test('given test.fail with a single description without the BUG prefix, when check-test-names runs, then it fails', () => {
+  const failures = checkTypeScriptSource('a.spec.ts', "test.fail('BUG-4 no colon');");
+
+  assert.deepEqual(failures.map((f) => f.name), ['BUG-4 no colon']);
+});
+
+test('given test.fail with a BUG description over several lines, when check-test-names runs, then it passes', () => {
+  const text = "test.fail(\n  width === 1,\n  'BUG-2: the stage is small',\n);";
+
+  assert.deepEqual(checkTypeScriptSource('a.spec.ts', text), []);
+});
+
+test('given test.fail declaring a test with a body, when check-test-names runs, then its description rule does not apply', () => {
+  const text = "test.fail('given a, when b, then c', async ({ page }) => {});";
+
+  assert.deepEqual(checkTypeScriptSource('a.spec.ts', text), []);
 });

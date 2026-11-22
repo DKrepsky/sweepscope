@@ -22,7 +22,7 @@ concurrency:
 jobs:
   rust:
     name: Rust (all crates except the shell)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,7 +58,7 @@ jobs:
 
   shell:
     name: Shell (src-tauri)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,7 +96,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,7 +134,7 @@ jobs:
 
   architecture:
     name: Architecture and repository checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -171,7 +171,7 @@ jobs:
 
   browser:
     name: Browser tests (Chromium and WebKit)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -192,9 +192,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
 
+      # Runs on every run, also on a cache hit: the system libraries (--with-deps) are not part of the cache.
       - name: Install browsers
-        working-directory: frontend
-        run: npx playwright install --with-deps chromium webkit
+        run: npm --prefix frontend exec -- playwright install --with-deps chromium webkit
 
       - name: Run Playwright
         run: npm --prefix frontend run test:e2e
@@ -212,7 +212,7 @@ jobs:
   bundle:
     name: Bundle (manual)
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

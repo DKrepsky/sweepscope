@@ -17,6 +17,11 @@ const PLAYWRIGHT_ANNOTATIONS = new Set(['skip', 'fixme', 'fail']);
 const BODY_START = /^\s*,\s*(?:async\b|function\b|\(|\{|\w+\s*=>)/;
 const STRING_LITERAL = /^(['"`])((?:\\.|(?!\1)[^\\])*)\1/;
 
+const BUG_DESCRIPTION = /^BUG-\d+: /;
+const BUG_SHAPE = 'BUG-<n>: <reason>';
+const FAIL_CALL = /(?:^|[^\w.])test\.fail\s*(?=\()/g;
+const TRAILING_STRING = /(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*,?\s*$/;
+
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
 export function checkRustSource(path, text) {
@@ -64,10 +69,29 @@ function declaredTitles(text) {
   return titles;
 }
 
+/** Descriptions of `test.fail(...)` annotations (the last string argument); declarations with a body are titles, not descriptions. */
+function failDescriptions(text) {
+  const found = [];
+  for (const call of text.matchAll(FAIL_CALL)) {
+    const open = call.index + call[0].length;
+    const close = skipBalanced(text, open);
+    if (close < 0) continue;
+    const args = text.slice(open + 1, close - 1);
+    const description = TRAILING_STRING.exec(args);
+    const isDeclaration = /^\s*(['"`])(?:\\.|(?!\1)[^\\])*\1\s*,\s*(?:async\b|function\b|\(|\{|\w+\s*=>)/.test(args);
+    if (description && !isDeclaration) found.push({ index: call.index, description: description[2] });
+  }
+  return found;
+}
+
 export function checkTypeScriptSource(path, text) {
-  return declaredTitles(text)
+  const badTitles = declaredTitles(text)
     .filter(({ title }) => !TS_TITLE.test(title.replace(/,/g, '')))
     .map(({ index, title }) => ({ path, line: lineOf(text, index + 1), name: title, expected: TS_SHAPE }));
+  const badDescriptions = failDescriptions(text)
+    .filter(({ description }) => !BUG_DESCRIPTION.test(description))
+    .map(({ index, description }) => ({ path, line: lineOf(text, index + 1), name: description, expected: BUG_SHAPE }));
+  return [...badTitles, ...badDescriptions];
 }
 
 function* walk(directory) {
