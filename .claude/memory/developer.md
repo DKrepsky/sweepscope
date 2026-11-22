@@ -186,3 +186,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
 - Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
 - `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
+## M1 WP4 Hantek adapter (developer-4)
+- Driver 0.2.0 mock: `Scope::new(MockTransport)` scripted like the driver's `tests/scope_mock.rs` (control_in for 0xA2/0x1580, 0x1600 with `CAL_FLAG`, 0x1B00, 0xE3/0x15F0 BCD; `push_bulk_in` reset reply; `on_bulk_in` keyed on the last `BulkOut`). Default driver `Config` has 4 channels on, so the adapter itself must refuse capture before `configure`. `CMD_STOP` = `[3,0,4,0]`; position byte 0 is about -4.016 div (test clamps with -4.1).
+- Hardware test names must still be given_/when_/then_ (name check); human filters them with `hardware`.
+- Bash tool refuses commands with `cat >>` into `.claude/memory`; use the Edit tool for memory.
