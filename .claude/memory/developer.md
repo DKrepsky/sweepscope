@@ -166,3 +166,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Time-base indexes: 0 = 2 ns, 15 = 200 us, 24 = 200 ms, 25 = 500 ms (streaming); range 8 = 1 V. Count 1-2-5 steps before hard-coding an index in tests.
 - Capture model: cycle = `frame_cycle(wait for edge + record)`, slept in <= 20 ms slices that check the unplug flag; Normal sweep with no edge in time sleeps exactly `timeout` then `Timeout`. Edge search is capped at two signal periods (the waveform repeats).
 - Integration tests share `tests/common/mod.rs` (`rig()`, `setup()`); `FakeClock` is in `sweepscope_kernel::testing` (public, not feature gated).
+
+## M1 WP11 step 1 and bug #40 (developer-6)
+- Worktree agents: bus and `docs/specs` of the feature branch live under the main checkout path (`.claude/bus/` is gitignored, read inbox files there); a fresh worktree has no `node_modules` (use `cp -al <main>/frontend/node_modules`, a symlink breaks vitest fs allow; delete it afterwards).
+- Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
+- Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
+- `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
