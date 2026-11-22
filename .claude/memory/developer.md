@@ -153,3 +153,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Settings button is a sticky direct child of the toolbar (`.pinned`) so horizontal scroll never hides it.
 - Text-scale: `persist` applies the scale then saves, resolves 'saved'|'not-saved'; `app/notifications` replaced `app/notice` (two newest, newest first).
 - Calibration method: measure toolbar + status + (content scrollHeight - stage height) + 445.6 px at a window inside each tier's range; then sweep heights 45..62 rem at both widths in chromium and webkit. Playwright library scripts need absolute import of node_modules/@playwright/test/index.mjs from the scratchpad.
+- CI: actionlint via checksummed release in ci.yml; cargo-deny wildcard errors fixed by workspace publish=false (path deps in public crates). cargo-deny installable with cargo install --locked --root scratchpad. A duplicate PR run can be cancelled by concurrency; check gh run list.
+
+## Simulator pure parts (WP3.2, developer-2)
+- Verify modules before the crate exists: scratch crate in the scratchpad whose lib.rs pulls the files with `#[path = "<abs>"] pub mod x;` nested in `pub mod simulator` (so `crate::simulator::...` imports work); run rustfmt on the real files with the repo config.
+- `edge::Direction` is local (no WP3.1 `Slope` dependency); WP3.3 maps Slope to Direction. Roll `stride` = ADC channel count (1, 2, 4, 4).
