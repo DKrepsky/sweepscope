@@ -186,3 +186,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
 - Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
 - `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
+
+## WP9 frontend client (M1)
+- A fresh worktree has no `frontend/node_modules`: run `npm ci --prefer-offline` there (a symlink to another checkout breaks vite's fs allow list). The Bash tool refuses long heredoc chains in worktrees: use Write/Edit for files, short separate commands otherwise.
+- `commands.ts` is hand-extended (commands, `EVENTS`, `STREAMS`) until WP8 regenerates it; `tauriCommandNames`/`tauriStreamCommands` are exhaustive Records tested against the lists. `TauriTransport.openChannel(command, onMessage)` wraps `Channel` (messages may be ArrayBuffer or number[]).
+- `app/instrument`: one `createSlice` owns the revision rule; selectors are pure functions of slice values (`isAcquiring(conn, instr)`, `graphState(conn, instr, hasFrame)`, `statusChips`, `connectionChip`); `test-data.ts` has slice builders for tests.

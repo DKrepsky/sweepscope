@@ -1,6 +1,16 @@
-export type { BackendClient } from './backend-client';
+export type { BackendClient, StreamHandle } from './backend-client';
 export type { UiStateEntry } from './generated/UiStateEntry';
 export type { KernelError } from './generated/KernelError';
+export type { StreamKind } from './generated/commands';
+export type { AcquisitionStatus } from './generated/AcquisitionStatus';
+export type { ChannelPatch } from './generated/ChannelPatch';
+export type { ConnectionSnapshot } from './generated/ConnectionSnapshot';
+export type { InstrumentFacts } from './generated/InstrumentFacts';
+export type { InstrumentState } from './generated/InstrumentState';
+export type { SettingTarget } from './generated/SettingTarget';
+export type { StateSnapshot } from './generated/StateSnapshot';
+export type { TriggerPatch } from './generated/TriggerPatch';
+export type { Phase } from './generated/Phase';
 export { createTauriClient } from './tauri-client';
 export { createFakeClient } from './fake-client';
 export type { FakeClient } from './fake-client';
