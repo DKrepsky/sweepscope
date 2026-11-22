@@ -254,3 +254,37 @@ fn given_a_trigger_source_on_a_disabled_channel_when_configured_then_it_is_an_in
         Err(DeviceError::InvalidSetting(_))
     ));
 }
+
+#[test]
+fn given_a_non_finite_channel_position_when_configured_then_it_is_an_invalid_setting() {
+    let mut rig = rig();
+    let mut config = setup(ALL, TB_200US);
+    config.channels[0].position_divs = f64::NAN;
+
+    assert!(matches!(
+        rig.device.configure(&config),
+        Err(DeviceError::InvalidSetting(_))
+    ));
+}
+
+#[test]
+fn given_a_non_finite_trigger_level_when_configured_then_it_is_an_invalid_setting() {
+    let mut rig = rig();
+    let mut config = setup(ALL, TB_200US);
+    config.trigger.level_volts = f64::INFINITY;
+
+    assert!(matches!(
+        rig.device.configure(&config),
+        Err(DeviceError::InvalidSetting(_))
+    ));
+}
+
+#[test]
+fn given_auto_sweep_and_a_timeout_shorter_than_the_cycle_when_captured_then_the_capture_still_completes() {
+    let mut rig = rig();
+    configured(&mut rig, &setup(ALL, TB_200US));
+
+    let frame = rig.device.capture(Duration::from_millis(1));
+
+    assert!(frame.is_ok());
+}

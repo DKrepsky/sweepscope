@@ -27,6 +27,7 @@ pub struct SimulatedDevice {
     clock: Arc<dyn Clock>,
     control: SimulatorControl,
     epoch: Instant,
+    generation: u64,
     identity: DeviceIdentity,
     capabilities: Capabilities,
     plan: Option<Plan>,
@@ -37,6 +38,7 @@ impl SimulatedDevice {
     pub fn new(clock: Arc<dyn Clock>, control: SimulatorControl) -> Self {
         Self {
             epoch: clock.now(),
+            generation: control.generation(),
             clock,
             control,
             identity: profile::identity(),
@@ -47,7 +49,7 @@ impl SimulatedDevice {
     }
 
     fn ensure_connected(&self) -> Result<(), DeviceError> {
-        if self.control.is_plugged() {
+        if self.control.is_reachable(self.generation) {
             Ok(())
         } else {
             Err(DeviceError::Disconnected)
@@ -91,6 +93,9 @@ impl SimulatedDevice {
             .any(|channel| channel.enabled && usize::from(channel.range_index) >= range_count)
         {
             return invalid("range index is outside the table");
+        }
+        if !setup.trigger.level_volts.is_finite() || setup.channels.iter().any(|c| !c.position_divs.is_finite()) {
+            return invalid("position and trigger level must be finite numbers");
         }
         let source = setup.trigger.source;
         if !setup

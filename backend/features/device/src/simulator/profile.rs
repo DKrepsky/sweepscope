@@ -4,6 +4,8 @@ use crate::{CalibrationStatus, Capabilities, DeviceIdentity, TimeBaseStep, Verti
 
 pub const RECORD_LEN: u32 = 4096;
 const STREAMING_FROM_INDEX: usize = 25;
+/// PRD 5.1: time bases measured on the instrument.
+const VERIFIED_TIME_BASES: [std::ops::RangeInclusive<usize>; 4] = [0..=22, 24..=25, 27..=27, 30..=30];
 const VERIFIED_RANGES: std::ops::RangeInclusive<usize> = 4..=8;
 const ZERO_VOLTS_CODE: f64 = 128.0;
 
@@ -41,7 +43,7 @@ fn time_bases() -> Vec<TimeBaseStep> {
         .map(|(index, (exponent, mantissa))| TimeBaseStep {
             seconds_per_div: scaled(mantissa, exponent),
             streaming: index >= STREAMING_FROM_INDEX,
-            verified: true,
+            verified: VERIFIED_TIME_BASES.iter().any(|verified| verified.contains(&index)),
         })
         .collect()
 }
@@ -125,6 +127,20 @@ mod tests {
         assert!(bases[25].streaming);
         assert!(!bases[24].streaming);
         assert_eq!(bases[24].seconds_per_div, 0.2);
+    }
+
+    #[test]
+    fn given_the_time_bases_when_read_then_only_the_prd_measured_indexes_are_verified() {
+        let verified: Vec<usize> = capabilities()
+            .time_bases
+            .iter()
+            .enumerate()
+            .filter(|(_, step)| step.verified)
+            .map(|(index, _)| index)
+            .collect();
+
+        let expected: Vec<usize> = (0..=22).chain([24, 25, 27, 30]).collect();
+        assert_eq!(verified, expected);
     }
 
     #[test]

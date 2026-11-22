@@ -76,11 +76,21 @@ mod tests {
     fn given_a_catalog_when_the_simulator_is_unplugged_and_plugged_in_then_it_emits_detached_then_attached() {
         let (catalog, control) = catalog();
         let events = catalog.events();
+        events.try_recv().unwrap();
 
         control.unplug();
         control.plug_in();
 
         assert_eq!(events.try_recv(), Ok(CatalogEvent::Detached(device_id())));
+        assert_eq!(events.try_recv(), Ok(CatalogEvent::Attached(device_id())));
+    }
+
+    #[test]
+    fn given_an_already_attached_simulator_when_events_are_subscribed_then_attached_comes_first() {
+        let (catalog, _) = catalog();
+
+        let events = catalog.events();
+
         assert_eq!(events.try_recv(), Ok(CatalogEvent::Attached(device_id())));
     }
 }

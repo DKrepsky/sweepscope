@@ -14,6 +14,8 @@ pub fn device_id() -> DeviceId {
 
 struct State {
     plugged: bool,
+    /// Counts unplugs; a device opened in an earlier generation stays disconnected.
+    generation: u64,
     overrun_pending: bool,
     signals: [SignalKind; 4],
 }
@@ -42,6 +44,7 @@ impl SimulatorControl {
             shared: Arc::new(Shared {
                 state: Mutex::new(State {
                     plugged: true,
+                    generation: 0,
                     overrun_pending: false,
                     signals: [SignalKind::Sine; 4],
                 }),
@@ -79,6 +82,16 @@ impl SimulatorControl {
         self.state().plugged
     }
 
+    pub(super) fn generation(&self) -> u64 {
+        self.state().generation
+    }
+
+    /// True while the instrument is plugged in and has not been re-enumerated since `generation`.
+    pub(super) fn is_reachable(&self, generation: u64) -> bool {
+        let state = self.state();
+        state.plugged && state.generation == generation
+    }
+
     pub(super) fn take_overrun(&self) -> bool {
         std::mem::take(&mut self.state().overrun_pending)
     }
@@ -89,6 +102,9 @@ impl SimulatorControl {
 
     pub(super) fn subscribe(&self) -> Receiver<CatalogEvent> {
         let (sender, receiver) = channel();
+        if self.is_plugged() {
+            let _ = sender.send(CatalogEvent::Attached(device_id()));
+        }
         self.listeners().push(sender);
         receiver
     }
@@ -98,6 +114,9 @@ impl SimulatorControl {
         let mut state = self.state();
         let changed = state.plugged != plugged;
         state.plugged = plugged;
+        if changed && !plugged {
+            state.generation += 1;
+        }
         changed
     }
 
@@ -128,6 +147,7 @@ mod tests {
     fn given_a_plugged_simulator_when_unplugged_then_it_reports_unplugged_and_emits_detached_once() {
         let control = SimulatorControl::new();
         let events = control.subscribe();
+        events.try_recv().unwrap();
 
         control.unplug();
         control.unplug();
@@ -142,6 +162,7 @@ mod tests {
         let control = SimulatorControl::new();
         control.unplug();
         let events = control.subscribe();
+        assert!(events.try_recv().is_err());
 
         control.plug_in();
 
@@ -173,9 +194,31 @@ mod tests {
         let control = SimulatorControl::new();
         drop(control.subscribe());
         let alive = control.subscribe();
+        alive.try_recv().unwrap();
 
         control.unplug();
 
         assert_eq!(alive.try_recv(), Ok(CatalogEvent::Detached(device_id())));
+    }
+
+    #[test]
+    fn given_a_plugged_simulator_when_subscribed_then_attached_is_sent_first() {
+        let control = SimulatorControl::new();
+
+        let events = control.subscribe();
+
+        assert_eq!(events.try_recv(), Ok(CatalogEvent::Attached(device_id())));
+    }
+
+    #[test]
+    fn given_an_unplug_and_plug_in_when_reachability_is_asked_then_only_the_new_generation_is_reachable() {
+        let control = SimulatorControl::new();
+        let old = control.generation();
+
+        control.unplug();
+        control.plug_in();
+
+        assert!(!control.is_reachable(old));
+        assert!(control.is_reachable(control.generation()));
     }
 }

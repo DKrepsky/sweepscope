@@ -6,17 +6,19 @@
 //! - Signals are fixed 1 kHz waveforms plus small seeded noise; coupling and bandwidth limit have no effect.
 //! - Only edge triggers exist, evaluated on the clean waveform of the source channel.
 //! - Frames are exactly 4096 samples per channel, and the device never reports a calibration fault.
-//! - A catalog subscriber is told about changes only; it is not sent an event for the device that is already attached.
-
-pub mod edge;
-pub mod signal;
-pub mod timing;
+//! - A new catalog subscriber is first sent `Attached` for the device if it is plugged in, then every change.
+//! - After `unplug()` a device handle stays `Disconnected` even after `plug_in()`: open it again, as after re-enumeration.
+//! - `Auto` sweep ignores the capture timeout (the cycle always completes); only `Normal` sweep returns `Timeout`.
 
 mod catalog;
 mod control;
 mod device;
+mod edge;
 mod profile;
+mod signal;
+mod timing;
 
 pub use catalog::SimulatedCatalog;
 pub use control::{device_id, SimulatorControl};
 pub use device::SimulatedDevice;
+pub use signal::SignalKind;

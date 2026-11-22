@@ -16,6 +16,8 @@ pub const REARM: Duration = Duration::from_millis(5);
 pub const ROLL_BUFFER_BYTES: f64 = 65_536.0;
 pub const ROLL_OVERRUN_FRACTION: f64 = 0.95;
 
+/// Reference formula that the tests hold `Capabilities::sample_interval_s` against.
+#[cfg(test)]
 /// Seconds between samples: `max(adc interval, seconds per div / samples per div)`.
 pub fn sample_interval(adc_interval_ns: f64, seconds_per_div: f64, samples_per_div: f64) -> f64 {
     (adc_interval_ns * 1e-9).max(seconds_per_div / samples_per_div)

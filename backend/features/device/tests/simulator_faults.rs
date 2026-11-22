@@ -1,5 +1,6 @@
 mod common;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -7,7 +8,8 @@ use common::*;
 use sweepscope_device::{
     CatalogEvent, DeviceCatalog, DeviceError, DeviceId, ScopeDevice, SimulatedDevice, SimulatorControl, Sweep,
 };
-use sweepscope_kernel::SystemClock;
+use sweepscope_kernel::testing::FakeClock;
+use sweepscope_kernel::Clock;
 
 fn unplugged_rig() -> Rig {
     let mut rig = rig();
@@ -53,20 +55,12 @@ fn given_an_unplugged_simulator_when_start_roll_or_stop_is_called_then_it_is_dis
 }
 
 #[test]
-fn given_a_simulator_unplugged_and_plugged_in_when_a_device_call_is_made_then_it_works_again() {
-    let mut rig = unplugged_rig();
-
-    rig.control.plug_in();
-
-    assert!(rig.device.configure(&setup([true; 4], TB_200US)).is_ok());
-}
-
-#[test]
 fn given_a_catalog_when_unplugged_and_plugged_in_then_detached_and_attached_are_emitted_and_open_follows_the_state() {
     let rig = rig();
     let catalog = catalog(&rig.clock, &rig.control);
     let events = catalog.events();
-    let id = sweepscope_device::simulator::device_id();
+    let id = sweepscope_device::device_id();
+    assert_eq!(events.try_recv(), Ok(CatalogEvent::Attached(id.clone())));
 
     rig.control.unplug();
     let while_unplugged = catalog.open(&id).err();
@@ -88,31 +82,61 @@ fn given_an_unknown_device_id_when_opened_then_not_found() {
     assert_eq!(result.err(), Some(DeviceError::NotFound));
 }
 
+/// Clock that unplugs the simulator during its Nth sleep, then counts any later sleeps.
+struct UnplugDuringSleep {
+    inner: FakeClock,
+    control: SimulatorControl,
+    unplug_on: usize,
+    sleeps: AtomicUsize,
+}
+
+impl Clock for UnplugDuringSleep {
+    fn now(&self) -> Instant {
+        self.inner.now()
+    }
+
+    fn sleep(&self, duration: Duration) {
+        self.inner.sleep(duration);
+        if self.sleeps.fetch_add(1, Ordering::SeqCst) + 1 == self.unplug_on {
+            self.control.unplug();
+        }
+    }
+}
+
 #[test]
-fn given_a_capture_waiting_for_a_trigger_when_unplugged_from_another_thread_then_it_returns_disconnected_within_a_poll()
-{
+fn given_a_capture_waiting_for_a_trigger_when_unplugged_during_a_wait_slice_then_it_returns_disconnected_without_sleeping_again(
+) {
     let control = SimulatorControl::new();
-    let mut device = SimulatedDevice::new(Arc::new(SystemClock), control.clone());
+    let clock = Arc::new(UnplugDuringSleep {
+        inner: FakeClock::default(),
+        control: control.clone(),
+        unplug_on: 3,
+        sleeps: AtomicUsize::new(0),
+    });
+    let mut device = SimulatedDevice::new(clock.clone(), control);
     let mut config = setup([true; 4], TB_200US);
     config.trigger.sweep = Sweep::Normal;
     config.trigger.level_volts = 3.0;
     device.configure(&config).unwrap();
-    let unplugger = {
-        let control = control.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(50));
-            control.unplug();
-        })
-    };
-    let started = Instant::now();
 
     let result = device.capture(Duration::from_secs(30));
 
-    unplugger.join().unwrap();
     assert_eq!(result.err(), Some(DeviceError::Disconnected));
-    assert!(
-        started.elapsed() < Duration::from_millis(50 + 20 + 200),
-        "{:?}",
-        started.elapsed()
+    assert_eq!(clock.sleeps.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn given_an_opened_device_when_the_simulator_is_unplugged_and_plugged_in_then_the_old_handle_stays_disconnected() {
+    let mut rig = rig();
+    let catalog = catalog(&rig.clock, &rig.control);
+
+    rig.control.unplug();
+    rig.control.plug_in();
+
+    assert_eq!(
+        rig.device.configure(&setup([true; 4], TB_200US)),
+        Err(DeviceError::Disconnected)
     );
+    let mut reopened = catalog.open(&sweepscope_device::device_id()).unwrap();
+    assert!(reopened.configure(&setup([true; 4], TB_200US)).is_ok());
 }
