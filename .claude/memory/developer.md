@@ -181,3 +181,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - check-test-names rejects a `BUG-n:` prefix on `it(...)` titles (must start with `given`); `AC-MK1:`-style prefixes pass only where already present.
 - Marker: `aria-valuenow` = `dragPosition ?? keyPosition ?? position`; key nudges step from the shown value and the override clears when the `position` prop changes or on blur. Worktree needs `npm ci` in `frontend/` first.
 - Worktree-isolated shells refuse compound commands that `cd` out or compute paths: keep commands plain and run from the worktree.
+## M1 WP11 step 1 and bug #40 (developer-6)
+- Worktree agents: bus and `docs/specs` of the feature branch live under the main checkout path (`.claude/bus/` is gitignored, read inbox files there); a fresh worktree has no `node_modules` (use `cp -al <main>/frontend/node_modules`, a symlink breaks vitest fs allow; delete it afterwards).
+- Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
+- Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
+- `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.

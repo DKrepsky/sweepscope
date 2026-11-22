@@ -25,9 +25,64 @@ describe('createMockMainWindow', () => {
   it('given the mock, when read, then there are four channels and every trace value lies within the 8 divisions', () => {
     const model = get(createMockMainWindow());
 
-    const values = model.graph.channels.flatMap((c) => c.samples);
+    const values = model.graph.channels.flatMap((c) => Array.from(c.samples));
     expect(model.channels).toHaveLength(4);
     expect(Math.min(...values)).toBeGreaterThanOrEqual(0);
     expect(Math.max(...values)).toBeLessThanOrEqual(8);
+  });
+
+  it('given the mock, when read, then every stepped setting reports step availability and the connection is not simulated', () => {
+    const model = get(createMockMainWindow());
+
+    expect(model.horizontal.timePerDiv.step.faster.enabled).toBe(true);
+    expect(model.channels.every((channel) => channel.voltsPerDiv.step.slower.enabled)).toBe(true);
+    expect(model.status.connection.simulated).toBe(false);
+    expect(model.banners).toEqual([]);
+  });
+
+  it('given channel 4 off, when it is enabled, then only that channel changes', () => {
+    const mock = createMockMainWindow();
+
+    mock.setChannelEnabled(4, true);
+
+    expect(get(mock).channels.map((channel) => channel.enabled)).toEqual([true, true, true, true]);
+  });
+
+  it('given channel 2, when it is selected, then it is the only selected channel and the graph follows', () => {
+    const mock = createMockMainWindow();
+
+    mock.selectChannel(2);
+
+    const model = get(mock);
+    expect(model.channels.filter((channel) => channel.selected).map((channel) => channel.number)).toEqual([2]);
+    expect(model.graph.selected).toBe(2);
+  });
+
+  it('given channel 1 at probe 1x, when the probe is cycled three times, then it is back at 1x', () => {
+    const mock = createMockMainWindow();
+
+    mock.cycleProbe(1);
+    expect(get(mock).channels[0]?.probe).toBe('10×');
+    mock.cycleProbe(1);
+    mock.cycleProbe(1);
+
+    expect(get(mock).channels[0]?.probe).toBe('1×');
+  });
+
+  it('given the mock, when coupling, bandwidth, invert and trigger choices are made, then the model shows them', () => {
+    const mock = createMockMainWindow();
+
+    mock.setCoupling(1, 'ac');
+    mock.toggleBandwidth(1);
+    mock.toggleInvert(1);
+    mock.setTriggerSource(3);
+    mock.setTriggerSlope('falling');
+    mock.setTriggerSweep('normal');
+    mock.setInterpolation('dots');
+
+    const model = get(mock);
+    expect(model.channels[0]).toMatchObject({ coupling: 'ac', bandwidthLimit: true, inverted: true });
+    expect(model.trigger).toMatchObject({ source: 3, slope: 'falling', sweep: 'normal' });
+    expect(model.horizontal.interpolation).toBe('dots');
   });
 });

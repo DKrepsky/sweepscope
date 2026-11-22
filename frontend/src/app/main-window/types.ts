@@ -7,6 +7,17 @@ export interface Quantity {
   unit: string;
 }
 
+/** Whether a control can be used now; `reason` is shown as its tooltip when it cannot. */
+export interface Availability {
+  enabled: boolean;
+  reason?: string;
+}
+
+/** A stepped setting (volts or time per division): the value plus whether each direction can still be stepped. */
+export interface ScaleQuantity extends Quantity {
+  step: { faster: Availability; slower: Availability };
+}
+
 export type ChipKind = 'run' | 'stop' | 'armed' | 'triggered' | 'auto' | 'disconnected' | 'error' | 'offline';
 
 export interface ChipModel {
@@ -26,15 +37,19 @@ export interface ToolbarModel {
   persistence: string;
   view: ViewTab;
   tools: { cursors: boolean; math: boolean; reference: boolean };
+  /** Run and Stop. */
+  availability?: Availability;
+  force?: Availability;
 }
 
 export type Interpolation = 'sinc' | 'linear' | 'dots';
 
 export interface HorizontalModel {
-  timePerDiv: Quantity;
+  timePerDiv: ScaleQuantity;
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;
+  availability?: Availability;
   /** Effective sample rate line of the Horizontal group. */
   rateNote: string;
   overview: { windowStart: number; windowSize: number; triggerTick: number; summary: string };
@@ -44,7 +59,7 @@ export interface ChannelModel {
   number: ChannelNumber;
   enabled: boolean;
   selected: boolean;
-  voltsPerDiv: Quantity;
+  voltsPerDiv: ScaleQuantity;
   position: Quantity;
   coupling: 'ac' | 'dc';
   bandwidthLimit: boolean;
@@ -55,6 +70,7 @@ export interface ChannelModel {
   /** Ground marker, 0 (bottom) to 1 (top) of the screen. */
   groundPosition: number;
   enableReason?: string;
+  availability?: Availability;
 }
 
 export interface TriggerModel {
@@ -70,6 +86,7 @@ export interface TriggerModel {
   levelTag: string;
   positionTag: string;
   accuracyNote: string;
+  availability?: Availability;
 }
 
 export interface CursorValue {
@@ -106,7 +123,7 @@ export interface MeasurementsModel {
 }
 
 export interface StatusModel {
-  connection: { state: string; detail: string; tooltip: string };
+  connection: { state: string; detail: string; tooltip: string; simulated: boolean };
   sampleRate: { value: string; tooltip: string };
   record: { points: string; span: string };
   capture: { rate: string; deadTime: string; tooltip: string };
@@ -116,16 +133,24 @@ export interface StatusModel {
 
 export interface GraphModel {
   state: 'live' | 'frozen' | 'empty';
-  channels: { channel: ChannelNumber; samples: number[] }[];
+  channels: { channel: ChannelNumber; samples: ArrayLike<number> }[];
   selected: ChannelNumber;
   /** Values are divisions from the top edge (0 to 8). */
   summary: string;
+}
+
+export type BannerActionId = 'copy-command' | 'retry' | 'use-simulator';
+
+export interface BannerAction {
+  id: BannerActionId;
+  label: string;
 }
 
 export interface BannerModel {
   id: string;
   kind: 'info' | 'warning' | 'error';
   text: string;
+  actions: BannerAction[];
 }
 
 export interface MainWindowModel {

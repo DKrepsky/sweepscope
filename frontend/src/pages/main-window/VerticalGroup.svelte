@@ -26,7 +26,19 @@
       <Segmented value={shown} options={tabOptions} onchange={(id) => (chosen = id)} ariaLabel="Channel tabs" />
     {/if}
   {/snippet}
-  {#each visible as channel (channel.number)}
-    <ChannelRow {channel} />
-  {/each}
+  <div class="rows">
+    {#each visible as channel (channel.number)}
+      <ChannelRow {channel} />
+    {/each}
+  </div>
 </DockGroup>
+
+<style>
+  /* Seven control columns that never grow past their content, a badge column that takes the rest. */
+  .rows {
+    display: grid;
+    grid-template-columns: repeat(7, auto) minmax(0, 1fr);
+    justify-content: start;
+    column-gap: var(--ss-space-3);
+  }
+</style>

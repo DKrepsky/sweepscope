@@ -1,14 +1,13 @@
 import { writable, type Readable } from 'svelte/store';
-import { mockChannels, mockGraph, mockMeasurements } from './mock-model';
-import type { ChipModel, MainWindowModel } from './types';
+import type { MainWindowActions } from './actions';
+import { mockChannels, mockGraph, mockMeasurements, scale } from './mock-model';
+import type { ChannelModel, ChannelNumber, ChipModel, MainWindowModel } from './types';
 
 /**
- * MOCK ONLY: stands in for the backend-fed view model during the scaffold. `toggleRun` flips a local flag so the shell
- * can be demonstrated; it is removed when the real backend arrives.
+ * MOCK ONLY: stands in for the backend-fed view model in the gallery and tests. Toggles and choices change local state so the
+ * shell can be demonstrated; steps, resets and drags do nothing.
  */
-export interface MockMainWindow extends Readable<MainWindowModel> {
-  toggleRun(): void;
-}
+export interface MockMainWindow extends Readable<MainWindowModel>, MainWindowActions {}
 
 const runningChips: ChipModel[] = [
   { id: 'state', kind: 'run', text: 'Run' },
@@ -33,7 +32,7 @@ const toolbar = (): MainWindowModel['toolbar'] => ({
 });
 
 const horizontal = (): MainWindowModel['horizontal'] => ({
-  timePerDiv: { value: '200', unit: 'µs/div' },
+  timePerDiv: scale('200', 'µs/div'),
   triggerPosition: { value: '30', unit: '%' },
   window: '10.0 of 16.4 div',
   interpolation: 'sinc',
@@ -87,6 +86,7 @@ const status = (): MainWindowModel['status'] => ({
     state: 'Ready',
     detail: 'Hantek 6254BC · FW · FPGA · Cal (placeholders)',
     tooltip: 'Device state machine: disconnected, settling, ready, acquiring, error',
+    simulated: false,
   },
   sampleRate: { value: '1.25 MS/s', tooltip: 'Effective sample rate for this time base and channel count' },
   record: { points: '4 096 pts/ch', span: '16.4 div' },
@@ -119,10 +119,57 @@ function withRunning(model: MainWindowModel, running: boolean): MainWindowModel 
   };
 }
 
+const probes = ['1×', '10×', '100×'];
+
+const nextProbe = (probe: string) => probes[(probes.indexOf(probe) + 1) % probes.length] ?? probes[0]!;
+
+const withChannel = (
+  model: MainWindowModel,
+  number: ChannelNumber,
+  change: (channel: ChannelModel) => Partial<ChannelModel>,
+): MainWindowModel => ({
+  ...model,
+  channels: model.channels.map((channel) => (channel.number === number ? { ...channel, ...change(channel) } : channel)),
+});
+
+const withSelected = (model: MainWindowModel, number: ChannelNumber): MainWindowModel => ({
+  ...model,
+  channels: model.channels.map((channel) => ({ ...channel, selected: channel.number === number })),
+  graph: { ...model.graph, selected: number },
+});
+
 export function createMockMainWindow(): MockMainWindow {
   const model = writable<MainWindowModel>(initialModel());
+  const change = (update: (current: MainWindowModel) => MainWindowModel) => model.update(update);
+  const nothing = () => {};
   return {
     subscribe: model.subscribe,
-    toggleRun: () => model.update((current) => withRunning(current, !current.toolbar.running)),
+    toggleRun: () => change((current) => withRunning(current, !current.toolbar.running)),
+    forceTrigger: nothing,
+    setChannelEnabled: (n, on) => change((current) => withChannel(current, n, () => ({ enabled: on }))),
+    stepVoltsPerDiv: nothing,
+    resetVoltsPerDiv: nothing,
+    setChannelPosition: nothing,
+    commitChannelPosition: nothing,
+    setCoupling: (n, coupling) => change((current) => withChannel(current, n, () => ({ coupling }))),
+    toggleBandwidth: (n) =>
+      change((current) => withChannel(current, n, (c) => ({ bandwidthLimit: !c.bandwidthLimit }))),
+    cycleProbe: (n) => change((current) => withChannel(current, n, (c) => ({ probe: nextProbe(c.probe) }))),
+    toggleInvert: (n) => change((current) => withChannel(current, n, (c) => ({ inverted: !c.inverted }))),
+    selectChannel: (n) => change((current) => withSelected(current, n)),
+    stepTimePerDiv: nothing,
+    resetTimePerDiv: nothing,
+    setTriggerPosition: nothing,
+    stepTriggerPosition: nothing,
+    setTriggerLevel: nothing,
+    stepTriggerLevel: nothing,
+    resetTriggerLevel: nothing,
+    setTriggerSource: (source) => change((current) => ({ ...current, trigger: { ...current.trigger, source } })),
+    setTriggerSlope: (slope) => change((current) => ({ ...current, trigger: { ...current.trigger, slope } })),
+    setTriggerSweep: (sweep) => change((current) => ({ ...current, trigger: { ...current.trigger, sweep } })),
+    setInterpolation: (interpolation) =>
+      change((current) => ({ ...current, horizontal: { ...current.horizontal, interpolation } })),
+    bannerAction: nothing,
+    copyText: nothing,
   };
 }
