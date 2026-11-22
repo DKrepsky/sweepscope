@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | Draft 0.1 |
+| Status | Draft 0.2 (scaffold and design system; pending gate G3) |
 | Date | 2026-11-21 |
-| Related | [prd.md](prd.md) (requirements, user stories, hardware limits) |
+| Related | [prd.md](prd.md) (requirements, user stories, hardware limits), [design.md](design.md), [adr/](adr/) |
 
 This document describes how sweepscope is built. The PRD says what and why; this says how. Requirement IDs (DEV-1, ACQ-5, …)
 refer to the PRD.
@@ -62,44 +62,46 @@ ours. The frontend application layer talks to the backend only through the gener
 
 ```
 sweepscope/
-├── Cargo.toml                    # workspace
-├── docs/
+├── Cargo.toml                    # workspace; members are globs (kernel, libs/*, features/*, src-tauri)
+├── rust-toolchain.toml  rustfmt.toml  clippy.toml  deny.toml
+├── package.json                  # root: Tauri CLI and task scripts (check, test, dev, build)
+├── .github/workflows/ci.yml
+├── docs/                         # prd, architecture, design, adr/, specs/, design-prototype/ (approved reference)
+├── tools/                        # repository checks, no dependencies
+│   ├── check-architecture.mjs    # crate rules from `cargo metadata` (+ tests, node --test)
+│   └── check-test-names.mjs      # given_when_then naming
 ├── src-tauri/                    # Tauri shell: composition root, window and IPC wiring only
+│   ├── tauri.conf.json  build.rs  capabilities/
 │   └── src/
 │       ├── main.rs
 │       ├── composition.rs        # builds modules, injects dependencies
 │       └── ipc/                  # commands and channels, thin adapters onto the bus
 ├── backend/
-│   ├── kernel/                   # shared kernel (crate `sweepscope-kernel`)
-│   ├── libs/
-│   │   ├── fft/                  # crate `sweepscope-fft`
-│   │   ├── interpolation/        # sin(x)/x, linear
-│   │   ├── decimation/           # min/max per pixel column
-│   │   ├── statistics/           # running min/mean/max/sigma
-│   │   └── engineering-format/   # 1.91 V, 500 µs formatting
+│   ├── kernel/                   # shared kernel (crate `sweepscope-kernel`): bus, Clock, Storage, errors
+│   ├── libs/                     # feature-free crates, created by the first story that needs one
+│   │   └── (fft, interpolation, decimation, statistics, engineering-format ...)
 │   └── features/
-│       ├── device/               # discovery, connection state machine, ScopeDevice adapters
-│       ├── acquisition/          # run/stop/single, sweep, roll, frame pipeline
-│       ├── channels/             # vertical setup, probe factor, zero calibration
-│       ├── timebase-trigger/     # horizontal and trigger setup
-│       ├── measurement/          # cursors and automatic measurements
-│       ├── spectrum/             # FFT view, window functions (uses libs/fft)
-│       ├── math-channels/
-│       ├── display/              # persistence, interpolation choice, view model
-│       ├── export/               # CSV, binary, PNG data
-│       └── settings/             # setups, session restore
+│       ├── settings/             # exists from the scaffold: opaque UI-state blobs, setups later
+│       └── (device, acquisition, channels, timebase-trigger, measurement, spectrum, math-channels,
+│            display, export ... created by their stories)
 └── frontend/
+    ├── package.json  vite.config.ts  svelte.config.js  tsconfig.json  eslint.config.js  .stylelintrc.json
+    ├── index.html  gallery.html  # app entry; component gallery entry (not in production builds)
+    ├── tools/gen-tokens.mjs
+    ├── e2e/                      # Playwright (QA owned)
     └── src/
-        ├── design-system/        # tokens (colour, spacing, type, motion), themes
-        ├── ui/                   # reusable components, no application logic
-        ├── app/                  # application layer (TypeScript only): stores, services, use cases
-        ├── pages/                # display only: screens and layout
-        └── api/                  # generated types and the single backend client
+        ├── main.ts               # frontend composition root
+        ├── design-system/        # tokens.css (single source), tokens.generated.ts, base.css, icons
+        ├── ui/                   # reusable components, one folder each, no application logic
+        ├── app/                  # application layer (TypeScript only): stores, services, use cases, view models
+        ├── pages/                # display only: main-window, gallery
+        └── api/                  # generated types, BackendClient interface, Tauri client, fake client
 ```
 
 Each Rust folder is a crate in one Cargo workspace, so the compiler enforces the dependency rules: a feature crate lists
 `sweepscope-kernel` and `libs` crates in its manifest and never another feature crate. A CI check fails the build if that
-changes.
+changes. Crates for features that are not built yet do not exist: no empty placeholders. Crate names are
+`sweepscope-<folder>`.
 
 ## 4. Backend
 
@@ -219,7 +221,7 @@ State has exactly one owner. Two kinds exist:
 | Kind | Owner | Test | Examples |
 |---|---|---|---|
 | **Domain state** | Backend, in the module that owns the capability | The backend computes with it, persists it, or applies it to hardware | connection, channel setup, time base, trigger, acquisition status, measurement selection, math channels, persistence setting |
-| **Presentation state** | Frontend, in one store in `app` | Only the view uses it | cursor positions, selected tab, panel sizes, which trace is highlighted, theme |
+| **Presentation state** | Frontend, in one store in `app` | Only the view uses it | cursor positions, selected tab, panel sizes, which trace is highlighted, text scale, layout tier |
 
 Rules:
 
@@ -295,8 +297,8 @@ device (thread) ──▶ acquisition ──RollChunk stream (ordered, gap-marke
 ```
 pages/          display only: composition of ui components and application-layer values
 app/            application layer, TypeScript only: stores, services, use cases; no markup
-ui/             reusable components, no application logic
-design-system/  tokens and themes
+ui/             reusable components, no application logic (one folder per component, imported by path, no barrel file)
+design-system/  tokens (dark theme set), base styles, icons
 api/            generated types and the one backend client
 ```
 
@@ -307,14 +309,24 @@ Lint rules enforce this.
 
 ### 5.2 Design system
 
-- **Tokens** are the only source of visual values: colour (semantic: `surface`, `text-muted`, `channel-1`, `danger`),
-  spacing scale, radius, typography, elevation, motion durations, z-index layers.
-- Tokens are defined once (a typed source file) and compiled to CSS custom properties. Themes (light, dark, plus a
-  colour-blind-safe channel palette) are token sets, not stylesheets. Components never contain a raw colour, pixel size
-  or font.
-- Waveform colours come from tokens too, so the graph follows the theme.
-- A lint rule rejects raw colour and size literals in `ui/` and `pages/`.
-- A component gallery page renders every `ui` component in every theme (used for review and visual regression).
+- **Tokens** are the only source of visual values: colour (semantic: `bg-panel`, `text-muted`, `ch1`, `status-stop`),
+  spacing scale, radius, typography, motion durations, z-index layers. Naming is `--ss-<category>-<role>[-<variant>]`
+  (design.md 5.1).
+- **Single source:** `frontend/src/design-system/tokens.css`, wrapped in `:root[data-theme="dark"]`. **Dark theme only**
+  (PRD DSP-6); the theme-set mechanism stays (another theme would be another `data-theme` block), and the colour-blind-safe
+  channel palette is part of the dark set. A zero-dependency script generates `tokens.generated.ts` (resolved values)
+  for TypeScript consumers: the Canvas graph and the contrast and colour-blind tests. Both files are committed and CI
+  diffs the generated one (ADR 0002).
+- Components never contain a raw colour, pixel size or font. Lint rejects them (section 8.2). Strokes of one device pixel
+  and the Graph's geometry are the only values computed in code, from tokens and the device pixel ratio.
+- Waveform colours come from tokens too.
+- **Text scale** (100, 125, 150, 200 %) is presentation state: the `textScale` store in `app` sets the root font size;
+  every size is rem. It is persisted through the opaque UI-state blob of `settings` (section 4.5 rule 3); default 100 %.
+- **Layout tiers** (design.md 3.2) are computed in TypeScript from the viewport in rem, not with media queries (ADR 0005). Content floor 64 x 45 rem; window minimum 1024 x 720 logical px; below the floor the region between toolbar and status bar scrolls.
+- **Component gallery** (`frontend/gallery.html`, page `pages/gallery`) renders every `ui` component in every state and is
+  the target of the visual and HiDPI tests; it is excluded from production builds.
+- **Disabled controls** use `aria-disabled="true"`, not the `disabled` attribute, so they stay focusable and can show the
+  tooltip that states why (design.md principle 1 and AC-I13).
 
 ### 5.3 The `ui` folder
 
@@ -373,7 +385,8 @@ Rules:
 
 ### 5.7 Waveform rendering
 
-- `ui/graph` provides a graticule and a trace renderer: WebGL2 with a Canvas 2D fallback (PRD DSP-9).
+- `ui/graph` provides a graticule and a trace renderer behind a `TraceRenderer` interface. The first implementation is
+  Canvas 2D (ADR 0006); the WebGL2 renderer with Canvas fallback (PRD DSP-9) is added after the M0 spike.
 - It draws the already-scaled data it is given. Persistence accumulation is a rendering technique of the graph
   (it composites successive frames); what to persist and for how long comes from backend state.
 - Graph interaction emits intents. Dragging the trigger marker becomes a backend command; dragging a cursor updates the
@@ -381,8 +394,9 @@ Rules:
 
 ### 5.8 Backend client and typed contract
 
-- Command, event and snapshot types are generated from the Rust definitions (for example with specta or ts-rs) into
-  `frontend/src/api`. The generated files are committed and checked in CI so they cannot drift.
+- Command, event and snapshot data types are generated from the Rust definitions with **ts-rs** into
+  `frontend/src/api/generated`. The generated files are committed and checked in CI so they cannot drift. The client
+  itself is hand-written; a contract test compares the command names on both sides (ADR 0003).
 - `api` exposes one client interface (`BackendClient`) with `send(command)`, `subscribe(event)` and `openStream(kind)`. The
   application layer depends on that interface; tests use a fake.
 
@@ -428,7 +442,11 @@ describe('connection store', () => {
 ```
 
 - `app` layer: unit tests with a fake `BackendClient`. This is the bulk of frontend tests.
-- `ui` components: component tests for behaviour and accessibility, plus visual snapshots in the gallery.
+- `ui` components: Vitest + Testing Library component tests for behaviour and accessibility (one test file per
+  component, acceptance criteria of design.md 9.3 as test names), plus Playwright visual snapshots of the gallery for
+  what jsdom cannot see (computed styles, layout tiers, HiDPI crispness, contrast).
+- Token tests are pure: contrast ratios (AC-T2) and colour-blind pair distances (AC-T3) are computed from
+  `tokens.generated.ts`.
 - Pages: a few smoke tests that wire the real application layer to the fake backend.
 - End-to-end: the Tauri app against `SimulatedDevice` for the user stories (US-01 to US-19) that do not need hardware.
 
@@ -474,15 +492,42 @@ describe('connection store', () => {
 
 ### 8.2 Architecture rules checked in CI
 
+Mechanisms are in ADR 0004. All run locally with `npm run check`.
+
 | Rule | Check |
 |---|---|
-| Feature crates do not depend on other feature crates | Script reading `cargo metadata` |
+| Feature crates do not depend on other feature crates | `tools/check-architecture.mjs` over `cargo metadata` |
 | Libs depend on no feature and not on the bus | Same script |
-| Only `device` imports `hantek6xx4-lib`; only `src-tauri/ipc` imports Tauri | Same script |
-| `ui` imports only `design-system`; `pages` do not import `api`; `app` imports no markup | ESLint import rules |
-| No raw colour or size literals in `ui/` and `pages/` | Lint rule |
-| Generated API types are up to date | Regenerate and diff |
-| Tests follow naming convention (`given_…_when_…_then_…`) | Lint or script on test names |
+| Only `device` depends on `hantek6xx4-lib`; only `src-tauri` depends on `tauri`; `tauri::` only in `src-tauri/src/ipc` and `main.rs` | Same script |
+| `ui` imports only `design-system`; `pages` do not import `api`; `app` imports no markup | ESLint `no-restricted-imports` per folder |
+| No raw colour, size or font literals in `ui/` and `pages/` | Stylelint core rules (CSS in `.svelte`) and an ESLint rule (TS) |
+| Generated files up to date (tokens, API types, command manifest) | Regenerate and `git diff --exit-code` |
+| Tests follow naming convention (`given_..._when_..._then_...`) | `tools/check-test-names.mjs` |
+| Function size and complexity | clippy and ESLint thresholds (section 7) |
+
+### 8.3 Lint, format and compiler settings
+
+| Area | Setting |
+|---|---|
+| Rust | `rustfmt.toml` `max_width = 120` (as the driver); `clippy -D warnings`; workspace lints enable `too_many_lines` (40) and `cognitive_complexity` (15); `#![forbid(unsafe_code)]` in kernel, libs and features; edition 2021; toolchain pinned |
+| TypeScript | `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`; no `any` (ESLint `no-explicit-any`) |
+| ESLint | flat config; typescript-eslint, eslint-plugin-svelte; `max-lines-per-function` 40, `complexity` 10 |
+| Stylelint | core rules plus `postcss-html`; see ADR 0004 |
+| Prettier | print width 120, single quotes, with the Svelte plugin; `.editorconfig` for the rest |
+| Svelte | `svelte-check` with warnings as errors (accessibility warnings included) |
+
+### 8.4 CI outline (GitHub Actions, actions pinned by commit SHA as in the driver repo)
+
+| Job | Steps |
+|---|---|
+| `rust` | fmt check, clippy `-D warnings`, `cargo test` for all crates except `src-tauri`, `cargo deny check`, `cargo audit` |
+| `shell` | install WebKitGTK dev packages, `cargo clippy` and `cargo test` for `src-tauri`, ts-rs export and diff |
+| `frontend` | `npm ci`, ESLint, Stylelint, Prettier check, `svelte-check`, Vitest, token generation diff, `npm audit` |
+| `architecture` | `node --test tools`, `node tools/check-architecture.mjs`, `node tools/check-test-names.mjs` |
+| `browser` | Playwright on the gallery and main window (Chromium and WebKit), visual snapshots, HiDPI scales |
+| `bundle` (manual and on tags) | `tauri build` to .deb and AppImage; release steps need human confirmation (workflow section 6) |
+
+`main` is protected; every job is a required check. release-plz as in the driver repo is added by a later story.
 
 ## 9. Decisions and open items
 
@@ -491,14 +536,19 @@ describe('connection store', () => {
 | Tauri 2 shell | Decided |
 | Rust workspace with kernel, libs and feature crates | Decided |
 | Svelte 5 with Vite as reactive framework (slots as snippets) | Decided. Plain Svelte + Vite rather than SvelteKit (no routing needs; fewer dependencies); revisit if multi-window routing grows |
-| Frontend stores built on `svelte/store` | Proposed; the only Svelte import the `app` layer may use |
+| Frontend stores built on `svelte/store` | Decided; the only Svelte import the `app` layer may use |
 | Event bus | Tauri events at the frontend boundary; own small typed bus in the kernel for module traffic (section 4.3) |
 | Communication patterns: event, request/response, stream | Decided; streams are latest-wins or ordered with gap markers |
 | Cursors and other presentation state in the frontend | Decided; persisted through an opaque blob in `settings` |
-| Type generation tool (specta, ts-rs) | Open; evaluate in M0 |
+| Type generation tool | Decided: ts-rs for data types, hand-written client (ADR 0003) |
 | Where decimation to pixel width runs | Backend (`display`) when needed; the first version may send the full 4096-sample record |
 | State snapshot format | Open: whole snapshot vs per-slice snapshots; start with per-slice |
 | How many cross-feature messages go in `kernel::contracts` | Keep a short list; review whenever one is added |
+| Project foundation, npm, test stack | Decided (ADR 0001) |
+| Token pipeline: `tokens.css` source, generated TS | Decided (ADR 0002) |
+| Architecture enforcement tooling | Decided (ADR 0004) |
+| Layout tiers and screen fit computed in code | Decided (ADR 0005) |
+| Graph renderer: Canvas 2D first behind an interface | Decided (ADR 0006); WebGL2 after M0 spike |
 | Items not yet defined | See section 10 |
 
 Tension to watch: P1 (backend does all domain processing) means features that look like display logic (persistence
@@ -508,21 +558,40 @@ says which it is.
 
 ## 10. Left to the implementing agents
 
-These are implementation details to be decided during M0/M1 and recorded in the code or in short decision notes:
+Resolved by the scaffold: item 7 (numeric conventions: `f64` for values and times, `f32` for sample payloads, little
+endian binary frames, layout fixed by the first frame story) and item 8 (the repository exists; workflow and CI in
+section 8.4). Still open, to be decided in the story that first needs them:
 
 1. **Error handling and user notification.** One error taxonomy in the kernel (recoverable, device lost, fatal) and one
-   frontend path that turns errors into messages (toast, banner, dialog). Who decides what is shown?
-2. **Logging and diagnostics.** Structured logging in Rust, log file location, and a "copy diagnostics" action
-   (versions, device info, recent log) for bug reports.
-3. **Settings and file formats.** Versioning and migration of setup and capture files, plus where they are stored
-   (XDG paths on Linux).
-4. **Offline mode as a device.** A `FileDevice` implementing `ScopeDevice` for saved captures (DAT-4) would reuse all
-   modules unchanged.
-5. **Tauri security.** Capability/permission allowlist limited to our commands, strict CSP, no remote content.
-6. **Multi-window.** The zoom window (DSP-8) gives each window its own presentation state but the same domain snapshot;
-   which stores are per window and which are per application?
-7. **Numeric conventions.** `f32` or `f64` for samples and times across the Rust kernel and the wire format; byte order
-   and layout of the binary frame payload.
-8. **Repository and release workflow.** `sweepscope` is not yet a git repository; the driver repo uses protected `main`,
-   pull requests, pinned actions and release-plz. Adopt the same here, with the CI checks of section 8.2.
-9. **Hardware test checklist.** The manual pre-release list (plug/unplug stress, calibrator reading) needs to be written.
+   frontend path that turns errors into messages (design.md 10.3 fixes the presentation: Banner, Toast, inline).
+2. **Logging and diagnostics.** Structured logging in Rust, log file location, and a "copy diagnostics" action.
+3. **Settings and file formats.** The scaffold stores UI-state blobs in one `settings.json` with a `version` field in the
+   Tauri app config directory (XDG on Linux). Setup and capture files and migrations come with their stories.
+4. **Offline mode as a device.** A `FileDevice` implementing `ScopeDevice` for saved captures (DAT-4).
+5. **Tauri security.** The scaffold sets a strict CSP, an app manifest listing only our commands and one capability for the
+   main window. Review again when plugins (dialogs, file system) are added.
+6. **Multi-window.** Which stores are per window and which per application (DSP-8).
+7. **Hardware test checklist.** The manual pre-release list.
+
+## 11. Engineering answers to the design questions (design.md section 14)
+
+| ID | Answer | Status |
+|---|---|---|
+| Q-E1 | The backend publishes `InstrumentFacts` as domain state (acquisition slice): effective sample rate and interval, record length in points per channel, capture rate in waveforms per second, dead time as a fraction of time. Each value travels as a number in SI base units plus the backend-formatted text (`FormattedValue { text, value, unit }`); one value and one unit per slot. Update rate at most 4 per second; changes highlight for one `motion-normal`. | Decided; implemented by the acquisition story |
+| Q-E2 | The backend decides. Aliasing and similar warnings are backend state (`Warnings` list with id, severity, message) that the UI only displays and that clears when the backend clears it. | Decided |
+| Q-E3 | The backend sends every selectable scale as `ScaleOption { value, text, verified }`; the UI never knows the table. Out-of-region values carry `verified: false`. | Decided |
+| Q-E4 | Accuracy-note text is a placeholder constant in the frontend gallery and mock; the real text is defined in a later story (PM). | Deferred to PM |
+| Q-E5 | Formatting is one implementation in Rust (`libs/engineering-format`), 3 significant digits by default (1.91 V, 500 µs), prefix rules per quantity. Domain values arrive pre-formatted. Cursor readouts (frontend state) need a formatter in the browser; the cursor story must either call a backend request per frame budget or ship a small TypeScript port checked against shared golden vectors. | Partly open (cursor story) |
+| Q-E6 | Time cursors are relative to samples. Default: X readouts are Δ-based, absolute X is relative to the first sample of the record, never to the trigger. Needs PM confirmation in the cursor story. | Open (cursor story) |
+| Q-E7 | Backend publishes availability per control, `Availability { enabled, reason }`, so the UI encodes no rule (P1). Default policy: settings are accepted while stopped and applied at the next arm; offline and disconnected accept presentation settings only; roll disables trigger and fast time bases. To be confirmed against the driver in the acquisition story. | Principle decided; policy open |
+| Q-E8 | Clipping is detected in the backend from samples at the converter rails and reported as a measurement flag; invalid reasons are a code enum plus backend text. | Principle decided; details open (measurement story) |
+| Q-E9 | Ground marker 0 div; steppers to their documented default (a value in the backend scale table marked default); pan centred. | Decided (PM) |
+| Q-E10 | Wheel zoom anchors at the pointer position. | Decided (PM) |
+| Q-E11 | Persistence presets: Off, 0.5 s, 1 s, 2 s, infinite (US-07). | Decided (PM) |
+| Q-E12 | Default text scale 100 %, stored in the app settings file through the opaque UI-state blob (presentation state, rule 4.5.3). | Decided (PM, implemented in the scaffold) |
+| Q-E13 | Canvas 2D first behind `TraceRenderer` (ADR 0006), device-pixel snapping in code, redraw on `devicePixelRatio` change. Marker ghosts are DOM overlays reconciled by the `app` layer: ghost on drag, `pending` prop after 250 ms, confirmed value from the store. WebGL2, persistence and budget measurement after the M0 spike. | Partly decided |
+| Q-E14 | Window minimum 1024 x 720 logical px in `tauri.conf.json` (human decision D-L1; content floor 64 x 45 rem, design 3.2); tiers and screen fit computed in TypeScript, no rem media queries or container units (ADR 0005). | Decided |
+
+Open items for the feature stories (explicit): Q-E5 (cursor formatting), Q-E6, Q-E7 policy, Q-E8 details, WebGL2 and
+persistence, the stream pattern (kernel implements events and request/response first), the state aggregator and
+snapshot (introduced by the first domain feature), first-run hints.
