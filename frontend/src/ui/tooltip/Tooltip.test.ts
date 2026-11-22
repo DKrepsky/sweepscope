@@ -44,4 +44,20 @@ describe('Tooltip', () => {
     vi.advanceTimersByTime(1000);
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
+
+  it('given a shown tooltip, when the control is inspected, then aria-describedby points at the tooltip', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(Tooltip, { text, children: child });
+    await user.tab();
+    const tipId = screen.getByRole('tooltip').id;
+    expect(screen.getByRole('button')).toHaveAttribute('aria-describedby', tipId);
+  });
+
+  it('given a hidden tooltip, when the control is inspected, then it has no aria-describedby', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(Tooltip, { text, children: child });
+    await user.tab();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button')).not.toHaveAttribute('aria-describedby');
+  });
 });

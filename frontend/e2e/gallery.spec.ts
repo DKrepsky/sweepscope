@@ -330,7 +330,6 @@ test.describe('overlays (not verifiable in jsdom)', () => {
   test('given the Menu closed with Escape, when checked, then focus returns to the button that opened it', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-5: Menu does not restore focus to its opener on close');
     const opener = section(page, 'Menu').getByRole('button', { name: 'Open menu' });
     await opener.click();
     await page.keyboard.press('Escape');
@@ -366,7 +365,6 @@ test.describe('tooltip and feedback', () => {
   test('given a Tooltip host, when its tooltip is shown, then the control is linked to it by aria-describedby', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-4: Tooltip does not set aria-describedby on the control it describes');
     const button = section(page, 'Tooltip').getByRole('button', { name: 'Focused control' });
     await expect(page.getByRole('tooltip')).toBeVisible();
     const describedBy = await button.getAttribute('aria-describedby');

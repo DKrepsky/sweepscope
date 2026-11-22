@@ -16,6 +16,7 @@
 
   const id = $props.id();
   let visible = $state(false);
+  let host: HTMLElement | undefined = $state();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   function cancelPending() {
@@ -42,12 +43,27 @@
     if (visible && event.key === 'Escape') hide();
   }
 
+  function link(control: Element, linked: boolean) {
+    const others = (control.getAttribute('aria-describedby') ?? '').split(' ').filter((token) => token && token !== id);
+    const tokens = linked ? [...others, id] : others;
+    if (tokens.length > 0) control.setAttribute('aria-describedby', tokens.join(' '));
+    else control.removeAttribute('aria-describedby');
+  }
+
+  $effect(() => {
+    const control = host?.firstElementChild;
+    if (!control || control.classList.contains('tip')) return;
+    link(control, visible);
+    return () => link(control, false);
+  });
+
   onDestroy(cancelPending);
 </script>
 
 <svelte:window onkeydown={hideOnEscape} />
 
 <span
+  bind:this={host}
   class="host"
   role="presentation"
   onmouseenter={showAfterDelay}
