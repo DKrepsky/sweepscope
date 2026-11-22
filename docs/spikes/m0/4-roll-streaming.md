@@ -1,7 +1,7 @@
 # Spike #4: roll-mode streaming path
 
 Issue #4. Spec: [m0-spike implementation spec](../../specs/m0-spike/implementation-spec.md) section 2.6. Policy: [ADR 0008](../../adr/0008-spike-policy-and-measurement-reports.md).
-Status: measured, decision proposed, waiting for the human (it touches a pass rule).
+Status: final. The human approved option A (accepted with condition) on 2026-11-22.
 
 ## 1. Question and decision rule
 
@@ -132,13 +132,13 @@ one case and 0.16 MiB in the other); it follows wall time. The earlier reading "
 
 **The pattern (poller thread, ring buffer with absolute sample indices, ordered binary items with sequence numbers on a Tauri `Channel`, gap items
 carrying `after` and an estimated `missed`, bounded recorder queue that writes gap records) is accepted for the roll story (#27), with one condition
-on the Rust RSS rule.**
+on the Rust RSS rule (human decision: option A, approved).**
 
 Reasons: every functional rule passed with zero loss over 36,001 items; the WebKit rule passed; the failing rule fails by 1.4 MiB in an hour at a rate of
 1.2 KiB/s, flat in shape, with no sign of per-item cost, and the cause is more likely the UI process than the pattern. Rejecting a pattern whose only
 defect is unattributed 1 KiB/s of process growth would be disproportionate; accepting it silently would break ADR 0008 point 7.
 
-**The rule is not changed to fit the result.** Options for the human (the failed rule is the human's decision, ADR 0008 point 8):
+**The rule is not changed to fit the result.** The human chose option A. The options considered were:
 
 | Option | What | For | Against |
 |---|---|---|---|
@@ -146,16 +146,22 @@ defect is unattributed 1 KiB/s of process growth would be disproportionate; acce
 | B | Accept and change the rule to a rate: at most 4 MiB per hour measured after the ring is full (about 1.1 KiB/s), with the exclusion window moved to 15 minutes | Rule matches the shape of the data; usable as regression test | Loosened after seeing the result; the rate hides a real leak of this size |
 | C | Do not accept yet; run the attribution first (section 7, 25 to 60 minutes of unattended time), then decide | Decision rests on a cause | Delay of an hour or less; the answer may be inconclusive again |
 
-Recommendation: A, plus the section 7 run done now because it costs no human time. If that run shows the headless backend growing at the same rate, the pattern
+Approved: A, with the condition written out below. Plus the section 7 run done now because it costs no human time. If that run shows the headless backend growing at the same rate, the pattern
 (not the UI) leaks and the decision becomes C with a fix in the roll story before acceptance.
+
+### Condition (binding on #27)
+
+1. The 2 MiB per hour Rust RSS rule stays as written in PRD 8.3, measured after the ring is full.
+2. The definition of done of #27 repeats the one-hour real-time soak and passes if Rust RSS growth is within the rule, or the growth has a documented cause outside our code.
+3. Before M3 the attribution run of section 7 is made. If the headless real-time backend grows at the same rate, the pattern leaks and the fix is part of #27 before it is accepted.
 
 ## 7. Changes requested and open points
 
-Changes requested (proposals, none applied):
+Changes requested (applied in this branch where marked):
 
-1. **Gap item in the product stream** (ADR to be written after the human approves this report): keep the layout of spec 2.6 (kind, sequence, absolute index, `after`,
+1. **Gap item in the product stream**: written as [ADR 0009](../../adr/0009-roll-stream-gap-item.md). keep the layout of spec 2.6 (kind, sequence, absolute index, `after`,
    `missed` as estimate); the roll story's requirements must say the size is an estimate (PRD 5.2) and the marker is drawn as an uncertain band.
-2. **PRD 8.3 'Memory in roll recording'**: state the baseline point as "after the ring is full" and the Rust rule as agreed in section 6.
+2. **PRD 8.3 'Memory in roll recording'**: baseline after the ring is full, Rust rule 2 MiB per hour: applied in `docs/prd.md`.
 3. No change to the driver or to ADR 0007: `poll_roll` plus `Overrun` was enough.
 
 Open points:

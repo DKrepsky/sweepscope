@@ -379,7 +379,7 @@ end-to-end latency from driver return to pixels, and the roll-mode stream.
 | Capture-to-screen latency | Under 100 ms for a frame once the driver returns it |
 | Stop latency | Under 250 ms |
 | Idle CPU (stopped) | Under 2 % of one core |
-| Memory in roll recording | Constant (ring buffer in Rust, data streamed to disk; the frontend keeps only the visible window) |
+| Memory in roll recording | Constant (ring buffer in Rust, data streamed to disk; the frontend keeps only the visible window). Measured after the ring is full: Rust RSS grows at most 2 MiB per hour, WebKit process at most 10 MiB per hour (spike #4 baseline; the Rust rule is a condition on the roll story until its cause is attributed) |
 | Start-up to ready scope | Under 5 s after the 2 s settle time |
 | Crash-free | No panic on unplug, malformed data or driver errors; every driver `Error` maps to a UI state |
 | Test coverage | Core logic (measurements, FFT, interpolation, state machine) unit tested; UI smoke-tested with the simulator; hardware checklist run before releases |
