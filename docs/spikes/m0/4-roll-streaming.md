@@ -125,7 +125,7 @@ one case and 0.16 MiB in the other); it follows wall time. The earlier reading "
    proves nothing about wall-time growth. What would settle it is a real-time headless run (section 7). Extrapolated: about 85 MiB per day on a 180 MiB
    process; a leak worth finding, not one that stops a roll story.
 4. **The 5 minute exclusion is too short for a process that is still allocating.** The process grew 7.2 MiB before 300 s and the ring only filled at 600 s. For a ring of 10
-   minutes the baseline must be taken after the ring is full. This does not change the result (growth after 600 s is 3.1 MiB, still above 2 MiB).
+   minutes the baseline must be taken after the ring is full. This does not change the result (growth after 600 s is 3.0 MiB, still above 2 MiB).
 5. **Natural overrun and CPU were not part of this run.** Natural overrun is unit tested; the CPU rule is informative and was not recorded.
 
 ## 6. Decision
