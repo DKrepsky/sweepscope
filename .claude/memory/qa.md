@@ -106,3 +106,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - e2e stub now has `emit(page, event, payload)` and `sendFrame(page, bytes)` (support/tauri-stub.ts) and `wireFrame` (support/frames.ts); wait for `open_frame_stream` in the IPC log before the first frame.
   Pixel counting of traces: count bright pixels (max channel > 80) against an empty baseline; frozen traces are dimmed.
 - Branch not on the remote means the CI baseline regeneration cannot be done by QA; say so, do not commit local renders.
+
+## M1 retest lessons
+- Use `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off`) together with the `unshare -rm` USB-hiding recipe: both guards, every real-app run. Scripts live in the scratchpad (env.sh, run-app.sh); `import -window root -crop WxH+X+Y` then `convert -scale` to zoom (import has no -scale).
+- Window at Xvfb 1440x900 sits at 0,0: Run button (188,21), V/div `+` (177,747) and `-` (59,747), TIME/DIV `+` (738,745); devtools console prompt about (400,886) after Inspect Element. One devtools command at a time; a 20-cycle async loop in one line works (`/proc/<pid>/task` stayed 32).
+- Do not wait with `pgrep -f "playwright test"` in an until-loop: the waiter matches itself. Full Playwright run takes about 4 min and is moved to the background by the harness (exit code shown is of the wrapped pipeline, read the log).
+- Dry check of a shell install command: rebuild it from the source constants, `bash -n`/`sh -n`, run only the `printf` part into a scratch file and `cmp` with the shipped file; `udevadm verify <file>`. Never run the sudo part.
+- At 100 ms/div the simulator's 1 kHz sine aliases (2.5 kS/s) and fills the screen: not a bug. Check the Horizontal dock badge against the Trigger section at 1440x900 (BUG-5).

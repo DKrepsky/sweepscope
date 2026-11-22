@@ -1,23 +1,44 @@
 # QA report: M1 Live view (#5, #6, #7, #8, #9, #10, #11, #12; bugs #40, #41, #42)
 
-Build or commit: `feat/m1-live-view` at b8e9048 (WP1 to WP12), plus uncommitted QA test code (see Artefacts).
-Date: 2026-11-22
+Build or commit: `feat/m1-live-view` at e065a37 (all fixes merged), clean tree plus uncommitted QA test code and docs.
+Date: 2026-11-22 (retest round 1; first round was at b8e9048)
 Plan: [test-plan.md](test-plan.md). Hardware items: [hardware-checklist.md](hardware-checklist.md) (not run by QA, human only).
 
 ## Summary
-Verdict: **fail (not releasable)**. One high bug blocks release: the real app never receives any backend event, so none of the live behaviour of
-stories #5 to #12 reaches the window (BUG-1). It was found only by running the real Tauri app; all automated suites are green because the browser
-stub accepts the call the real capability refuses. With the one-line capability fix applied to a scratch copy (not to the repository), the real app
-passed the live flow on the simulator, so the fix is expected to be small. Three more acceptance criteria are not met (BUG-2, BUG-3, BUG-4).
+Verdict: **pass with minor open items (releasable on QA grounds once BUG-6 is fixed; BUG-5 is cosmetic)**. BUG-1 to BUG-4 are fixed and verified:
+BUG-1 in the real Tauri window (no `not allowed` in the log, state and chips update live, unplug and replug restore everything, 20 cycles stable), BUG-2 by the
+new docs, BUG-3 in the real window (`UNVERIFIED` badge at 100 ms/div), BUG-4 by e2e. Two new low bugs: BUG-5 (the new Unverified badge overlaps the
+Trigger `TYPE` label at 1440 x 900) and BUG-6 (`npm run check` exits 1 on one Prettier warning in `tauri-client.test.ts`; gate G-2 red until formatted).
 
-What blocks release: BUG-1 (high); BUG-2 and BUG-3 (medium, acceptance criteria of #8 and #10); BUG-4 (low, #6 AC2). Visual baselines must be
-regenerated on CI after the push (see below). The human hardware checklist is still to be run.
+What blocks release: BUG-6 (one `prettier --write`, the CI check job would fail). Before push: visual baselines must be regenerated on CI (listed below). The human hardware
+checklist is still to be run.
 
-Safety incident to know about: the first start of the real app opened the real scope. `SWEEPSCOPE_SIMULATOR=1` only starts the simulator plugged in;
-`HantekCatalog` is always composed and the 6254BC is plugged into this machine, so the log showed `hantek6xx4_lib::scope initialised scope ... pcb=P1.06
-fpga=0xd001`. I killed the app at once (about 15 s). No command beyond the driver's normal open was sent, no `--ignored` test was run, and every later
-run of the app used a private mount namespace that hides `/dev/bus/usb` and `/sys/bus/usb/devices`. Replug the scope or restart it if it behaves oddly.
-Recommendation to the staff engineer: add an env flag (for example `SWEEPSCOPE_NO_HARDWARE=1`) that leaves out the Hantek catalog, so test runs can never touch a connected scope.
+Safety: this round the real app ran only under `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off (SWEEPSCOPE_NO_HARDWARE=1)`) and
+inside the mount namespace that hides USB (`lsusb | grep 04b5` printed 0 inside, 1 outside). The scope was never opened. The first-round incident is closed by the new flag.
+
+## Retest round 1 (e065a37)
+| Item | Result | Evidence |
+|---|---|---|
+| BUG-1 capability | **Fixed, verified in the real window** | `.claude/tmp/m1r/a0.png` (Connected, Simulator, identity at start), `a1.png` (Run: toggle `Stop`, chips `Run`, `Trig'd`, `Capture 23.9 Hz`), vite log has 0 `not allowed` |
+| Run and Stop | Pass | `c-stopped.png`: toggle `Run`, chip `Stop`, trace dimmed and held, capture `- -`; Run resumes |
+| Steppers, trigger | Pass | V/div 1 V to 200 mV/div (trace grows), time base to 1 ms/div (`Fs 250 kS/s`), Sweep Normal, level 40 mV with marker label `T1 40.0 mV` (`b-*.png`) |
+| Unplug and replug | Pass | `use_simulator(false)`: Offline chip, `Disconnected`, trace frozen and dimmed, banner `Retry` and `Use simulator` (`f-unplug.png`); `(true)`: Connected, running, same time base, level and sweep (`f-replug.png`) |
+| 20 cycles | Pass | loop of 20 unplug and replug in the real app: 32 threads before and after, no panic in the log, ends Connected and running (`g-20.png`) |
+| BUG-2 docs | Pass | README Troubleshooting, `docs/troubleshooting.md` (workaround, installed build, status bar `Renderer Canvas 2D`), `docs/usb-permissions.md` mentions the no-hardware flag; status bar shows `Renderer Canvas 2D` in the real window |
+| BUG-3 / C10-3 | **Fixed in the real window** | at 100 ms/div `UNVERIFIED` badge in the readout bar and next to the stepper (`c-100ms.png`); new BUG-5 for its placement |
+| BUG-4 / C6-2 | Fixed (e2e) | `live.spec.ts` asserts a `copied` confirmation within 1 s, `test.fail` is gone and the case passes. Not seen in the real window: a permission banner needs a real `PermissionDenied` (hardware H-05) |
+| Permission-help command text | Pass (dry check only) | The command is `printf '%s' '<rule>' \| sudo tee /etc/udev/rules.d/99-hantek6xx4.rules > /dev/null && sudo udevadm control --reload-rules && sudo udevadm trigger`. I rebuilt it from the source constants, `bash -n` and `sh -n` accept it, and running only the `printf` part into a scratch file gave a byte-identical copy of `packaging/udev/99-hantek6xx4.rules` (no quote in the rule, so the quoting holds). `udevadm verify` on the shipped file: 1 checked, 0 failed. No `sudo`, no `tee` and no udev reload were run; `/etc/udev` was not touched. Backend unit tests for the text pass |
+| #40, #41, #42 | Pass | e2e green in both browsers; real window: aligned channel rows, one-line Segmented options (Edge/Pulse/Video, Auto/Normal) |
+
+Observations (not bugs): at 100 ms/div the simulator's 1 kHz sine is aliased at 2.5 kS/s and the trace paints a solid block; the `Capture` meter reads `- -` for several seconds at 1 s frames. O-1 to O-3 of round 1 stand.
+
+## Suite results (run alone, in sequence)
+| Suite | Result |
+|---|---|
+| `cargo test --workspace` | 477 passed, 0 failed, 3 ignored (hardware smoke tests, not run) |
+| `npm run check` | **exit 1**: cargo fmt and clippy pass, `prettier --check` fails on `frontend/src/api/tauri-client.test.ts` (BUG-6); the steps after it did not run |
+| vitest | 604 passed (52 files) |
+| Playwright chromium and webkit | 365 passed, 13 skipped, 12 failed; the 12 are the stale visual baselines only (below). No functional failure |
 
 ## Results
 
@@ -43,14 +64,14 @@ Recommendation to the staff engineer: add an env flag (for example `SWEEPSCOPE_N
 | ID | Result | Notes |
 |---|---|---|
 | C6-1 | Pass (e2e) | Banner names the rule file and message, shows `Copy command` and `Retry`. Real `PermissionDenied` on hardware: H-05. |
-| C6-2 | **Fail (BUG-4, low)** | Clipboard holds the exact command (Chromium); the control gives no confirmation. WebKit clipboard not testable in Playwright. |
+| C6-2 | Pass in retest (was BUG-4) | Clipboard holds the exact command (Chromium); the control gives no confirmation. WebKit clipboard not testable in Playwright. |
 | C6-3 | Pass | `Retry` sends `retry_connection`; backend `given_a_session_that_failed_when_retry_arrives...` green. Real replug after the rule: H-06. |
 | C6-4 | Pass | `packaging/udev/99-hantek6xx4.rules` (vendor 04b5, product 6cde, `plugdev`, `uaccess`) and `docs/usb-permissions.md` exist; the Banner command copies the shipped file. |
 
 ### #7 run and stop
 | ID | Result | Notes |
 |---|---|---|
-| C7-1 | **Fail in the unpatched real app (BUG-1)**, pass with the fix applied | Unpatched: Run starts the backend and a frame arrives, but the toggle stays `Run`, chip `Stop`. Patched copy: toggle `Stop`, chips `Run` and `Trig'd`, `Armed`, `Waiting for trigger`, `Auto` all seen. |
+| C7-1 | Pass in retest (real app at e065a37; round 1 failed on BUG-1) | Unpatched: Run starts the backend and a frame arrives, but the toggle stays `Run`, chip `Stop`. Patched copy: toggle `Stop`, chips `Run` and `Trig'd`, `Armed`, `Waiting for trigger`, `Auto` all seen. |
 | C7-2 | Pass (patched), unit | Stop freezes the last frame, toggle `Run`, chip `Stop`. Backend stop timing in `module_capture` green; the 250 ms bound on the device is hardware (H-10). |
 | C7-3 | Partly | Clicks stayed responsive during runs; the slow read case only exists on hardware (H-15). |
 | C7-4 | Pass (patched) | Status bar `Capture 23.7 Hz dead time 92.2 %`, then 23.1 and 23.6 Hz after setting changes: live, not constant. Hardware rate: H-14. |
@@ -61,7 +82,7 @@ Recommendation to the staff engineer: add an env flag (for example `SWEEPSCOPE_N
 |---|---|---|
 | C8-1 | Not valid here | The probe runs in the dev window and prints `frame budget {frames, meanIntervalMs, maxIntervalMs}` every 10 s. Under Xvfb with software rendering it printed mean 41 ms, max 72 ms; software numbers are not valid and are not kept. Needs the human on a real GPU (H-41). |
 | C8-2 | Pass | `live.spec.ts`: a one-sample 3.5 division glitch in a 2501-sample frame adds visible pixels; display crate pins the crop. |
-| C8-3 | **Fail (BUG-2, medium)** | Canvas 2D only and the status bar reads `Renderer Canvas 2D` (pass). The DMABUF workaround is not documented outside the PRD, the spike specs and the checklist (README and docs have no mention). |
+| C8-3 | Pass in retest (was BUG-2; docs added) | Canvas 2D only and the status bar reads `Renderer Canvas 2D` (pass). The DMABUF workaround is not documented outside the PRD, the spike specs and the checklist (README and docs have no mention). |
 | C8-4 | Pass | 10 x 8 graticule, per channel scale chips, readable at 100 to 200 % text scale in e2e and in the WebKitGTK window at 100 %. HiDPI scale snapshots are blocked by the stale baselines (graticule line checks pass). |
 | C8-5 | Pass | Frames on CH1 and CH3 draw only those channels; disabled channels draw nothing. |
 | C8-6 | Pass (e2e, patched app) | Disconnect: trace stays, dimmed, state `frozen`, chip `Offline`, status `Disconnected`, banner. Real app on `use_simulator(false)`: all of it within about 1 s of the command (screenshot taken 1.2 s later). Return restores `live`. |
@@ -82,7 +103,7 @@ Recommendation to the staff engineer: add an env flag (for example `SWEEPSCOPE_N
 |---|---|---|
 | C10-1 | Pass (patched app) | 8 steps from 200 us to 100 ms/div, the 9th reached 200 ms/div, and the stepper `+` is then disabled with tooltip "Roll mode arrives in a later release". The 2 ns end is covered by backend tests. |
 | C10-2 | Pass (unit, e2e) | `set_trigger_position` with the fraction; marker drag emits once on release. 10, 50, 90 % in the real app not driven. |
-| C10-3 | **Fail (BUG-3, medium)** | At 100 ms/div (index 23, unmeasured) no marker is shown anywhere. The backend marks it unverified; the frontend model has no field for it. |
+| C10-3 | Pass in retest (was BUG-3; badge placement is BUG-5) | At 100 ms/div (index 23, unmeasured) no marker is shown anywhere. The backend marks it unverified; the frontend model has no field for it. |
 | C10-4 | Pass (patched app) | `Fs`, `Record 4.10 kpts 16.4 div` change with the time base (`Fs 2.50 kS/s` at 100 ms/div, `1.25 kS/s` at 200 ms/div; 2 channel count effect only visible at fast bases, not driven). |
 
 ### #11 trigger
@@ -124,10 +145,12 @@ Recommendation to the staff engineer: add an env flag (for example `SWEEPSCOPE_N
 ## Bugs
 | Bug | Severity | Status | Owner |
 |---|---|---|---|
-| BUG-1 main capability lacks `core:event:allow-listen`: no backend event reaches the real app (evidence `.claude/tmp/m1/vite-event-listen.log`, `app-bug-events.png`, `app-p4.png` after the local fix) | High, blocks release | Open. Hypothesis: add `core:event:allow-listen` and `core:event:allow-unlisten` to `src-tauri/capabilities/main.json`; verified on a scratch copy only | developer-3 |
-| BUG-2 DMABUF workaround not documented (#8 AC3) | Medium | Open | developer-3 |
-| BUG-3 no unverified marker for an unmeasured time base (#10 AC3) | Medium | Open | developer-8 (cc developer-6) |
-| BUG-4 Copy command has no confirmation (#6 AC2); e2e carries `test.fail` | Low | Open | developer-6 |
+| BUG-1 main capability lacks `core:event:allow-listen` | High | **Closed**, verified in the real window | developer-3 |
+| BUG-2 DMABUF workaround not documented (#8 AC3) | Medium | **Closed** (README, `docs/troubleshooting.md`) | developer-3 |
+| BUG-3 no unverified marker for an unmeasured time base (#10 AC3) | Medium | **Closed**, verified in the real window | developer-8 |
+| BUG-4 Copy command has no confirmation (#6 AC2) | Low | **Closed** (e2e passes, `test.fail` removed) | developer-6 |
+| BUG-5 `UNVERIFIED` badge overlaps the Trigger `TYPE` label at 1440 x 900 (`c-badge.png`) | Low, cosmetic | Open, sent on the bus | developer |
+| BUG-6 `npm run check` fails on Prettier in `tauri-client.test.ts` | Low, but blocks the CI check job | Open, sent on the bus | developer |
 | #40, #41, #42 | n/a | Verified fixed; PM can close after the release | |
 
 Observations for the PM (not caused by this change, no bug sent): O-1 at 200 % text scale in a 1440 x 900 window the Settings popover is clipped
@@ -135,14 +158,12 @@ by the window edge; the layout scrolls horizontally there. O-2 the sidebar, curs
 show mock data by design. O-3 the app starts stopped (D5) so the first view is empty until Run is pressed.
 
 ## Visual baselines (X-4)
-Not regenerated, and I recommend nobody replaces them with a local render. The memory rule is that baselines must come from the ubuntu-24.04 CI
-runner; that needs a pushed commit with a temporary workflow change, which was not allowed here (no commit, no push, and the branch is not on the
-remote). Local runs differ from CI by host fonts: the gallery `Tokens` section differs only in glyph rendering (nothing in the gallery was changed except the Marker and Segmented fixes), so the gallery baselines are probably not stale but cannot be judged on this host.
-Judgement of the main-window changes from the local renders: intended. The live graph is empty without frames (the mock traces and cursor overlays are gone), the dock shows
-the stub snapshot (CH1 to CH3 on, CH4 off), the status bar shows `Connected`, `Simulator`, identity, `Fs -`, `Capture - -` and `Renderer Canvas 2D`, and the toolbar shows the live chips.
-`graph.spec.ts` scope-screen snapshots now push a deterministic three-channel frame first, so they still cover trace drawing; their baselines also need the CI regeneration.
+Still not regenerated: they must come from the ubuntu-24.04 CI runner and the branch is not pushed. The 12 failing snapshots at e065a37, exactly:
+- `e2e/visual.spec.ts` main window, 7 cases: `w1-h1-1440x900`, `w2-h1-1280x900`, `w3-h1-1280x900-125`, `scroll-h1-960x700`, `w1-h2-1440x760`, `w1-h3-1440x640`, `w1-h1-2560x1440-200` (live content replaced the mock traces; BUG-5 will also change the 1440 x 900 shapes once fixed, so regenerate after that fix).
+- `e2e/graph.spec.ts` scope-screen snapshot, 4 cases: device scale 1, 1.25, 1.5, 2 (now draw a deterministic three-channel frame).
+- `e2e/visual.spec.ts` gallery: reports `gallery-Tokens.png` (11271 px, 2 %) first. The Tokens section was not changed by M1, so this is probably host font rendering, as in round 1; the test stops at the first mismatch, so other gallery sections are unverified here. Regenerate the gallery set only if the CI run also fails it.
 Procedure for the PM after the push: temporary workflow change to run `npm --prefix frontend run test:e2e -- --project=chromium e2e/visual.spec.ts e2e/graph.spec.ts --update-snapshots all --retries=0`,
-upload `frontend/e2e/__screenshots__/chromium/`, download, copy, revert the workflow.
+upload `frontend/e2e/__screenshots__/chromium/`, download, copy, revert the workflow. Do not commit local renders.
 
 ## Not tested and why
 - Everything on the real 6254BC (checklist H-01 to H-42, `--ignored` tests): human only. In particular: real `PermissionDenied`, real replug timing, 20 real plug-ins, power-up re-enumeration, force latency, real capture rate, real trigger position accuracy, the unverified range accuracy.
@@ -151,10 +172,11 @@ upload `frontend/e2e/__screenshots__/chromium/`, download, copy, revert the work
 - Banner states (permission, error) in the real window: they need a real or faked backend error; covered in e2e only.
 - Backend ranges at 2 mV and 10 V in the real window; trigger position 10, 50, 90 % in the real window.
 - axe with banners; keyboard use of the steppers in the real window.
-- The fixes for BUG-1 to BUG-4 (retest after the developers answer).
+- Banner states (permission, error) and the Copy toast in the real window; keyboard use of the steppers in the real window; 125 % and 150 % text scale and compact tier in the real window; hardware items as above.
+- `npm run check` steps after `format:check` (eslint, stylelint, svelte-check, architecture, test names) did not run because of BUG-6; the earlier round had them green and the retest only changed formatting-neutral code as far as the suites show.
 
 ## Screenshots and logs
-Kept in `.claude/tmp/m1/` (not committed): `cargo-test.log`, `pw-full.log`, `pw-full2.log`, `app-bug-events.png`, `vite-event-listen.log`, `app-patched.log`, `app-*.png`.
+Kept in `.claude/tmp/m1/` and `.claude/tmp/m1r/` (retest: `cargo.log`, `check.log`, `pw.log`, `a0.png` to `g-20.png`, `app.log`, `vite.log`) (not committed): `cargo-test.log`, `pw-full.log`, `pw-full2.log`, `app-bug-events.png`, `vite-event-listen.log`, `app-patched.log`, `app-*.png`.
 
 ## Artefacts added or changed by QA (uncommitted)
 `docs/specs/m1-live-view/test-plan.md`, this report, `frontend/e2e/live.spec.ts` (13 cases), `frontend/e2e/support/frames.ts`, `frontend/e2e/support/tauri-stub.ts`

@@ -23,3 +23,5 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Tauri 2 custom capabilities: check that core:event:allow-listen/unlisten are present when the frontend uses `listen`; app-only permission lists silently block events.
 - Rust threaded modules: check Drop joins, weak handler state, locks never held across bus requests, latest-wins via subscribe_latest; flag real sleeps in tests.
 - Help commands shown in banners must work outside the repo root (relative paths).
+- Shell commands built from embedded text (printf '%s' '...'): check a test forbids a single quote in the embedded file.
+- Re-review: run `npm run check` (prettier) again; fix commits often break format:check.

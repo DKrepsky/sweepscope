@@ -121,3 +121,6 @@ real Tauri debug binary under Xvfb `:77` with openbox, isolated HOME, Mesa softw
 
 ## Entry and exit criteria
 Entry: WP1 to WP12 on `feat/m1-live-view`, clean build. Exit: every case has a result in the QA report; no open high severity bug; hardware items listed as not tested and handed to the human.
+
+## Retest round 1 (e065a37)
+Added to the plan, all executed: R-1 BUG-1 in the real window with `SWEEPSCOPE_SIMULATOR=1`, `SWEEPSCOPE_NO_HARDWARE=1` and the USB-hiding namespace (app, no scope); R-2 live flow: Run, Stop, V/div and time base steppers, trigger sweep and level (app); R-3 unplug and replug through `use_simulator`, then 20 cycles with the thread count (app); R-4 C10-3 at 100 ms/div (app, now covers the badge placement); R-5 C6-2 Copy confirmation (e2e); R-6 permission-help command text, dry check only: syntax with `bash -n` and `sh -n`, `printf` part into a scratch file compared byte for byte with the shipped rule, `udevadm verify` (manual, no scope, never installs); R-7 docs for BUG-2 and the no-hardware flag (manual); R-8 full suites run alone: cargo, `npm run check`, vitest, Playwright. Results are in the QA report.
