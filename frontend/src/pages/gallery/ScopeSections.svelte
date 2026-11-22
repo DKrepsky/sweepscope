@@ -1,6 +1,5 @@
 <script lang="ts">
   import Graph from '../../ui/graph/Graph.svelte';
-  import { Icon } from '../../ui/icon';
   import Marker from '../../ui/marker/Marker.svelte';
   import { StatusBar } from '../../ui/status-bar';
   import { StatusChip } from '../../ui/status-chip';
@@ -80,7 +79,7 @@
 
 {#snippet connection()}<StatusChip kind="run">Ready</StatusChip>{/snippet}
 {#snippet rate()}<span class="ss-num">Sample rate 10 MSa/s</span>{/snippet}
-{#snippet warning()}<Icon name="warning" /> Aliasing risk (illustrative){/snippet}
+{#snippet warning()}Aliasing risk (illustrative){/snippet}
 
 <style>
   .frames {
