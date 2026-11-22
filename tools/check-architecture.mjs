@@ -75,18 +75,54 @@ export function checkMetadata(metadata) {
   return violations;
 }
 
+const TAURI_USE = [/(^|[^\w])tauri\s*::/, /\buse\s+(::)?tauri\s*(;|as\b)/, /\bextern\s+crate\s+tauri\b/];
+
+/** Blanks comments and string literals but keeps every newline, so line numbers stay valid. */
+export function stripCommentsAndStrings(text) {
+  const blank = (match) => match.replace(/[^\n]/g, ' ');
+  let result = '';
+  const token = /\/\/[^\n]*|"(?:\\.|[^"\\])*"|r(#*)"[\s\S]*?"\1|'(?:\\.|[^'\\])'|\/\*/y;
+  for (let i = 0; i < text.length; ) {
+    token.lastIndex = i;
+    const match = token.exec(text);
+    if (!match) {
+      result += text[i++];
+    } else if (match[0] === '/*') {
+      const end = blockCommentEnd(text, i);
+      result += blank(text.slice(i, end));
+      i = end;
+    } else {
+      result += blank(match[0]);
+      i += match[0].length;
+    }
+  }
+  return result;
+}
+
+function blockCommentEnd(text, start) {
+  let depth = 0;
+  for (let i = start; i < text.length - 1; i++) {
+    const pair = text.slice(i, i + 2);
+    if (pair === '/*') depth++;
+    else if (pair === '*/' && --depth === 0) return i + 2;
+  }
+  return text.length;
+}
+
 /** `files` are `{ path, text }` with `path` relative to `src-tauri/src`, using forward slashes. */
 export function checkShellSources(files) {
   const violations = [];
   for (const file of files.filter((f) => !TAURI_ALLOWED_SOURCES.some((allowed) => allowed.test(f.path)))) {
-    file.text.split('\n').forEach((line, index) => {
-      if (!line.trim().startsWith('//') && /(^|[^\w])tauri::/.test(line)) {
-        violations.push({
-          rule: 'tauri-outside-ipc',
-          message: `src-tauri/src/${file.path}:${index + 1} uses tauri:: (allowed only in main.rs and ipc/)`,
-        });
-      }
-    });
+    stripCommentsAndStrings(file.text)
+      .split('\n')
+      .forEach((line, index) => {
+        if (TAURI_USE.some((pattern) => pattern.test(line))) {
+          violations.push({
+            rule: 'tauri-outside-ipc',
+            message: `src-tauri/src/${file.path}:${index + 1} uses tauri:: (allowed only in main.rs and ipc/)`,
+          });
+        }
+      });
   }
   return violations;
 }

@@ -193,7 +193,8 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install browsers
-        run: npx --prefix frontend playwright install --with-deps chromium webkit
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run Playwright
         run: npm --prefix frontend run test:e2e

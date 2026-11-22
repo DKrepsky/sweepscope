@@ -4,10 +4,14 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 const tauriImports = { group: ['@tauri-apps/*'], message: 'Only src/api talks to Tauri.' };
-const hexColour = {
-  selector: 'Literal[value=/^#[0-9a-fA-F]{3,8}$/]',
-  message: 'Raw colour literal: use a design token.',
-};
+const RAW_COLOUR = '(^|[^\\w&])#[0-9a-fA-F]{3,8}\\b|\\b(rgb|hsl|hwb|lab|lch|oklab|oklch)a?\\(';
+const rawColourMessage = 'Raw colour literal: use a design token.';
+// Strings, template strings and markup attribute values (`style="color: #fff"`, `fill="rgb(...)"`).
+const rawColour = [
+  { selector: `Literal[value=/${RAW_COLOUR}/]`, message: rawColourMessage },
+  { selector: `TemplateElement[value.cooked=/${RAW_COLOUR}/]`, message: rawColourMessage },
+  { selector: `SvelteLiteral[value=/${RAW_COLOUR}/]`, message: rawColourMessage },
+];
 
 const restrictImports = (...patterns) => ({ 'no-restricted-imports': ['error', { patterns }] });
 const layer = (name) => ({ group: [`**/${name}`, `**/${name}/**`], message: `This layer must not import ${name}.` });
@@ -17,14 +21,14 @@ const layerRules = [
     files: ['src/ui/**'],
     rules: {
       ...restrictImports(layer('app'), layer('pages'), layer('api'), tauriImports),
-      'no-restricted-syntax': ['error', hexColour],
+      'no-restricted-syntax': ['error', ...rawColour],
     },
   },
   {
     files: ['src/pages/**'],
     rules: {
       ...restrictImports(layer('api'), tauriImports),
-      'no-restricted-syntax': ['error', hexColour],
+      'no-restricted-syntax': ['error', ...rawColour],
     },
   },
   {

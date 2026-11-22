@@ -10,7 +10,12 @@ const TS_SHAPE = 'given <state>, when <action>, then <result>';
 const RUST_NAME = /^given_.+_when_.+_then_.+$/;
 const TS_TITLE = /^(AC-[A-Z]+\d+: )?given .+ when .+ then .+$/;
 const RUST_TEST = /#\[(?:\w+::)*test(?:\([^\]]*\))?\]((?:\s*#\[[^\]]*\])*)\s*(?:async\s+)?fn\s+(\w+)/g;
-const TS_TEST = /(?:^|[^\w.])(?:it|test)(?:\.(?:only|skip|concurrent))?\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+const TS_HEAD = /(?:^|[^\w.])(it|test)((?:\.\w+)*)\s*/g;
+const TS_MODIFIERS = new Set(['only', 'skip', 'concurrent', 'fails', 'todo', 'fixme', 'fail', 'sequential', 'each']);
+// Playwright annotations (`test.fail('BUG-3')`, `test.fixme(cond, 'why')`) are not declarations: only a title followed by a body is.
+const PLAYWRIGHT_ANNOTATIONS = new Set(['skip', 'fixme', 'fail']);
+const BODY_START = /^\s*,\s*(?:async\b|function\b|\(|\{|\w+\s*=>)/;
+const STRING_LITERAL = /^(['"`])((?:\\.|(?!\1)[^\\])*)\1/;
 
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
@@ -20,10 +25,49 @@ export function checkRustSource(path, text) {
     .map((m) => ({ path, line: lineOf(text, m.index), name: m[2], expected: RUST_SHAPE }));
 }
 
+function skipBalanced(text, start) {
+  const open = text[start];
+  if (open === '`') return text.indexOf('`', start + 1) + 1;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '(' || text[i] === '[' || text[i] === '{') depth++;
+    else if (text[i] === ')' || text[i] === ']' || text[i] === '}') depth--;
+    if (depth === 0) return i + 1;
+  }
+  return -1;
+}
+
+/** Position just after `(` that opens the test call, or -1 when this is not a test declaration. */
+function titleStart(text, afterHead, modifiers) {
+  let position = afterHead;
+  if (modifiers.includes('each')) {
+    if (text[position] !== '(' && text[position] !== '`') return -1;
+    position = skipBalanced(text, position);
+    while (position > 0 && /\s/.test(text[position] ?? '')) position++;
+  }
+  return position > 0 && text[position] === '(' ? position + 1 : -1;
+}
+
+function declaredTitles(text) {
+  const titles = [];
+  for (const head of text.matchAll(TS_HEAD)) {
+    const modifiers = head[2].split('.').filter(Boolean);
+    if (!modifiers.every((m) => TS_MODIFIERS.has(m))) continue;
+    const start = titleStart(text, head.index + head[0].length, modifiers);
+    const literal = start < 0 ? null : STRING_LITERAL.exec(text.slice(start).replace(/^\s+/, ''));
+    if (!literal) continue;
+    const isAnnotation =
+      head[1] === 'test' && PLAYWRIGHT_ANNOTATIONS.has(modifiers.at(-1) ?? '') &&
+      !BODY_START.test(text.slice(start).replace(/^\s+/, '').slice(literal[0].length));
+    if (!isAnnotation) titles.push({ index: head.index, title: literal[2] });
+  }
+  return titles;
+}
+
 export function checkTypeScriptSource(path, text) {
-  return [...text.matchAll(TS_TEST)]
-    .filter((m) => !TS_TITLE.test(m[2].replace(/,/g, '')))
-    .map((m) => ({ path, line: lineOf(text, m.index), name: m[2], expected: TS_SHAPE }));
+  return declaredTitles(text)
+    .filter(({ title }) => !TS_TITLE.test(title.replace(/,/g, '')))
+    .map(({ index, title }) => ({ path, line: lineOf(text, index + 1), name: title, expected: TS_SHAPE }));
 }
 
 function* walk(directory) {

@@ -102,3 +102,33 @@ test('given tauri only in a comment of composition.rs, when the shell sources ar
 
   assert.deepEqual(checkShellSources(files), []);
 });
+
+test('given tauri inside a block comment, when the shell sources are checked, then it passes', () => {
+  const files = [{ path: 'composition.rs', text: '/* old:\n   tauri::Builder\n*/\nfn compose() {}' }];
+
+  assert.deepEqual(checkShellSources(files), []);
+});
+
+test('given tauri used after a nested block comment, when the shell sources are checked, then the line number is kept', () => {
+  const files = [{ path: 'composition.rs', text: '/* a /* b */ still comment tauri:: */\nuse tauri::State;' }];
+
+  assert.deepEqual(checkShellSources(files).map((v) => v.message.split(' ')[0]), ['src-tauri/src/composition.rs:2']);
+});
+
+test('given tauri only inside a string literal, when the shell sources are checked, then it passes', () => {
+  const files = [{ path: 'composition.rs', text: 'const NOTE: &str = "tauri::Builder";\nconst Q: char = \'"\';' }];
+
+  assert.deepEqual(checkShellSources(files), []);
+});
+
+test('given use tauri alone, when the shell sources are checked, then it fails with rule tauri-outside-ipc', () => {
+  const files = [{ path: 'composition.rs', text: 'use tauri;\nuse tauri as t;' }];
+
+  assert.deepEqual(checkShellSources(files).map((v) => v.rule), ['tauri-outside-ipc', 'tauri-outside-ipc']);
+});
+
+test('given code after a line comment on the same line, when the shell sources are checked, then tauri in code is found', () => {
+  const files = [{ path: 'composition.rs', text: 'let a = 1; tauri::run(); // done' }];
+
+  assert.equal(checkShellSources(files).length, 1);
+});

@@ -64,3 +64,59 @@ test('given a repository tree, when check-test-names runs, then it scans rust an
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+const titlesOf = (text) => checkTypeScriptSource('a.test.ts', text).map((f) => f.name);
+
+test('given it.each with a bad title, when check-test-names runs, then it fails', () => {
+  assert.deepEqual(titlesOf("it.each([[1, 2], [3, (4)]])('works %s', () => {});"), ['works %s']);
+});
+
+test('given it.each with a given when then title, when check-test-names runs, then it passes', () => {
+  assert.deepEqual(titlesOf("it.each([['a', 'b']])('given %s, when linted, then it fails', () => {});"), []);
+});
+
+test('given it.each as a tagged template with a bad title, when check-test-names runs, then it fails', () => {
+  assert.deepEqual(titlesOf("it.each`\n a | b\n ${1} | ${2}\n`('bad', () => {});"), ['bad']);
+});
+
+test('given test.skip.each and it.concurrent.each, when check-test-names runs, then their titles are checked', () => {
+  assert.deepEqual(titlesOf("test.skip.each([1])('bad one', f);\nit.concurrent.each([1])('bad two', f);"), ['bad one', 'bad two']);
+});
+
+test('given it.fails and it.todo with bad titles, when check-test-names runs, then both fail', () => {
+  assert.deepEqual(titlesOf("it.fails('known', () => {});\nit.todo('later');"), ['known', 'later']);
+});
+
+test('given it.todo with a good title, when check-test-names runs, then it passes', () => {
+  assert.deepEqual(titlesOf("it.todo('given x, when y, then z');"), []);
+});
+
+test('given a Playwright test.fail annotation inside a test, when check-test-names runs, then it is not a declaration', () => {
+  const text = "test('given a, when b, then c', async () => {\n  test.fail(true, 'BUG-3: reason');\n  test.fail('BUG-4');\n});";
+
+  assert.deepEqual(titlesOf(text), []);
+});
+
+test('given test.fixme and test.skip conditions with reasons, when check-test-names runs, then they are ignored', () => {
+  assert.deepEqual(titlesOf("test.fixme(browserName === 'webkit', 'flaky');\ntest.skip('BUG-5');"), []);
+});
+
+test('given test.fail declaring a test with a bad title and a body, when check-test-names runs, then it fails', () => {
+  assert.deepEqual(titlesOf("test.fail('BUG-3 popover', async ({ page }) => {});"), ['BUG-3 popover']);
+});
+
+test('given test.describe and describe.each, when check-test-names runs, then they are not tests', () => {
+  assert.deepEqual(titlesOf("test.describe('suite', () => {});\ndescribe.each([1])('suite %s', f);"), []);
+});
+
+test('given a bad title in frontend e2e, when check-test-names scans a tree, then the spec file is reported', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ss-names-'));
+  try {
+    mkdirSync(join(root, 'frontend', 'e2e'), { recursive: true });
+    writeFileSync(join(root, 'frontend', 'e2e', 'x.spec.ts'), "test('bad', async () => {});");
+
+    assert.deepEqual(checkTree(root).map((f) => f.path), ['frontend/e2e/x.spec.ts']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
