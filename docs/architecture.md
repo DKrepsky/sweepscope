@@ -324,7 +324,7 @@ Lint rules enforce this.
   every size is rem. It is persisted through the opaque UI-state blob of `settings` (section 4.5 rule 3); default 100 %.
 - **Layout tiers** (design.md 3.2) are computed in TypeScript from the viewport in rem, not with media queries (ADR 0005). Content floor 64 x 45 rem; window minimum 1024 x 720 logical px; below the floor the region between toolbar and status bar scrolls.
 - **Component gallery** (`frontend/gallery.html`, page `pages/gallery`) renders every `ui` component in every state and is
-  the target of the visual and HiDPI tests; it is excluded from production builds.
+  the target of the layout and HiDPI tests; it is excluded from production builds.
 - **Disabled controls** use `aria-disabled="true"`, not the `disabled` attribute, so they stay focusable and can show the
   tooltip that states why (design.md principle 1 and AC-I13).
 
@@ -443,8 +443,8 @@ describe('connection store', () => {
 
 - `app` layer: unit tests with a fake `BackendClient`. This is the bulk of frontend tests.
 - `ui` components: Vitest + Testing Library component tests for behaviour and accessibility (one test file per
-  component, acceptance criteria of design.md 9.3 as test names), plus Playwright visual snapshots of the gallery for
-  what jsdom cannot see (computed styles, layout tiers, HiDPI crispness, contrast).
+  component, acceptance criteria of design.md 9.3 as test names), plus Playwright layout and pixel-scan tests on the gallery for
+  what jsdom cannot see (computed styles, layout tiers, HiDPI crispness, contrast). There are no screenshot-comparison (visual snapshot) tests.
 - Token tests are pure: contrast ratios (AC-T2) and colour-blind pair distances (AC-T3) are computed from
   `tokens.generated.ts`.
 - Pages: a few smoke tests that wire the real application layer to the fake backend.
@@ -524,7 +524,7 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | `shell` | install WebKitGTK dev packages, `cargo clippy` and `cargo test` for `src-tauri`, ts-rs export and diff |
 | `frontend` | `npm ci`, ESLint, Stylelint, Prettier check, `svelte-check`, Vitest, token generation diff, `npm audit` |
 | `architecture` | `node --test tools`, `node tools/check-architecture.mjs`, `node tools/check-test-names.mjs` |
-| `browser` | Playwright on the gallery and main window (Chromium and WebKit), visual snapshots, HiDPI scales |
+| `browser` | Playwright on the gallery and main window (Chromium and WebKit), layout and bounding-box checks, HiDPI scales |
 | `bundle` (manual and on tags) | `tauri build` to .deb and AppImage; release steps need human confirmation (workflow section 6) |
 
 `main` is protected; every job is a required check. release-plz as in the driver repo is added by a later story.

@@ -107,7 +107,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `fitScreen(stage, rootFontPx)`: minimum is 32 x 25.6 rem converted with the root font size; ScopeStage reads `getComputedStyle(documentElement).fontSize` inside its ResizeObserver callback.
 - Disabled Marker reason: own `role=tooltip` span shown on focus (Tooltip wrapper would break the absolute positioning).
 - Do not `git stash` in the shared worktree (other developers work concurrently). Parallel Playwright runs share `test-results/` and give ENOENT flakes.
-- BUG-8 skipped: design 8.5 has no ruling beyond "crisp at every scale"; visual snapshots in `e2e/__screenshots__` need regeneration by QA (graticule now stays visible).
+- BUG-8 skipped: design 8.5 has no ruling beyond "crisp at every scale".
 
 ## Review/QA fix round (developer-9)
 - Other developers run Playwright concurrently on ports 5173/4173 (shared `dist`): run e2e with a throwaway config copy (other port, dev server only, `reuseExistingServer:false`), delete it afterwards (eslint lints it).
@@ -250,3 +250,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Playwright `getByText('Unverified')` hits the Badge's 1x1 `.sr-only` description span: use `getByRole('note').filter({ hasText })` for badge boxes. Group boxes include padding, so assert against the group's content edge, not its border box.
 - Horizontal dock `.line` wraps (`flex-wrap: wrap`) so the badge drops under the stepper when the column is narrow. The Horizontal group is not rendered at 1024x720 (collapsed dock): placement tests use 1280, 1440, 1920, 2560 widths.
 - Never `pkill -f` a string from the calling command line (kills the shell, exit 144).
+
+## Visual snapshots removed (developer-8)
+- All `toHaveScreenshot` tests, baselines, `snapshotPathTemplate` and `expect.toHaveScreenshot` config were dropped by human decision; do not reintroduce. CI had no snapshot-only steps.

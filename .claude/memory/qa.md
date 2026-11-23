@@ -47,8 +47,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Stop everything by PID afterwards (app, openbox, Xvfb, vite) and delete the temp HOME.
 
 ## Pitfalls added in round 2
-- `toHaveScreenshot` defaults to `scale: 'css'`: HiDPI snapshots need `{ scale: 'device' }` or they cannot show device-pixel changes.
-- The gallery snapshot test stops at the first mismatch: fix one section, rerun, others may be hidden behind it.
 - Playwright `page.clock` does not work with the Svelte timers here (elements never appear); measure Toast timing with real timers and a margin.
 - `addInitScript` order matters: a wrapper of `__TAURI_INTERNALS__.invoke` must be added after `stubTauri`, and `openMain` adds the stub again, so
   for failing saves call `stubTauri`, then the wrapper, then `page.goto` yourself.
@@ -59,19 +57,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
   (Settings popover labels wrap in WebKitGTK). Window minimum is 1024 x 720 (content floor 64 x 45 rem), Stop is #f2766f.
 - Known limit: banners are not counted in the height thresholds.
 
-## Visual snapshots and CI (PR #1)
-- Baselines in `frontend/e2e/__screenshots__/chromium/` must come from the CI runner (ubuntu-24.04): a local host and even the official
-  `mcr.microsoft.com/playwright:v1.65.1-noble` container render differently from the runner (the container differed from CI more than the
-  old local baselines did). Fonts are not bundled, so wrapping can differ (StatusChip row wrapped differently).
-- How to regenerate: temporarily change the browser job's Run Playwright step to
-  `npm --prefix frontend run test:e2e -- --project=chromium e2e/visual.spec.ts --update-snapshots all --retries=0` plus an
-  `upload-artifact` of `frontend/e2e/__screenshots__/chromium/visual.spec.ts/`, push, `gh run download <run> -n snapshots`, copy the images,
-  revert the workflow in the next commit. (`npm --prefix frontend exec` does not find the config; use `run test:e2e`.) Pushing a new
-  branch for this was denied by the permission classifier: use the PR branch only.
-- The gallery snapshot test stops at the first mismatch, so a failed run shows only one gallery section; regenerate all at once.
-- CI renders are deterministic (two runs gave 0 differing pixels). Graph scope-screen snapshots passed on CI unchanged.
+## CI notes (PR #1)
 - Working tree may hold another agent's uncommitted edits: use a `git worktree add --detach` in the scratchpad and push `HEAD:<branch>`.
-- Gallery crops use `maxDiffPixelRatio: 0.01` (global 0.002 stays for full-window shots): Dialog text differed by 518 px between two CI runs.
 
 ## Backend-only stories (M0 #3, device crate)
 - No UI: verify by `cargo test -p sweepscope-device` (repeat 20x for flakiness), `npm run check` at the REPO ROOT (frontend has no `check` script), and inspection
@@ -105,7 +92,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - To test a capability fix without editing the repo: `git archive HEAD | tar -x` into scratch, patch, `CARGO_TARGET_DIR=<scratch> cargo build -p sweepscope-app` (~70 s with warm deps cache), run that binary.
 - e2e stub now has `emit(page, event, payload)` and `sendFrame(page, bytes)` (support/tauri-stub.ts) and `wireFrame` (support/frames.ts); wait for `open_frame_stream` in the IPC log before the first frame.
   Pixel counting of traces: count bright pixels (max channel > 80) against an empty baseline; frozen traces are dimmed.
-- Branch not on the remote means the CI baseline regeneration cannot be done by QA; say so, do not commit local renders.
 
 ## M1 retest lessons
 - Use `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off`) together with the `unshare -rm` USB-hiding recipe: both guards, every real-app run. Scripts live in the scratchpad (env.sh, run-app.sh); `import -window root -crop WxH+X+Y` then `convert -scale` to zoom (import has no -scale).
@@ -113,3 +99,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Do not wait with `pgrep -f "playwright test"` in an until-loop: the waiter matches itself. Full Playwright run takes about 4 min and is moved to the background by the harness (exit code shown is of the wrapped pipeline, read the log).
 - Dry check of a shell install command: rebuild it from the source constants, `bash -n`/`sh -n`, run only the `printf` part into a scratch file and `cmp` with the shipped file; `udevadm verify <file>`. Never run the sudo part.
 - At 100 ms/div the simulator's 1 kHz sine aliases (2.5 kS/s) and fills the screen: not a bug. Check the Horizontal dock badge against the Trigger section at 1440x900 (BUG-5).
+
+## No visual snapshots
+- Screenshot-comparison tests (`toHaveScreenshot`) were removed by decision of the human (cost over value). Do not add baselines or regenerate them; check looks with layout, bounding-box, token and pixel-scan assertions, and manual UI checks.

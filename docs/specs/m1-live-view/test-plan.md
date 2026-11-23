@@ -9,7 +9,7 @@ the three absorbed bugs. Out: anything that needs the real 6254BC (the human run
 
 Risks driving the plan: (1) the e2e stub used to be static, so live states (frames, events, disconnect) were never exercised in a browser; (2) the Tauri window is
 WebKitGTK, which Playwright WebKit only approximates (bug #42); (3) timing claims (1 s freeze, 5 s ready, 250 ms stop) are only checkable on the simulator;
-(4) the visual baselines are stale after the main-window rewiring.
+(4) visual snapshot tests were dropped (no baselines to maintain).
 
 Kinds: `unit` = cargo test or vitest (already written by the developers, re-run and spot-checked); `e2e` = Playwright against the stubbed Tauri bridge;
 `app` = the real Tauri binary against the backend simulator (`SWEEPSCOPE_SIMULATOR=1`) under Xvfb with an isolated HOME; `UI` = visual check; `HW` = needs the scope, human only.
@@ -111,7 +111,7 @@ Kinds: `unit` = cargo test or vitest (already written by the developers, re-run 
 | X-1 | Given the main window at all calibrated tiers, themes, text scales and the 1024 x 720 minimum, when rendered live, then no clipping or overlap in the dock, status bar and banners | e2e, UI |
 | X-2 | Given keyboard only, when tabbing through the toolbar and dock, then focus is visible, disabled controls announce their reason (tooltip or aria) | e2e, UI |
 | X-3 | Given axe on the live main window with banners, when run, then no violations | e2e |
-| X-4 | Given the stale baselines (`visual.spec.ts`, gallery), when regenerated, then the differences are the intended main window changes only | UI |
+| X-4 | Dropped: visual snapshot tests were removed; the main window is checked by layout, bounding-box and token tests | n/a |
 | X-5 | Given a fresh HOME, when the app starts and exits, then no config residue besides settings and no error in the log | app |
 | X-6 | Given the CSP of the production bundle, when loaded, then no console errors, frame stream and events work under the CSP (`ipc:`) | e2e, app |
 
