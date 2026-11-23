@@ -240,6 +240,14 @@ describe('live main window model: horizontal and trigger', () => {
     expect(model(window).horizontal.interpolation).toBe('sinc');
   });
 
+  it('given the backend display state, when automatic changes, then the horizontal model reports it', () => {
+    const { window, display } = setup();
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true });
+    expect(model(window).horizontal.automaticInterpolation).toBe(true);
+    display.set({ revision: 2, interpolation: 'dots', automatic: false });
+    expect(model(window).horizontal.automaticInterpolation).toBe(false);
+  });
+
   it('given an interpolation choice, when made, then it goes to the backend and the model keeps the backend value', () => {
     const { window, commands } = setup();
     window.setInterpolation('dots');

@@ -64,6 +64,8 @@ export interface HorizontalModel {
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;
+  /** True until the user picks a mode; the backend then chooses by samples per division. */
+  automaticInterpolation?: boolean;
   availability?: Availability;
   /** Effective sample rate line of the Horizontal group. */
   rateNote: string;
