@@ -186,11 +186,11 @@ fn given_a_sine_within_the_range_when_captured_then_codes_scale_by_counts_per_di
 }
 
 #[test]
-fn given_a_calibrator_signal_when_captured_then_it_swings_between_zero_and_five_volts() {
+fn given_a_calibrator_signal_when_captured_then_it_swings_between_zero_and_1_91_volts() {
     let mut rig = rig();
     rig.control.set_signal(0, SignalKind::Calibrator);
     let mut config = setup([true, false, false, false], TB_200US);
-    config.trigger.level_volts = 2.5;
+    config.trigger.level_volts = 0.95;
     config.channels[0].range_index = 10;
     configured(&mut rig, &config);
 
@@ -200,7 +200,7 @@ fn given_a_calibrator_signal_when_captured_then_it_swings_between_zero_and_five_
     let high = f64::from(*data.codes.iter().max().unwrap());
     let low = f64::from(*data.codes.iter().min().unwrap());
     let swing_volts = (high - low) / frame.counts_per_div * data.volts_per_div;
-    assert!((swing_volts - 5.0).abs() < 0.5, "{swing_volts}");
+    assert!((swing_volts - 1.91).abs() < 0.2, "{swing_volts}");
 }
 
 #[test]
