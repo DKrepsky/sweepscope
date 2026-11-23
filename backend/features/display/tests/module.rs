@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::*;
-use sweepscope_display::{DisplayDeps, DisplayFrameReady, DisplayModule};
+use sweepscope_display::{DisplayDeps, DisplayFrameReady, DisplayModule, InterpolationMode, SetInterpolation};
 use sweepscope_kernel::contracts::{FrameCaptured, TriggerOutcome};
 use sweepscope_kernel::Bus;
 
@@ -18,11 +18,16 @@ fn captured(level: u8) -> FrameCaptured {
 }
 
 fn start(bus: &Bus) -> DisplayModule {
-    DisplayModule::new(DisplayDeps {
+    let module = DisplayModule::new(DisplayDeps {
         bus: bus.clone(),
         unix_time_us: || 5_000.0,
     })
-    .unwrap()
+    .unwrap();
+    bus.request(SetInterpolation {
+        mode: InterpolationMode::Linear,
+    })
+    .unwrap();
+    module
 }
 
 #[test]

@@ -263,3 +263,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## WP7 export (developer-5)
 - `ExportModule`: thread plus handlers share a `Newest` (subscribe_latest); handlers call `absorb()` first so a just-published frame is seen without sleeping in tests. Raw sidecar is `<stem>.format.txt` from the "## Layout" section of docs/formats/frame-raw-v1.md (include_str!). Golden file regenerates with `UPDATE_GENERATED=1 cargo test -p sweepscope-export`.
 - Clippy `too_many_lines` limit is 40: split decoders. Heredoc-with-cd shell commands are refused in worktrees; use Write and plain commands.
+## M2 WP5 display (developer-1)
+- Integer rule: factor = clamp(ceil(2500 / (len - 1)), 1, 512); automatic Sinc iff 1 <= len-1 < 2500. `encode_in_mode` is the mode-aware encoder, `encode` stays the Linear one. Module state (mode, last frame, sequence) sits behind one Mutex shared by the worker and the request handlers; handlers publish events synchronously, so tests need no sleeps.
+- A 200 ns window (20 ns/div) cannot hold a 250 ns edge: the rise-time test measures 20-80 % and scales by 0.8/0.6.
+- clippy `too_many_lines` limit is 40 per function.
