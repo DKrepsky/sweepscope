@@ -1,11 +1,16 @@
 import type { BackendClient } from '../../api';
+import { createCursorsStore } from '../cursors';
+import { createFileActions } from '../files';
 import { createInstrumentCommands, createInstrumentStores } from '../instrument';
 import { createFrameFeed, type FrameBudgetProbe } from '../waveform';
 import { createLiveMainWindow, type LiveMainWindow } from './live-main-window';
+import { createPinnedMeasurements } from './pinned-measurements';
 
 interface Deps {
   client: BackendClient;
-  notify: (kind: 'error', text: string) => void;
+  notify: (kind: 'info' | 'warning' | 'error', text: string) => void;
+  /** PNG bytes of the window as it looks now. */
+  composeScreenshot: () => Promise<Uint8Array>;
   copyText: (text: string) => void;
   /** Milliseconds since the Unix epoch, the clock the frame stamps use. */
   now: () => number;
@@ -32,16 +37,30 @@ const probedFrames =
     });
 
 export function createLiveApp(deps: Deps): LiveApp {
-  const { client, notify, copyText, now } = deps;
+  const { client, notify, copyText, now, composeScreenshot } = deps;
   const stores = createInstrumentStores({ client });
   const commands = createInstrumentCommands({ client, notify });
   const feed = createFrameFeed({ client, requestFrame: probedFrames(deps), now });
-  const model = createLiveMainWindow({ stores, commands, frames: feed.frame, copyText, notify, renderer: 'Canvas 2D' });
+  const cursors = createCursorsStore();
+  const pinned = createPinnedMeasurements({ client });
+  const files = createFileActions({ client, notify, composeScreenshot });
+  const model = createLiveMainWindow({
+    stores,
+    commands,
+    cursors,
+    pinned,
+    files,
+    frames: feed.frame,
+    copyText,
+    notify,
+    renderer: 'Canvas 2D',
+  });
 
   return {
     model,
     start: async () => {
       feed.start();
+      void pinned.load();
       await stores.start();
     },
     stop: () => {

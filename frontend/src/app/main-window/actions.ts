@@ -1,4 +1,4 @@
-import type { BannerActionId, ChannelNumber } from './types';
+import type { BannerActionId, ChannelNumber, CursorId, Interpolation } from './types';
 
 /** Plain callbacks the pages call; they hold no store access. */
 export interface MainWindowActions {
@@ -25,7 +25,17 @@ export interface MainWindowActions {
   setTriggerSource(channel: ChannelNumber): void;
   setTriggerSlope(slope: 'rising' | 'falling'): void;
   setTriggerSweep(sweep: 'auto' | 'normal'): void;
-  setInterpolation(interpolation: 'linear' | 'dots'): void;
+  setInterpolation(interpolation: Interpolation): void;
+  toggleCursors(): void;
+  moveCursor(id: CursorId, position: number): void;
+  removeCursor(id: CursorId): void;
+  clearCursors(): void;
+  setMeasurementPinned(id: string, pinned: boolean): void;
+  saveSetup(): void;
+  loadSetup(): void;
+  exportCsv(): void;
+  exportRaw(): void;
+  saveScreenshot(): void;
   bannerAction(id: BannerActionId): void;
   copyText(text: string): void;
 }
