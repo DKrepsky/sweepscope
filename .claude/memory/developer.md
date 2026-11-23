@@ -253,3 +253,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 
 ## Visual snapshots removed (developer-8)
 - All `toHaveScreenshot` tests, baselines, `snapshotPathTemplate` and `expect.toHaveScreenshot` config were dropped by human decision; do not reintroduce. CI had no snapshot-only steps.
+
+## M2 WP1 lessons (contracts)
+- ts-rs `export_to` is relative to the source file's directory depth: kernel `src/*.rs` uses 3 `../`, `src/contracts/*.rs` and `features/*/src/*.rs` use 4. A wrong count writes `backend/frontend/...` and bad import paths in other generated files.
+- Library crates are named without prefix (`interpolation`, `measurements`, `engineering-format`); features `sweepscope-<name>`. Rust 1.100 warns on unused dependencies: add a dependency only when code uses it.
+- Compound shell commands (heredoc plus python plus cat) get refused in worktrees; use Write/Edit tools and one simple command per call.
+- Root can bypass read-only folder permissions: tests of `PermissionDenied` probe writability first.

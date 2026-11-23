@@ -6,6 +6,8 @@ mod messages;
 mod module;
 mod wire;
 
-pub use messages::DisplayFrameReady;
+pub use messages::{
+    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, SetInterpolation, COMMANDS,
+};
 pub use module::{DisplayDeps, DisplayModule};
 pub use wire::{encode, stamp_sent};

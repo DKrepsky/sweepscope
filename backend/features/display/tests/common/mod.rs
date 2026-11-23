@@ -28,6 +28,9 @@ pub fn context(window_start: usize, window_len: usize) -> FrameContext {
         window_start,
         window_len,
         invert: [false; 4],
+        probe: [1.0; 4],
+        range_verified: [true; 4],
+        seconds_per_div: 1e-3,
     }
 }
 

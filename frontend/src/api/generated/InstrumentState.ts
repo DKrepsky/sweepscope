@@ -2,9 +2,14 @@
 import type { ChannelState } from "./ChannelState";
 import type { ControlsAvailability } from "./ControlsAvailability";
 import type { HorizontalState } from "./HorizontalState";
+import type { SetupNotice } from "./SetupNotice";
 import type { TriggerState } from "./TriggerState";
 
 /**
  * Instrument slice. `channels` always holds four entries.
  */
-export type InstrumentState = { revision: number, running: boolean, channels: Array<ChannelState>, horizontal: HorizontalState, trigger: TriggerState, controls: ControlsAvailability, };
+export type InstrumentState = { revision: number, running: boolean, channels: Array<ChannelState>, horizontal: HorizontalState, trigger: TriggerState, controls: ControlsAvailability, 
+/**
+ * Set once when the last setup could not be restored completely (ADR 0016 item 6).
+ */
+setupNotice: SetupNotice | null, };

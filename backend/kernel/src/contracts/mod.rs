@@ -6,6 +6,7 @@ mod frame;
 mod identity;
 mod messages;
 mod setup;
+mod shared;
 
 pub use capabilities::{Capabilities, TimeBaseStep, VerticalRange};
 pub use connection::{
@@ -18,3 +19,4 @@ pub use messages::{
     SetCapturing,
 };
 pub use setup::{AcquisitionSetup, ChannelSetup, Coupling, Slope, Sweep, TriggerSetup};
+pub use shared::{FormattedValue, SavedFile};

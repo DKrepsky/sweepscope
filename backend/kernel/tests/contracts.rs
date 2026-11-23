@@ -23,6 +23,9 @@ fn context(setup_revision: u64) -> FrameContext {
         window_start: 0,
         window_len: 2,
         invert: [false; 4],
+        probe: [1.0; 4],
+        range_verified: [true; 4],
+        seconds_per_div: 1e-3,
     }
 }
 

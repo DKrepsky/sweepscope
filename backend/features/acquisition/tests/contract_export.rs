@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use sweepscope_acquisition::{
-    AcquisitionStatus, Availability, ChannelPatch, ChannelState, FormattedValue, InstrumentFacts, InstrumentState,
-    Phase, ScaleChoice, SettingTarget, StateSnapshot, TriggerPatch,
+    AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FormattedValue, InstrumentFacts,
+    InstrumentState, Phase, ScaleChoice, SettingTarget, SetupLoaded, SetupNotice, StateSnapshot, TriggerPatch,
 };
 use sweepscope_kernel::contracts::{Slope, Sweep};
 use ts_rs::{Config, TS};
@@ -53,6 +53,20 @@ fn given_the_channel_and_scale_types_when_exported_then_the_ui_fields_exist() {
     assert!(generated("FormattedValue.ts").contains("unit: string"));
     assert!(generated("Availability.ts").contains("reason: string | null"));
     assert!(generated("Phase.ts").contains("\"waitingForTrigger\""));
+}
+
+#[test]
+fn given_the_setup_types_when_exported_then_the_notice_and_the_load_report_have_the_documented_fields() {
+    let config = Config::from_env();
+    SetupNotice::export_all(&config).unwrap();
+    SetupLoaded::export_all(&config).unwrap();
+    InstrumentState::export_all(&config).unwrap();
+    ControlsAvailability::export_all(&config).unwrap();
+
+    assert!(generated("SetupNotice.ts").contains("id: number"));
+    assert!(generated("SetupLoaded.ts").contains("warnings: Array<string>"));
+    assert!(generated("InstrumentState.ts").contains("setupNotice: SetupNotice | null"));
+    assert!(generated("ControlsAvailability.ts").contains("files: Availability"));
 }
 
 #[test]

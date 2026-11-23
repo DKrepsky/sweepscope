@@ -1638,6 +1638,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "interpolation"
+version = "0.1.0"
+
+[[package]]
 name = "ipnet"
 version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1987,6 +1991,10 @@ dependencies = [
  "tendril",
  "web_atoms 0.3.0",
 ]
+
+[[package]]
+name = "measurements"
+version = "0.1.0"
 
 [[package]]
 name = "memchr"
@@ -3310,7 +3318,18 @@ dependencies = [
 name = "sweepscope-display"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
+name = "sweepscope-export"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sweepscope-kernel",
+ "ts-rs",
 ]
 
 [[package]]
@@ -3318,6 +3337,15 @@ name = "sweepscope-kernel"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "ts-rs",
+]
+
+[[package]]
+name = "sweepscope-measurement"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sweepscope-kernel",
  "ts-rs",
 ]
 

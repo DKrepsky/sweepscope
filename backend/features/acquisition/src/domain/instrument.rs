@@ -192,19 +192,31 @@ impl Instrument {
     }
 
     pub fn frame_context(&self, setup_revision: u64) -> FrameContext {
-        let (window_start, window_len) = match self.caps.as_ref().zip(self.model.as_ref()) {
-            Some((caps, model)) => {
-                let g = model.geometry(caps);
-                (g.window_start, g.window_len)
-            }
-            None => (0, 0),
-        };
-        FrameContext {
+        let mut context = FrameContext {
             setup_revision,
-            window_start,
-            window_len,
-            invert: self.model.as_ref().map_or([false; CHANNELS], |m| m.invert),
+            window_start: 0,
+            window_len: 0,
+            invert: [false; CHANNELS],
+            probe: [1.0; CHANNELS],
+            range_verified: [true; CHANNELS],
+            seconds_per_div: 0.0,
+        };
+        let Some((caps, model)) = self.caps.as_ref().zip(self.model.as_ref()) else {
+            return context;
+        };
+        let g = model.geometry(caps);
+        context.window_start = g.window_start;
+        context.window_len = g.window_len;
+        context.invert = model.invert;
+        context.probe = model.probes;
+        context.seconds_per_div = caps
+            .time_bases
+            .get(usize::from(model.setup.time_base_index))
+            .map_or(0.0, |t| t.seconds_per_div);
+        for (number, verified) in context.range_verified.iter_mut().enumerate() {
+            *verified = model.range(caps, number).is_none_or(|r| r.verified);
         }
+        context
     }
 
     pub fn setup(&self) -> Option<&AcquisitionSetup> {

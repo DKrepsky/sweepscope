@@ -58,6 +58,7 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, reaso
         vertical: gate(available()),
         horizontal: gate(available()),
         trigger: gate(available()),
+        files: gate(available()),
     };
     InstrumentState {
         revision,
@@ -66,6 +67,7 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, reaso
         horizontal: horizontal_state(caps, model, &gate),
         trigger: trigger_state(caps, model),
         controls,
+        setup_notice: None,
     }
 }
 

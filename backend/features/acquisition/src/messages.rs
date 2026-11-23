@@ -1,17 +1,7 @@
 use serde::{Deserialize, Serialize};
-use sweepscope_kernel::contracts::{ConnectionSnapshot, Coupling, Slope, Sweep};
+use sweepscope_kernel::contracts::{ConnectionSnapshot, Coupling, FormattedValue, SavedFile, Slope, Sweep};
 use sweepscope_kernel::{Event, Request};
 use ts_rs::TS;
-
-/// A number for geometry (`value`, SI) next to what the UI shows: the number part and the unit with prefix.
-#[derive(Debug, Clone, PartialEq, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
-pub struct FormattedValue {
-    pub value: f64,
-    pub text: String,
-    pub unit: String,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +83,8 @@ pub struct ControlsAvailability {
     pub vertical: Availability,
     pub horizontal: Availability,
     pub trigger: Availability,
+    /// Save and load of setup files.
+    pub files: Availability,
 }
 
 /// Instrument slice. `channels` always holds four entries.
@@ -107,6 +99,27 @@ pub struct InstrumentState {
     pub horizontal: HorizontalState,
     pub trigger: TriggerState,
     pub controls: ControlsAvailability,
+    /// Set once when the last setup could not be restored completely (ADR 0016 item 6).
+    pub setup_notice: Option<SetupNotice>,
+}
+
+/// A message the UI shows once per `id`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+pub struct SetupNotice {
+    #[ts(type = "number")]
+    pub id: u64,
+    pub text: String,
+}
+
+/// Result of `load_setup`: values the device cannot do are listed in `warnings` and keep their current setting.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+pub struct SetupLoaded {
+    pub file_name: String,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
@@ -285,4 +298,18 @@ pub struct InstrumentSnapshot {
 pub struct GetInstrument;
 impl Request for GetInstrument {
     type Response = InstrumentSnapshot;
+}
+
+/// Asks for a file name and writes the current setup; `None` when the dialog is cancelled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SaveSetup;
+impl Request for SaveSetup {
+    type Response = Option<SavedFile>;
+}
+
+/// Asks for a file and applies it to the connected device; `None` when the dialog is cancelled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LoadSetup;
+impl Request for LoadSetup {
+    type Response = Option<SetupLoaded>;
 }
