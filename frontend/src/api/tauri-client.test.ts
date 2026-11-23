@@ -23,6 +23,20 @@ describe('tauri client contract', () => {
     expect(result).toEqual({ namespace: 'a', version: 1, json: '{}' });
   });
 
+  it('given bytes, when sent, then the transport receives the command and the same bytes', async () => {
+    const transport = fakeTransport({ invoke: vi.fn().mockResolvedValue({ fileName: 'a.png' }) });
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const result = await createTauriClient(transport).sendBytes('save_screenshot', bytes);
+    expect(transport.invoke).toHaveBeenCalledExactlyOnceWith('save_screenshot', bytes);
+    expect(result).toEqual({ fileName: 'a.png' });
+  });
+
+  it('given the transport rejects, when bytes are sent, then the same error reaches the caller', async () => {
+    const failure = { category: 'fatal', message: 'boom' };
+    const transport = fakeTransport({ invoke: vi.fn().mockRejectedValue(failure) });
+    await expect(createTauriClient(transport).sendBytes('save_screenshot', new Uint8Array())).rejects.toBe(failure);
+  });
+
   it('given the transport rejects with a kernel error, when sent, then the same error reaches the caller', async () => {
     const failure = { category: 'fatal', message: 'boom' };
     const transport = fakeTransport({ invoke: vi.fn().mockRejectedValue(failure) });

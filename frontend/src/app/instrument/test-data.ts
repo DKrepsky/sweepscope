@@ -1,4 +1,12 @@
-import type { AcquisitionStatus, ConnectionSnapshot, InstrumentFacts, InstrumentState, StateSnapshot } from '../../api';
+import type {
+  AcquisitionStatus,
+  ConnectionSnapshot,
+  DisplayState,
+  InstrumentFacts,
+  InstrumentState,
+  MeasurementsState,
+  StateSnapshot,
+} from '../../api';
 
 const enabled = { enabled: true, reason: null };
 const value = (text: string, unit: string) => ({ value: Number(text), text, unit });
@@ -56,7 +64,8 @@ export const instrumentState = (patch: Partial<InstrumentState> = {}): Instrumen
     levelTag: '0 V',
     positionTag: '50 %',
   },
-  controls: { run: enabled, force: enabled, vertical: enabled, horizontal: enabled, trigger: enabled },
+  setupNotice: null,
+  controls: { run: enabled, force: enabled, vertical: enabled, horizontal: enabled, trigger: enabled, files: enabled },
   ...patch,
 });
 
@@ -76,10 +85,26 @@ export const instrumentFacts = (patch: Partial<InstrumentFacts> = {}): Instrumen
   ...patch,
 });
 
+export const displayState = (patch: Partial<DisplayState> = {}): DisplayState => ({
+  revision: 1,
+  interpolation: 'sinc',
+  automatic: true,
+  ...patch,
+});
+
+export const measurementsState = (patch: Partial<MeasurementsState> = {}): MeasurementsState => ({
+  revision: 1,
+  channels: [],
+  accuracyNote: 'Approximate',
+  ...patch,
+});
+
 export const stateSnapshot = (patch: Partial<StateSnapshot> = {}): StateSnapshot => ({
   connection: connectionSnapshot(),
   instrument: instrumentState(),
   status: acquisitionStatus(),
   facts: instrumentFacts(),
+  display: displayState(),
+  measurements: measurementsState(),
   ...patch,
 });

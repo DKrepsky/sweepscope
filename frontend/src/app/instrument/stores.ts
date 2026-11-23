@@ -1,12 +1,22 @@
 import { readonly, writable, type Readable } from 'svelte/store';
-import type { AcquisitionStatus, BackendClient, ConnectionSnapshot, InstrumentFacts, InstrumentState } from '../../api';
+import type {
+  AcquisitionStatus,
+  BackendClient,
+  ConnectionSnapshot,
+  DisplayState,
+  InstrumentFacts,
+  InstrumentState,
+  MeasurementsState,
+} from '../../api';
 
 export interface InstrumentStores {
   connection: Readable<ConnectionSnapshot | undefined>;
   instrument: Readable<InstrumentState | undefined>;
   status: Readable<AcquisitionStatus | undefined>;
   facts: Readable<InstrumentFacts | undefined>;
-  /** Subscribes to the four slice events, then loads the snapshot; events and snapshot apply by revision. */
+  display: Readable<DisplayState | undefined>;
+  measurements: Readable<MeasurementsState | undefined>;
+  /** Subscribes to the six slice events, then loads the snapshot; events and snapshot apply by revision. */
   start(): Promise<void>;
   stop(): void;
 }
@@ -30,28 +40,35 @@ function createSlice<T extends { revision: number }>(): Slice<T> {
   };
 }
 
+function createSlices() {
+  return {
+    connection: createSlice<ConnectionSnapshot>(),
+    instrument: createSlice<InstrumentState>(),
+    status: createSlice<AcquisitionStatus>(),
+    facts: createSlice<InstrumentFacts>(),
+    display: createSlice<DisplayState>(),
+    measurements: createSlice<MeasurementsState>(),
+  };
+}
+
 export function createInstrumentStores({ client }: { client: BackendClient }): InstrumentStores {
-  const connection = createSlice<ConnectionSnapshot>();
-  const instrument = createSlice<InstrumentState>();
-  const status = createSlice<AcquisitionStatus>();
-  const facts = createSlice<InstrumentFacts>();
+  const slices = createSlices();
   let unsubscribe: (() => void)[] = [];
   let starting: Promise<void> | undefined;
 
   const follow = () => [
-    client.subscribe('connection_changed', connection.apply),
-    client.subscribe('instrument_changed', instrument.apply),
-    client.subscribe('status_changed', status.apply),
-    client.subscribe('facts_changed', facts.apply),
+    client.subscribe('connection_changed', slices.connection.apply),
+    client.subscribe('instrument_changed', slices.instrument.apply),
+    client.subscribe('status_changed', slices.status.apply),
+    client.subscribe('facts_changed', slices.facts.apply),
+    client.subscribe('display_changed', slices.display.apply),
+    client.subscribe('measurements_changed', slices.measurements.apply),
   ];
 
   const load = async () => {
     unsubscribe = follow();
     const snapshot = await client.send('get_snapshot', {});
-    connection.apply(snapshot.connection);
-    instrument.apply(snapshot.instrument);
-    status.apply(snapshot.status);
-    facts.apply(snapshot.facts);
+    (Object.keys(slices) as (keyof typeof slices)[]).forEach((key) => slices[key].apply(snapshot[key] as never));
   };
 
   const stop = () => {
@@ -61,10 +78,12 @@ export function createInstrumentStores({ client }: { client: BackendClient }): I
   };
 
   return {
-    connection: connection.store,
-    instrument: instrument.store,
-    status: status.store,
-    facts: facts.store,
+    connection: slices.connection.store,
+    instrument: slices.instrument.store,
+    status: slices.status.store,
+    facts: slices.facts.store,
+    display: slices.display.store,
+    measurements: slices.measurements.store,
     start: () =>
       (starting ??= load().catch((failure: unknown) => {
         stop();

@@ -26,6 +26,7 @@ const cases: Case[] = [
   ['setTrigger', (c) => c.setTrigger({ slope: 'falling' }), 'set_trigger', { patch: { slope: 'falling' } }],
   ['useSimulator', (c) => c.useSimulator(true), 'use_simulator', { enabled: true }],
   ['retryConnection', (c) => c.retryConnection(), 'retry_connection', {}],
+  ['setInterpolation', (c) => c.setInterpolation('dots'), 'set_interpolation', { mode: 'dots' }],
 ];
 
 describe('instrument commands', () => {
