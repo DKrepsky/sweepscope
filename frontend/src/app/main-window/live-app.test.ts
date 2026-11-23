@@ -20,6 +20,7 @@ function setup() {
     client,
     notify: vi.fn(),
     copyText: vi.fn(),
+    composeScreenshot: () => Promise.resolve(new Uint8Array()),
     now: () => 0,
     requestAnimationFrame: (callback) => void animationFrames.push(callback),
     afterRender: () => drawn,

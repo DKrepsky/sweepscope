@@ -87,6 +87,8 @@ export const mockMeasurements = (): MeasurementsModel => ({
     { id: 'ch3', label: 'CH3', color: 'color-ch3' },
   ],
   rows: measurementRows(),
+  accuracyNote: 'Volts accurate to about 2 to 3 ADC counts (placeholder wording).',
+  pinnable: measurementRows().map(({ id, label }) => ({ id, label, pinned: true })),
   footnotes: [
     { key: 1, text: 'Reason text from the backend (example: not measurable at this setting).' },
     { key: 2, text: 'Reason text from the backend (example: fewer than one period).' },

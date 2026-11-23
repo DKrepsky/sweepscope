@@ -20,20 +20,31 @@ function setup(
     setTrigger: vi.fn(),
     useSimulator: vi.fn(),
     retryConnection: vi.fn(),
+    setInterpolation: vi.fn(),
   };
   const copyText = vi.fn();
   const notify = vi.fn();
   const select = vi.fn();
-  const interpolate = vi.fn();
+  const cursors = { toggle: vi.fn(), move: vi.fn(), remove: vi.fn(), clear: vi.fn() };
+  const pinned = { set: vi.fn(() => Promise.resolve()) };
+  const files = {
+    saveSetup: vi.fn(() => Promise.resolve()),
+    loadSetup: vi.fn(() => Promise.resolve()),
+    exportCsv: vi.fn(() => Promise.resolve()),
+    exportRaw: vi.fn(() => Promise.resolve()),
+    saveScreenshot: vi.fn(() => Promise.resolve()),
+  };
   const actions = createLiveActions({
     commands,
     read: () => ({ instrument: noInstrument ? undefined : state, connection }),
     copyText,
     notify,
     select,
-    interpolate,
+    cursors,
+    pinned,
+    files,
   });
-  return { actions, commands, copyText, notify, select, interpolate };
+  return { actions, commands, copyText, notify, select, cursors, pinned, files };
 }
 
 const withChannel = (number: number, patch: Partial<InstrumentState['channels'][number]>): InstrumentState => {
@@ -172,10 +183,65 @@ describe('live actions: horizontal and trigger', () => {
     expect(commands.setTrigger).toHaveBeenNthCalledWith(3, { sweep: 'normal' });
   });
 
-  it('given an interpolation choice, when set, then the presentation store is told', () => {
-    const { actions, interpolate } = setup();
+  it('given an interpolation choice, when set, then the backend command is sent with the mode', () => {
+    const { actions, commands } = setup();
     actions.setInterpolation('dots');
-    expect(interpolate).toHaveBeenCalledWith('dots');
+    expect(commands.setInterpolation).toHaveBeenCalledExactlyOnceWith('dots');
+  });
+});
+
+describe('live actions: cursors and pinned measurements', () => {
+  it('given a toggle, when called, then the cursors store toggles', () => {
+    const { actions, cursors } = setup();
+    actions.toggleCursors();
+    expect(cursors.toggle).toHaveBeenCalledOnce();
+  });
+
+  it('given a cursor move, when called, then the store gets the id and position', () => {
+    const { actions, cursors } = setup();
+    actions.moveCursor('y2', 0.4);
+    expect(cursors.move).toHaveBeenCalledExactlyOnceWith('y2', 0.4);
+  });
+
+  it('given a cursor removal, when called, then the store removes that cursor', () => {
+    const { actions, cursors } = setup();
+    actions.removeCursor('x1');
+    expect(cursors.remove).toHaveBeenCalledExactlyOnceWith('x1');
+  });
+
+  it('given a clear request, when called, then the store clears', () => {
+    const { actions, cursors } = setup();
+    actions.clearCursors();
+    expect(cursors.clear).toHaveBeenCalledOnce();
+  });
+
+  it('given a pin request, when called, then the choice is stored', () => {
+    const { actions, pinned } = setup();
+    actions.setMeasurementPinned('vpp', false);
+    expect(pinned.set).toHaveBeenCalledExactlyOnceWith('vpp', false);
+  });
+});
+
+describe('live actions: files', () => {
+  it.each([
+    ['saveSetup', 'saveSetup'],
+    ['loadSetup', 'loadSetup'],
+    ['exportCsv', 'exportCsv'],
+    ['exportRaw', 'exportRaw'],
+    ['saveScreenshot', 'saveScreenshot'],
+  ] as const)('given %s, when called, then the matching file action runs', (name, expected) => {
+    const { actions, files } = setup();
+    actions[name]();
+    expect(files[expected]).toHaveBeenCalledOnce();
+  });
+
+  it('given a file action that rejects, when called, then an error is notified', async () => {
+    const { actions, files, notify } = setup();
+    files.exportCsv.mockRejectedValueOnce(new Error('boom'));
+    actions.exportCsv();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(notify).toHaveBeenCalledWith('error', expect.any(String));
   });
 });
 

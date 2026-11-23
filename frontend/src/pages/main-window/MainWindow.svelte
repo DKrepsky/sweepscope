@@ -12,6 +12,7 @@
   import MainStatusBar from './MainStatusBar.svelte';
   import ScaleStrip from './ScaleStrip.svelte';
   import ScopeStage from './ScopeStage.svelte';
+  import { handleShortcut } from './shortcuts';
   import Sidebar from './Sidebar.svelte';
   import Toolbar from './Toolbar.svelte';
 
@@ -56,6 +57,7 @@
 
   function onkeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && drawerOpen) drawerRequested = false;
+    handleShortcut(event, windowActions);
   }
 
   const triggerSummary = $derived(
@@ -128,7 +130,11 @@
           </main>
           {#if !compact}
             <div class="slot">
-              <Sidebar cursors={model.cursors} measurements={model.measurements} />
+              <Sidebar
+                cursors={model.cursors}
+                measurements={model.measurements}
+                onclearcursors={windowActions.clearCursors}
+              />
             </div>
           {:else if drawerOpen}
             <div
@@ -138,7 +144,11 @@
               aria-label="Cursors and measurements drawer"
               role="region"
             >
-              <Sidebar cursors={model.cursors} measurements={model.measurements} />
+              <Sidebar
+                cursors={model.cursors}
+                measurements={model.measurements}
+                onclearcursors={windowActions.clearCursors}
+              />
             </div>
           {/if}
         </div>

@@ -1,4 +1,6 @@
 import type { ChannelPatch, ConnectionSnapshot, InstrumentState } from '../../api';
+import type { CursorsStore } from '../cursors';
+import type { FileActions } from '../files';
 import type { InstrumentCommands } from '../instrument';
 import type { MainWindowActions } from './actions';
 import type { BannerActionId, ChannelNumber } from './types';
@@ -12,7 +14,9 @@ interface Deps {
   copyText: (text: string) => void;
   notify: (kind: 'error', text: string) => void;
   select: (channel: ChannelNumber) => void;
-  interpolate: (interpolation: 'linear' | 'dots') => void;
+  cursors: Pick<CursorsStore, 'toggle' | 'move' | 'remove' | 'clear'>;
+  pinned: { set(id: string, pinned: boolean): Promise<void> };
+  files: FileActions;
 }
 
 const PROBES = [1, 10, 100];
@@ -81,8 +85,31 @@ function bannerAction({ commands, read, copyText }: Deps, id: BannerActionId) {
   }
 }
 
+function cursorAndMeasurementActions({ cursors, pinned }: Deps) {
+  return {
+    toggleCursors: cursors.toggle,
+    moveCursor: cursors.move,
+    removeCursor: cursors.remove,
+    clearCursors: cursors.clear,
+    setMeasurementPinned: (id: string, on: boolean) => void pinned.set(id, on),
+  };
+}
+
+function fileActions({ files, notify }: Deps) {
+  const run = (action: () => Promise<void>) => {
+    action().catch(() => notify('error', 'The file action failed'));
+  };
+  return {
+    saveSetup: () => run(files.saveSetup),
+    loadSetup: () => run(files.loadSetup),
+    exportCsv: () => run(files.exportCsv),
+    exportRaw: () => run(files.exportRaw),
+    saveScreenshot: () => run(files.saveScreenshot),
+  };
+}
+
 export function createLiveActions(deps: Deps): MainWindowActions {
-  const { commands, read, copyText, interpolate } = deps;
+  const { commands, read, copyText } = deps;
   return {
     toggleRun: () => {
       const instrument = read().instrument;
@@ -91,7 +118,9 @@ export function createLiveActions(deps: Deps): MainWindowActions {
     forceTrigger: () => commands.forceTrigger(),
     ...channelActions(deps),
     ...horizontalAndTriggerActions(commands),
-    setInterpolation: interpolate,
+    setInterpolation: commands.setInterpolation,
+    ...cursorAndMeasurementActions(deps),
+    ...fileActions(deps),
     bannerAction: (id) => bannerAction(deps, id),
     copyText,
   };

@@ -7,22 +7,23 @@
 
   const { cursors }: Props = $props();
 
-  const percent = (fraction: number | undefined) => `${(fraction ?? 0) * 100}%`;
-  const tagStyle = (tag: CursorsModel['tags'][number]) =>
-    tag.anchor === 'left' ? `top: ${percent(tag.y)}` : `left: ${percent(tag.x)}`;
+  const percent = (fraction: number) => `${fraction * 100}%`;
 </script>
 
 {#if cursors.enabled}
   <div class="overlay" aria-hidden="true">
-    {#each cursors.lines.x as x (x)}
-      <span class="line vertical" style:left={percent(x)}></span>
+    {#each cursors.lines as line (line.id)}
+      {#if line.axis === 'x'}
+        <span class="line vertical" style:left={percent(line.position)}></span>
+        <span class="tag ss-num bottom" style:left={percent(line.position)}>{line.tag}</span>
+      {:else}
+        <span class="line horizontal" style:top={percent(line.position)}></span>
+        <span class="tag ss-num left" style:top={percent(line.position)}>{line.tag}</span>
+      {/if}
     {/each}
-    {#each cursors.lines.y as y (y)}
-      <span class="line horizontal" style:top={percent(y)}></span>
-    {/each}
-    {#each cursors.tags as tag (tag.text)}
-      <span class="tag ss-num {tag.anchor}" style={tagStyle(tag)}>{tag.text}</span>
-    {/each}
+    {#if cursors.delta}
+      <span class="tag ss-num top" style:left={percent(cursors.delta.position)}>{cursors.delta.tag}</span>
+    {/if}
   </div>
 {/if}
 

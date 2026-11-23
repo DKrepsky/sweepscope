@@ -1,6 +1,7 @@
 import './design-system/tokens.css';
 import './design-system/base.css';
 import { mount, tick } from 'svelte';
+import { get } from 'svelte/store';
 import { createTauriClient } from './api';
 import { createCopyText } from './app/clipboard';
 import { createLayoutTierStore, createResizeObserverViewport } from './app/layout';
@@ -8,6 +9,7 @@ import { createLiveApp } from './app/main-window';
 import { createNotifications } from './app/notifications';
 import { chooseTextScale, createTextScaleStore } from './app/text-scale';
 import { consoleReport, createFrameBudgetProbe, type FrameBudgetProbe } from './app/waveform';
+import { composeScreenshot } from './pages/main-window/compose-screenshot';
 import MainWindow from './pages/main-window/MainWindow.svelte';
 
 const applyRootFontPercent = (percent: number) => {
@@ -29,10 +31,11 @@ async function start(): Promise<void> {
     textScale,
   });
   const notifications = createNotifications();
-  const notify = (kind: 'error', text: string) => notifications.notify({ kind, text });
+  const notify = (kind: 'info' | 'warning' | 'error', text: string) => notifications.notify({ kind, text });
   const app = createLiveApp({
     client,
     notify,
+    composeScreenshot: () => composeScreenshot(get(app.model), window.devicePixelRatio),
     copyText: createCopyText({
       write: (text) => navigator.clipboard.writeText(text),
       notify: notifications.notify,
