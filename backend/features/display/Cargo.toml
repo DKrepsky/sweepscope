@@ -10,5 +10,6 @@ workspace = true
 
 [dependencies]
 sweepscope-kernel = { path = "../../kernel" }
-serde = { version = "1", features = ["derive"] }
+interpolation = { path = "../../libs/interpolation" }
+serde ={ version = "1", features = ["derive"] }
 ts-rs = "12"

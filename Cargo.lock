@@ -3318,6 +3318,7 @@ dependencies = [
 name = "sweepscope-display"
 version = "0.1.0"
 dependencies = [
+ "interpolation",
  "serde",
  "sweepscope-kernel",
  "ts-rs",

@@ -259,3 +259,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Library crates are named without prefix (`interpolation`, `measurements`, `engineering-format`); features `sweepscope-<name>`. Rust 1.100 warns on unused dependencies: add a dependency only when code uses it.
 - Compound shell commands (heredoc plus python plus cat) get refused in worktrees; use Write/Edit tools and one simple command per call.
 - Root can bypass read-only folder permissions: tests of `PermissionDenied` probe writability first.
+## M2 WP5 display (developer-1)
+- Integer rule: factor = clamp(ceil(2500 / (len - 1)), 1, 512); automatic Sinc iff 1 <= len-1 < 2500. `encode_in_mode` is the mode-aware encoder, `encode` stays the Linear one. Module state (mode, last frame, sequence) sits behind one Mutex shared by the worker and the request handlers; handlers publish events synchronously, so tests need no sleeps.
+- A 200 ns window (20 ns/div) cannot hold a 250 ns edge: the rise-time test measures 20-80 % and scales by 0.8/0.6.
+- clippy `too_many_lines` limit is 40 per function.
