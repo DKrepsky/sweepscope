@@ -37,6 +37,13 @@ export function createFakeClient(): FakeClient {
       if (!handler) throw new Error(`No fake response registered for ${name}`);
       return (await handler(args)) as CommandResult[typeof name];
     },
+    sendBytes: async <R>(command: string, bytes: Uint8Array) => {
+      const name = command as CommandName;
+      calls.push({ name, args: bytes });
+      const handler = handlers.get(name);
+      if (!handler) throw new Error(`No fake response registered for ${command}`);
+      return (await handler(bytes as never)) as R;
+    },
     subscribe: (name, listener) => {
       const set = listeners.get(name) ?? new Set<Listener>();
       set.add(listener as Listener);

@@ -18,6 +18,11 @@ export const tauriCommandNames: Record<CommandName, string> = {
   set_trigger: 'set_trigger',
   use_simulator: 'use_simulator',
   retry_connection: 'retry_connection',
+  set_interpolation: 'set_interpolation',
+  export_frame: 'export_frame',
+  save_screenshot: 'save_screenshot',
+  save_setup: 'save_setup',
+  load_setup: 'load_setup',
 };
 
 /** Rust commands that open and close each backend stream. Exhaustive, like the command names. */
@@ -70,6 +75,7 @@ export function createTauriClient(
 
   return {
     send: (name, args) => transport.invoke(tauriCommandNames[name], args) as Promise<never>,
+    sendBytes: <R>(command: string, bytes: Uint8Array) => transport.invoke(command, bytes) as Promise<R>,
     subscribe: (name, listener) =>
       unsubscribeWhenReady(
         name,
