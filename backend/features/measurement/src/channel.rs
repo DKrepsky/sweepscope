@@ -49,8 +49,8 @@ fn cells(m: &Measured, clipped: bool) -> Vec<Measurement> {
         }
     };
     let rows: [(Id, Cell); 12] = [
-        (Id::Frequency, timing(m.frequency, Quantity::Hertz)),
-        (Id::Period, timing(m.period, Quantity::Seconds)),
+        (Id::Frequency, timing(m.frequency, Quantity::Frequency)),
+        (Id::Period, timing(m.period, Quantity::Period)),
         (Id::Vpp, amplitude(Ok(m.vpp))),
         (Id::Vmax, amplitude(Ok(m.vmax))),
         (Id::Vmin, amplitude(Ok(m.vmin))),
