@@ -271,3 +271,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## measurement module (developer-3, WP6)
 - `features/measurement`: `channel.rs` (frame to cells), `slice.rs` (revision, text-only change test, 250 ms rate limit, pure and unit-tested with explicit `Instant`s), `module.rs` (thread, 20 ms poll, held-back change flushed when `Clock::now` passes the interval). Tests use synthetic calibrator waves (features cannot import `device`); put a rising edge inside a short record by offsetting the start by `period - lead`.
 - `FrameContext`/`Frame` channels are 1-based in slices (`index + 1`); lib crate is named `measurements`, formatter `engineering-format`.
+
+## WP15 files (developer-5)
+- New worktrees have no `node_modules`: run `npm ci --prefer-offline` in `frontend/`. `Toolbar` gets file actions via one `onfile(keyof FileActions)` prop; MainWindow forwards to `windowActions[action]()`.
+- Load with warnings gives one warning toast (no extra info toast); cancel (null reply) gives none. Commands reject with `{message}`: reuse the `messageOf` pattern.
