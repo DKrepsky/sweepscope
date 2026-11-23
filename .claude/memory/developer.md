@@ -267,3 +267,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Integer rule: factor = clamp(ceil(2500 / (len - 1)), 1, 512); automatic Sinc iff 1 <= len-1 < 2500. `encode_in_mode` is the mode-aware encoder, `encode` stays the Linear one. Module state (mode, last frame, sequence) sits behind one Mutex shared by the worker and the request handlers; handlers publish events synchronously, so tests need no sleeps.
 - A 200 ns window (20 ns/div) cannot hold a 250 ns edge: the rise-time test measures 20-80 % and scales by 0.8/0.6.
 - clippy `too_many_lines` limit is 40 per function.
+
+## measurement module (developer-3, WP6)
+- `features/measurement`: `channel.rs` (frame to cells), `slice.rs` (revision, text-only change test, 250 ms rate limit, pure and unit-tested with explicit `Instant`s), `module.rs` (thread, 20 ms poll, held-back change flushed when `Clock::now` passes the interval). Tests use synthetic calibrator waves (features cannot import `device`); put a rising edge inside a short record by offsetting the start by `period - lead`.
+- `FrameContext`/`Frame` channels are 1-based in slices (`index + 1`); lib crate is named `measurements`, formatter `engineering-format`.

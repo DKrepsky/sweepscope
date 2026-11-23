@@ -1,18 +1,98 @@
-use std::sync::Arc;
+//! Consumes `FrameCaptured` latest-wins, keeps the measurements slice, announces changes (ADR 0014).
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::thread::JoinHandle;
+use std::time::Duration;
 
-use sweepscope_kernel::{Bus, Clock, KernelError};
+use sweepscope_kernel::contracts::FrameCaptured;
+use sweepscope_kernel::{Bus, Clock, KernelError, Subscription};
+
+use crate::channel::measure_frame;
+use crate::messages::{GetMeasurements, MeasurementsChanged};
+use crate::slice::Slice;
+
+const POLL: Duration = Duration::from_millis(20);
 
 pub struct MeasurementDeps {
     pub bus: Bus,
     pub clock: Arc<dyn Clock>,
 }
 
-/// Stub: the consumer thread and the `GetMeasurements` handler arrive with work package WP6.
-pub struct MeasurementModule;
+pub struct MeasurementModule {
+    stop: Arc<AtomicBool>,
+    worker: Option<JoinHandle<()>>,
+}
 
 impl MeasurementModule {
     pub fn new(deps: MeasurementDeps) -> Result<Self, KernelError> {
-        let MeasurementDeps { bus: _, clock: _ } = deps;
-        Ok(Self)
+        let frames = deps.bus.subscribe_latest::<FrameCaptured>();
+        let shared = Arc::new(Shared {
+            bus: deps.bus,
+            clock: deps.clock,
+            slice: Mutex::new(Slice::new()),
+        });
+        let reader = Arc::clone(&shared);
+        shared
+            .bus
+            .handle(move |_: GetMeasurements| Ok(reader.slice().state()))?;
+        let stop = Arc::new(AtomicBool::new(false));
+        let worker = std::thread::Builder::new()
+            .name("measurement".into())
+            .spawn({
+                let stop = Arc::clone(&stop);
+                move || run(&shared, &frames, &stop)
+            })
+            .map_err(|e| KernelError::fatal(format!("cannot start the measurement thread: {e}")))?;
+        Ok(Self {
+            stop,
+            worker: Some(worker),
+        })
+    }
+}
+
+impl Drop for MeasurementModule {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Release);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
+}
+
+fn run(shared: &Shared, frames: &Subscription<FrameCaptured>, stop: &AtomicBool) {
+    while !stop.load(Ordering::Acquire) {
+        if let Some(captured) = frames.recv_timeout(POLL) {
+            shared.measure(&captured);
+        }
+        shared.announce_held_back();
+    }
+}
+
+struct Shared {
+    bus: Bus,
+    clock: Arc<dyn Clock>,
+    slice: Mutex<Slice>,
+}
+
+impl Shared {
+    fn slice(&self) -> MutexGuard<'_, Slice> {
+        self.slice.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn measure(&self, captured: &FrameCaptured) {
+        let Some(channels) = measure_frame(&captured.frame, &captured.context) else {
+            return;
+        };
+        let announced = self.slice().update(channels, self.clock.now());
+        if let Some(state) = announced {
+            self.bus.publish(MeasurementsChanged(state));
+        }
+    }
+
+    fn announce_held_back(&self) {
+        let announced = self.slice().announce_if_due(self.clock.now());
+        if let Some(state) = announced {
+            self.bus.publish(MeasurementsChanged(state));
+        }
     }
 }

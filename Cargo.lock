@@ -3346,6 +3346,8 @@ dependencies = [
 name = "sweepscope-measurement"
 version = "0.1.0"
 dependencies = [
+ "engineering-format",
+ "measurements",
  "serde",
  "sweepscope-kernel",
  "ts-rs",
