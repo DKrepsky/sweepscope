@@ -5,15 +5,16 @@ use sweepscope_kernel::{Bus, KernelError, Request};
 
 use super::core::Core;
 use super::effects::Effects;
+use super::setup_files::SetupFiles;
 use super::shared::Shared;
 use crate::{
-    ForceTriggerNow, GetInstrument, ResetSetting, SetChannel, SetRunning, SetTrigger, SetTriggerLevel,
-    SetTriggerPosition, StepSetting,
+    ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
+    SetTriggerLevel, SetTriggerPosition, StepSetting,
 };
 
 /// Registers every request of this feature. The handlers hold the module state weakly: the bus lives as long as the
 /// application, the module may not.
-pub fn register(bus: &Bus, shared: &Arc<Shared>) -> Result<(), KernelError> {
+pub fn register(bus: &Bus, shared: &Arc<Shared>, files: SetupFiles) -> Result<(), KernelError> {
     let state = Arc::downgrade(shared);
     let weak = &state;
     on(bus, weak, |core, r: SetRunning, fx, now| {
@@ -38,10 +39,25 @@ pub fn register(bus: &Bus, shared: &Arc<Shared>) -> Result<(), KernelError> {
     on(bus, weak, |core, r: SetTrigger, fx, now| {
         core.edit(fx, now, |i| i.set_trigger(r.patch))
     })?;
+    register_files(bus, &state, files)?;
     let reader = state;
     bus.handle(move |_: GetInstrument| {
         let shared = reader.upgrade().ok_or_else(gone)?;
         Ok(shared.snapshot())
+    })
+}
+
+fn register_files(bus: &Bus, shared: &Weak<Shared>, files: SetupFiles) -> Result<(), KernelError> {
+    let files = Arc::new(files);
+    let (saver, save_files) = (shared.clone(), Arc::clone(&files));
+    bus.handle(move |_: SaveSetup| {
+        let shared = saver.upgrade().ok_or_else(gone)?;
+        save_files.save(&shared)
+    })?;
+    let loader = shared.clone();
+    bus.handle(move |_: LoadSetup| {
+        let shared = loader.upgrade().ok_or_else(gone)?;
+        files.load(&shared)
     })
 }
 

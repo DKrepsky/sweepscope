@@ -1,5 +1,6 @@
 use sweepscope_kernel::contracts::{AcquisitionSetup, FrameCaptured};
 
+use crate::domain::setup_file::SetupFile;
 use crate::{AcquisitionStatus, InstrumentFacts, InstrumentState};
 
 /// What a state change publishes.
@@ -22,4 +23,5 @@ pub enum Call {
 pub struct Effects {
     pub outputs: Vec<Output>,
     pub calls: Vec<Call>,
+    pub autosave: Option<SetupFile>,
 }

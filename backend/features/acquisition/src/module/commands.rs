@@ -50,4 +50,16 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         result: "null",
         types: &["TriggerPatch"],
     },
+    CommandDescriptor {
+        name: "save_setup",
+        args: "{}",
+        result: "SavedFile | null",
+        types: &["SavedFile"],
+    },
+    CommandDescriptor {
+        name: "load_setup",
+        args: "{}",
+        result: "SetupLoaded | null",
+        types: &["SetupLoaded"],
+    },
 ];

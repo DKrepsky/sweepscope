@@ -8,7 +8,7 @@ mod module;
 
 pub use domain::{
     geometry, next_status, record_percent, trigger_index_in_window, CaptureMeter, Change, Defaults, Geometry,
-    Instrument, Restore, StatusEvent,
+    Instrument, Restore, SetupFile, SetupReport, StatusEvent,
 };
 pub use messages::{
     AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FactsChanged, ForceTriggerNow,

@@ -5,11 +5,13 @@ pub mod geometry;
 mod instrument;
 mod meter;
 mod model;
+pub mod setup_file;
 mod status;
 mod view;
 
 pub use defaults::Defaults;
 pub use geometry::{geometry, record_percent, trigger_index_in_window, Geometry};
-pub use instrument::{Change, Instrument, Restore};
+pub use instrument::{Change, Instrument, Restore, SetupReport};
 pub use meter::CaptureMeter;
+pub use setup_file::SetupFile;
 pub use status::{next_status, StatusEvent};
