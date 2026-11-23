@@ -70,8 +70,9 @@
 <style>
   .line {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--ss-space-3);
+    gap: var(--ss-space-1) var(--ss-space-3);
     min-block-size: var(--ss-size-control-md);
   }
   .label {

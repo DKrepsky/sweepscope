@@ -195,6 +195,37 @@ test.describe('unverified time base', () => {
   });
 });
 
+test.describe('unverified badge placement', () => {
+  const windows: [number, number][] = [
+    [1440, 900],
+    [1920, 1080],
+    [1280, 800],
+    [2560, 1440],
+  ];
+
+  for (const [width, height] of windows) {
+    test(`given an unmeasured time base at ${width}x${height}, when the Horizontal group shows, then the badge stays inside its group and clear of the Trigger Type label`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page, 100, { unverifiedTimeBase: true });
+      const group = page.locator('[data-region="horizontal"]');
+      const badge = await group.getByRole('note').filter({ hasText: 'Unverified' }).boundingBox();
+      const groupBox = await group.boundingBox();
+      const typeLabel = await page.locator('[data-region="trigger"]').getByText('Type', { exact: true }).boundingBox();
+      if (!badge || !groupBox || !typeLabel) throw new Error('missing box');
+      const groupPadding = 8;
+      expect(badge.x + badge.width).toBeLessThanOrEqual(groupBox.x + groupBox.width - groupPadding);
+      const overlapsType =
+        badge.x < typeLabel.x + typeLabel.width &&
+        typeLabel.x < badge.x + badge.width &&
+        badge.y < typeLabel.y + typeLabel.height &&
+        typeLabel.y < badge.y + badge.height;
+      expect(overlapsType).toBe(false);
+    });
+  }
+});
+
 test.describe('security', () => {
   test('given the page, when a command outside the manifest is invoked, then it is refused', async ({ page }) => {
     await openMain(page);

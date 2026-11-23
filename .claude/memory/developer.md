@@ -245,3 +245,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Bash tool in a worktree refuses compound commands with `cd` + git/rm; run `cd <abs>/frontend && ...` as its own call, and run npx playwright from `frontend/` (else it fetches a stray playwright).
 ## M1 review fix round 2 (developer-1)
 - Full `npm run check` runs from the repo root (not frontend/); run `npx prettier --write` on touched frontend files first. A test guards that the udev rule has no single quote (printf quoting in the permission command).
+
+## BUG-5 badge placement (developer-8, round 3)
+- Playwright `getByText('Unverified')` hits the Badge's 1x1 `.sr-only` description span: use `getByRole('note').filter({ hasText })` for badge boxes. Group boxes include padding, so assert against the group's content edge, not its border box.
+- Horizontal dock `.line` wraps (`flex-wrap: wrap`) so the badge drops under the stepper when the column is narrow. The Horizontal group is not rendered at 1024x720 (collapsed dock): placement tests use 1280, 1440, 1920, 2560 widths.
+- Never `pkill -f` a string from the calling command line (kills the shell, exit 144).
