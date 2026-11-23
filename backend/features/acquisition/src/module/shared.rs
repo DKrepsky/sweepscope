@@ -2,10 +2,11 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
 use sweepscope_kernel::contracts::{ApplySetup, CaptureCompleted, ConnectionChanged, ForceTrigger, SetCapturing};
-use sweepscope_kernel::{Bus, Clock, KernelError};
+use sweepscope_kernel::{Bus, Clock, KernelError, Storage};
 
 use super::core::Core;
 use super::effects::{Call, Effects, Output};
+use super::last_setup::{LastSetup, Stored};
 use crate::{FactsChanged, InstrumentChanged, InstrumentSnapshot, StatusChanged};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -19,15 +20,40 @@ pub struct Shared {
     clock: Arc<dyn Clock>,
     turn: Mutex<()>,
     core: Mutex<Core>,
+    last_setup: LastSetup,
 }
 
 impl Shared {
-    pub fn new(bus: Bus, clock: Arc<dyn Clock>) -> Self {
+    pub fn new(bus: Bus, clock: Arc<dyn Clock>, storage: Arc<dyn Storage>) -> Self {
+        let last_setup = LastSetup::new(storage);
+        let mut core = Core::new();
+        match last_setup.load() {
+            Stored::Nothing => {}
+            Stored::Setup(file) => core.hold_last_setup(file),
+            Stored::Unreadable(reason) => {
+                core.note_setup(format!(
+                    "The last setup could not be restored ({reason}); defaults are used"
+                ));
+            }
+        }
         Self {
             bus,
             clock,
             turn: Mutex::new(()),
-            core: Mutex::new(Core::new()),
+            core: Mutex::new(core),
+            last_setup,
+        }
+    }
+
+    pub fn read<R>(&self, look: impl FnOnce(&Core) -> R) -> R {
+        look(&lock(&self.core))
+    }
+
+    /// Writes the setup if a change is still waiting out its delay; called when the module stops.
+    pub fn flush(&self) {
+        let _turn = lock(&self.turn);
+        if let Some(file) = lock(&self.core).unsaved_setup() {
+            self.last_setup.save(&file);
         }
     }
 
@@ -70,6 +96,9 @@ impl Shared {
     }
 
     fn dispatch(&self, effects: Effects) -> Result<(), KernelError> {
+        if let Some(file) = &effects.autosave {
+            self.last_setup.save(file);
+        }
         for output in effects.outputs {
             self.publish(output);
         }

@@ -12,7 +12,5 @@ workspace = true
 sweepscope-kernel = { path = "../../kernel" }
 engineering-format = { path = "../../libs/engineering-format" }
 serde = { version = "1", features = ["derive"] }
-ts-rs = "12"
-
-[dev-dependencies]
 serde_json = "1"
+ts-rs = "12"

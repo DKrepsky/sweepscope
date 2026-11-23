@@ -261,6 +261,8 @@ fn given_the_module_when_its_commands_are_listed_then_they_are_the_acquisition_c
             "set_trigger_position",
             "set_trigger_level",
             "set_trigger",
+            "save_setup",
+            "load_setup",
         ]
     );
 }
@@ -272,6 +274,8 @@ fn given_an_acquisition_module_when_a_second_one_starts_on_the_same_bus_then_it_
     let second = sweepscope_acquisition::AcquisitionModule::new(sweepscope_acquisition::AcquisitionDeps {
         bus: rig.bus.clone(),
         clock: std::sync::Arc::new(rig.clock.clone()),
+        storage: std::sync::Arc::new(rig.storage.clone()),
+        picker: std::sync::Arc::new(sweepscope_kernel::testing::ScriptedPicker::default()),
     });
 
     assert!(second.is_err());

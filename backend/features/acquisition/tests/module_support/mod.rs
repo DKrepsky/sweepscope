@@ -14,7 +14,7 @@ use sweepscope_kernel::contracts::{
     ConnectionIssueKind, ConnectionSnapshot, ConnectionState, DeviceIdentity, DeviceSource, ForceTrigger, Frame,
     FrameCaptured, SetCapturing, TriggerOutcome,
 };
-use sweepscope_kernel::testing::{eventually, EventRecorder, FakeClock};
+use sweepscope_kernel::testing::{eventually, EventRecorder, FakeClock, MemoryStorage, ScriptedPicker};
 use sweepscope_kernel::{Bus, KernelError};
 
 use super::domain_support::capabilities;
@@ -97,12 +97,18 @@ pub struct Rig {
     pub status: EventRecorder<StatusChanged>,
     pub facts: EventRecorder<FactsChanged>,
     pub frames: EventRecorder<FrameCaptured>,
+    pub storage: MemoryStorage,
     pub module: AcquisitionModule,
     connection_revision: AtomicU64,
 }
 
 /// Recorders exist before the module so no first event is missed.
 pub fn rig() -> Rig {
+    rig_with(MemoryStorage::default(), ScriptedPicker::default())
+}
+
+/// A rig on given storage (a second module can reopen it) and a scripted picker.
+pub fn rig_with(storage: MemoryStorage, picker: ScriptedPicker) -> Rig {
     let bus = Bus::new();
     let clock = FakeClock::default();
     let device = Arc::new(FakeDevice::default());
@@ -114,6 +120,8 @@ pub fn rig() -> Rig {
     let module = AcquisitionModule::new(AcquisitionDeps {
         bus: bus.clone(),
         clock: Arc::new(clock.clone()),
+        storage: Arc::new(storage.clone()),
+        picker: Arc::new(picker),
     })
     .unwrap();
     Rig {
@@ -124,6 +132,7 @@ pub fn rig() -> Rig {
         status,
         facts,
         frames,
+        storage,
         module,
         connection_revision: AtomicU64::new(1),
     }
