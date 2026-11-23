@@ -6,6 +6,10 @@ pub enum Quantity {
     Seconds,
     SecondsPerDiv,
     Hertz,
+    /// Measured frequency, one digit finer than `Hertz`.
+    Frequency,
+    /// Measured period, one digit finer than `Seconds`.
+    Period,
     SamplesPerSecond,
     Percent,
     Divisions,
@@ -20,6 +24,7 @@ pub(crate) struct PrefixRange {
 
 pub(crate) enum Digits {
     ThreeSignificant,
+    FourSignificant,
     /// Scale steps (1-2-5) are shown as they are, without trailing zeros.
     Exact,
 }
@@ -30,9 +35,9 @@ impl Quantity {
         match self {
             Self::Volts => ("V", ""),
             Self::VoltsPerDiv => ("V", "/div"),
-            Self::Seconds => ("s", ""),
+            Self::Seconds | Self::Period => ("s", ""),
             Self::SecondsPerDiv => ("s", "/div"),
-            Self::Hertz => ("Hz", ""),
+            Self::Hertz | Self::Frequency => ("Hz", ""),
             Self::SamplesPerSecond => ("S", "/s"),
             Self::Percent => ("%", ""),
             Self::Divisions => ("div", ""),
@@ -54,6 +59,7 @@ impl Quantity {
     pub(crate) fn digits(self) -> Digits {
         match self {
             Self::VoltsPerDiv | Self::SecondsPerDiv => Digits::Exact,
+            Self::Frequency | Self::Period => Digits::FourSignificant,
             _ => Digits::ThreeSignificant,
         }
     }
