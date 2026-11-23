@@ -259,3 +259,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Library crates are named without prefix (`interpolation`, `measurements`, `engineering-format`); features `sweepscope-<name>`. Rust 1.100 warns on unused dependencies: add a dependency only when code uses it.
 - Compound shell commands (heredoc plus python plus cat) get refused in worktrees; use Write/Edit tools and one simple command per call.
 - Root can bypass read-only folder permissions: tests of `PermissionDenied` probe writability first.
+
+## WP7 export (developer-5)
+- `ExportModule`: thread plus handlers share a `Newest` (subscribe_latest); handlers call `absorb()` first so a just-published frame is seen without sleeping in tests. Raw sidecar is `<stem>.format.txt` from the "## Layout" section of docs/formats/frame-raw-v1.md (include_str!). Golden file regenerates with `UPDATE_GENERATED=1 cargo test -p sweepscope-export`.
+- Clippy `too_many_lines` limit is 40: split decoders. Heredoc-with-cd shell commands are refused in worktrees; use Write and plain commands.
