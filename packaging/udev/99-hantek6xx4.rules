@@ -1,0 +1,2 @@
+# Hantek 6xx4-series scopes: members of plugdev, and the logged-in user through uaccess, may open the device without root
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04b5", ATTRS{idProduct}=="6cde", MODE="0660", GROUP="plugdev", TAG+="uaccess"

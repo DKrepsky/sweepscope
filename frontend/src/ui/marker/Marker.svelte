@@ -43,8 +43,14 @@
   const showReason = $derived(disabled && focused && !!disabledReason);
   let dragPosition = $state<number | null>(null);
   let lastPosition: number | null = null;
-  const shown = $derived(dragPosition ?? position);
+  let keyPosition = $state<number | null>(null);
+  const shown = $derived(dragPosition ?? keyPosition ?? position);
   const placement = $derived(axis === 'vertical' ? `top: ${(1 - shown) * 100}%` : `left: ${shown * 100}%`);
+
+  $effect(() => {
+    void position;
+    keyPosition = null;
+  });
 
   function moveTo(next: number | null) {
     if (next === null) return;
@@ -80,9 +86,10 @@
   function onkeydown(event: KeyboardEvent) {
     if (disabled) return;
     if (event.key === 'Delete') return ondelete?.();
-    const next = nudgedPosition(axis, event, position, step);
+    const next = nudgedPosition(axis, event, shown, step);
     if (next === null) return;
     event.preventDefault();
+    keyPosition = next;
     ondrag?.(next);
     oncommit?.(next);
   }
@@ -99,12 +106,16 @@
   aria-orientation={axis}
   aria-valuemin="0"
   aria-valuemax="1"
-  aria-valuenow={position}
+  aria-valuenow={shown}
+  aria-valuetext="{Math.round(shown * 100)} %"
   aria-disabled={disabled}
   title={disabled ? disabledReason : undefined}
   aria-describedby={showReason ? reasonId : undefined}
   onfocus={() => (focused = true)}
-  onblur={() => (focused = false)}
+  onblur={() => {
+    focused = false;
+    keyPosition = null;
+  }}
   style="{placement}; {color ? `--marker-colour: ${color}` : ''}"
   {onpointerdown}
   {onpointermove}

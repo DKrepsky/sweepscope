@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-trigger-level"
+description = "Enables the set_trigger_level command without any pre-configured scope."
+commands.allow = ["set_trigger_level"]
+
+[[permission]]
+identifier = "deny-set-trigger-level"
+description = "Denies the set_trigger_level command without any pre-configured scope."
+commands.deny = ["set_trigger_level"]

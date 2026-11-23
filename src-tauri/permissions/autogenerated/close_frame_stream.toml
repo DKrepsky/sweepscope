@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-frame-stream"
+description = "Enables the close_frame_stream command without any pre-configured scope."
+commands.allow = ["close_frame_stream"]
+
+[[permission]]
+identifier = "deny-close-frame-stream"
+description = "Denies the close_frame_stream command without any pre-configured scope."
+commands.deny = ["close_frame_stream"]

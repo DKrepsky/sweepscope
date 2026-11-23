@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { COMMANDS } from './generated/commands';
-import { createTauriClient, tauriCommandNames, type TauriTransport } from './tauri-client';
+import { COMMANDS, STREAMS } from './generated/commands';
+import { createTauriClient, tauriCommandNames, tauriStreamCommands, type TauriTransport } from './tauri-client';
 
 function fakeTransport(overrides: Partial<TauriTransport> = {}): TauriTransport {
   return {
     invoke: vi.fn().mockResolvedValue(null),
     listen: vi.fn().mockResolvedValue(() => {}),
+    openChannel: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -52,7 +53,93 @@ describe('tauri client contract', () => {
     expect(listener).toHaveBeenCalledExactlyOnceWith(42);
   });
 
-  it('given the reserved stream interface, when openStream is called, then it throws', () => {
-    expect(() => createTauriClient(fakeTransport()).openStream(undefined as never)).toThrow();
+  it('given the generated stream list, when compared with the keys the Tauri client maps, then they are equal', () => {
+    expect(Object.keys(tauriStreamCommands).sort()).toEqual([...STREAMS].sort());
+  });
+
+  function openedFrames(overrides: Partial<TauriTransport> = {}) {
+    let deliver: (message: unknown) => void = () => {};
+    const transport = fakeTransport({
+      openChannel: vi.fn().mockImplementation((_command: string, handler: (message: unknown) => void) => {
+        deliver = handler;
+        return Promise.resolve();
+      }),
+      ...overrides,
+    });
+    const received: ArrayBuffer[] = [];
+    const handle = createTauriClient(transport).openStream('frames', (data) => received.push(data));
+    return { transport, handle, received, deliver: (message: unknown) => deliver(message) };
+  }
+
+  it('given a stream kind, when opened, then the transport opens a channel on the mapped open command', () => {
+    const { transport } = openedFrames();
+    expect(transport.openChannel).toHaveBeenCalledExactlyOnceWith('open_frame_stream', expect.any(Function));
+  });
+
+  it('given an open stream, when the channel delivers an ArrayBuffer, then the callback receives the same buffer', () => {
+    const { received, deliver } = openedFrames();
+    const buffer = new Uint8Array([1, 2, 3]).buffer;
+    deliver(buffer);
+    expect(received).toEqual([buffer]);
+  });
+
+  it('given an open stream, when the channel delivers a byte array, then the callback receives those bytes as a buffer', () => {
+    const { received, deliver } = openedFrames();
+    deliver([1, 2, 3]);
+    expect([...new Uint8Array(received[0] as ArrayBuffer)]).toEqual([1, 2, 3]);
+  });
+
+  it('given an open stream, when closed, then the close command is invoked and later messages are ignored', () => {
+    const { transport, handle, received, deliver } = openedFrames();
+    handle.close();
+    deliver(new ArrayBuffer(1));
+    expect(transport.invoke).toHaveBeenCalledExactlyOnceWith('close_frame_stream', {});
+    expect(received).toEqual([]);
+  });
+
+  it('given an open stream, when closed twice, then the close command is invoked once', () => {
+    const { transport, handle } = openedFrames();
+    handle.close();
+    handle.close();
+    expect(transport.invoke).toHaveBeenCalledOnce();
+  });
+
+  it('given the transport cannot listen, when subscribed, then the failure is reported and unsubscribing is harmless', async () => {
+    const failure = new Error('no listener');
+    const report = vi.fn();
+    const transport = fakeTransport({ listen: vi.fn().mockRejectedValue(failure) });
+
+    const unsubscribe = createTauriClient(transport, report).subscribe('x' as never, () => {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('listen x', failure);
+    expect(() => unsubscribe()).not.toThrow();
+  });
+
+  it('given the transport cannot open the channel, when a stream is opened, then the failure is reported', async () => {
+    const failure = new Error('no channel');
+    const report = vi.fn();
+    const transport = fakeTransport({ openChannel: vi.fn().mockRejectedValue(failure) });
+
+    createTauriClient(transport, report).openStream('frames', () => {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('open_frame_stream', failure);
+  });
+
+  it('given the close command fails, when a stream is closed, then the failure is reported', async () => {
+    const failure = new Error('no close');
+    const report = vi.fn();
+    const transport = fakeTransport({ invoke: vi.fn().mockRejectedValue(failure) });
+
+    createTauriClient(transport, report)
+      .openStream('frames', () => {})
+      .close();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(report).toHaveBeenCalledExactlyOnceWith('close_frame_stream', failure);
   });
 });

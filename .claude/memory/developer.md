@@ -107,7 +107,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `fitScreen(stage, rootFontPx)`: minimum is 32 x 25.6 rem converted with the root font size; ScopeStage reads `getComputedStyle(documentElement).fontSize` inside its ResizeObserver callback.
 - Disabled Marker reason: own `role=tooltip` span shown on focus (Tooltip wrapper would break the absolute positioning).
 - Do not `git stash` in the shared worktree (other developers work concurrently). Parallel Playwright runs share `test-results/` and give ENOENT flakes.
-- BUG-8 skipped: design 8.5 has no ruling beyond "crisp at every scale"; visual snapshots in `e2e/__screenshots__` need regeneration by QA (graticule now stays visible).
+- BUG-8 skipped: design 8.5 has no ruling beyond "crisp at every scale".
 
 ## Review/QA fix round (developer-9)
 - Other developers run Playwright concurrently on ports 5173/4173 (shared `dist`): run e2e with a throwaway config copy (other port, dev server only, `reuseExistingServer:false`), delete it afterwards (eslint lints it).
@@ -166,3 +166,90 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Time-base indexes: 0 = 2 ns, 15 = 200 us, 24 = 200 ms, 25 = 500 ms (streaming); range 8 = 1 V. Count 1-2-5 steps before hard-coding an index in tests.
 - Capture model: cycle = `frame_cycle(wait for edge + record)`, slept in <= 20 ms slices that check the unplug flag; Normal sweep with no edge in time sleeps exactly `timeout` then `Timeout`. Edge search is capped at two signal periods (the waveform repeats).
 - Integration tests share `tests/common/mod.rs` (`rig()`, `setup()`); `FakeClock` is in `sweepscope_kernel::testing` (public, not feature gated).
+
+## M1 WP1 contracts (developer-1)
+- ts-rs `export_to` is relative to the source FILE's directory (not the crate): kernel/src/*.rs use 3 up-levels, kernel/src/contracts/*.rs and features/*/src/*.rs use 4. A wrong count silently writes `backend/frontend/`; check `git status` for strays.
+- u64 fields need `#[ts(type = "number")]` (default is bigint); optional patch fields use `#[ts(optional)]` on `Option<T>` to get `x?: T`.
+- Tooling in this sandbox refuses `cd X && python3 - <<EOF` / heredoc-with-git style compound commands in a worktree; use the Write/Edit tools, plain commands, and `git add -A <paths>` separately.
+- Generated-types freshness is checked in CI by `git status --porcelain frontend/src/api/generated`; commit generated files with the code.
+## engineering-format (M1 WP2, developer-2)
+- Crate `engineering-format` (`backend/libs/`), API `format(f64, Quantity) -> Formatted{value,text,unit}`; units use `us` for micro, points are `pts` with k/M/G, percent and divisions take no prefix (3 significant digits, so 0.5 div is `0.500`). Scale quantities trim zeros via `{:.6}`.
+- The M1 spec and bus live only in the main checkout (`/home/kr/workspace/sweepscope/docs/specs/m1-live-view`, `.claude/bus`); an agent worktree starts from an old branch: create the WP branch from `feat/m1-live-view` with `git checkout -b`. `cargo test --offline -p <crate>` works in the full workspace here.
+- `StepBy<RangeInclusive>` is not reversible: iterate group indexes and multiply.
+## WP12 marker and segmented (developer-9)
+- Vitest/jsdom does not load Svelte component CSS: `getComputedStyle` is always default. CSS-only fixes are pinned in unit tests by importing `./X.svelte?raw` and matching the rule, plus a Playwright `toHaveCSS` check.
+- check-test-names rejects a `BUG-n:` prefix on `it(...)` titles (must start with `given`); `AC-MK1:`-style prefixes pass only where already present.
+- Marker: `aria-valuenow` = `dragPosition ?? keyPosition ?? position`; key nudges step from the shown value and the override clears when the `position` prop changes or on blur. Worktree needs `npm ci` in `frontend/` first.
+- Worktree-isolated shells refuse compound commands that `cd` out or compute paths: keep commands plain and run from the worktree.
+## M1 WP11 step 1 and bug #40 (developer-6)
+- Worktree agents: bus and `docs/specs` of the feature branch live under the main checkout path (`.claude/bus/` is gitignored, read inbox files there); a fresh worktree has no `node_modules` (use `cp -al <main>/frontend/node_modules`, a symlink breaks vitest fs allow; delete it afterwards).
+- Channel row columns: rows are a `subgrid` of `VerticalGroup .rows` (7 auto columns + 1fr badge); different widths came from flex shrink on rows with a badge. Disabled AC/DC is dimmed by a wrapper (0.45, same as Stepper off) because Segmented has no dim state.
+- Throwaway Playwright config needs `snapshotPathTemplate` and `expect.toHaveScreenshot` copied from the real one, else it writes new baselines into `e2e/*-snapshots/`. Visual main-window and gallery snapshots already fail on baseline (stale, QA regenerates).
+- `:has-text()` is Playwright-only: not valid in `querySelector` inside `page.evaluate`.
+
+## WP9 frontend client (M1)
+- A fresh worktree has no `frontend/node_modules`: run `npm ci --prefer-offline` there (a symlink to another checkout breaks vite's fs allow list). The Bash tool refuses long heredoc chains in worktrees: use Write/Edit for files, short separate commands otherwise.
+- `commands.ts` is hand-extended (commands, `EVENTS`, `STREAMS`) until WP8 regenerates it; `tauriCommandNames`/`tauriStreamCommands` are exhaustive Records tested against the lists. `TauriTransport.openChannel(command, onMessage)` wraps `Channel` (messages may be ArrayBuffer or number[]).
+- `app/instrument`: one `createSlice` owns the revision rule; selectors are pure functions of slice values (`isAcquiring(conn, instr)`, `graphState(conn, instr, hasFrame)`, `statusChips`, `connectionChip`); `test-data.ts` has slice builders for tests.
+## M1 WP5 lessons (acquisition domain)
+- Spec 3.2 geometry examples are inconsistent (start 797, 80.54 %); the formula gives start 798, 19.48 / 80.52 %. Tests pin the formula and the 50 % = 50.0 and symmetry properties.
+- Shared integration-test helpers live in `tests/domain_support/mod.rs` (directory form, so cargo does not build it as a test crate).
+- Worktree-isolated shells refuse long compound commands (heredocs with `cd`); use the Write tool per file.
+- Edits are validated on a cloned model and committed whole (`Instrument::edit`), so a rejected patch never half-applies.
+## M1 WP4 Hantek adapter (developer-4)
+- Driver 0.2.0 mock: `Scope::new(MockTransport)` scripted like the driver's `tests/scope_mock.rs` (control_in for 0xA2/0x1580, 0x1600 with `CAL_FLAG`, 0x1B00, 0xE3/0x15F0 BCD; `push_bulk_in` reset reply; `on_bulk_in` keyed on the last `BulkOut`). Default driver `Config` has 4 channels on, so the adapter itself must refuse capture before `configure`. `CMD_STOP` = `[3,0,4,0]`; position byte 0 is about -4.016 div (test clamps with -4.1).
+- Hardware test names must still be given_/when_/then_ (name check); human filters them with `hardware`.
+- Bash tool refuses commands with `cat >>` into `.claude/memory`; use the Edit tool for memory.
+## Device module facts (M1 WP3)
+- `device/src/module/`: `manager.rs` (state machine thread, one inbox `Msg`), `worker.rs` + `control.rs` (per-session thread, intent in `WorkerControl` with a Condvar, latest setup wins), `connection.rs` (`ConnectionStore` owns revision and publishes only on change), `session.rs` (`end()` joins within 250 ms via a done channel), `issue.rs` (error to banner).
+- Catalog events are forwarded by one thread per catalog that polls a stop flag every 20 ms (catalog `Receiver` cannot be woken); `DeviceModule::drop` joins them.
+- `SimulatorControl::new()` starts plugged; the shell must `unplug()` it before building the module unless `SWEEPSCOPE_SIMULATOR=1`. A simulator `Attached` publishes `simulator_active` together with the following state (`defer_simulator_active` + `flush`) to avoid an extra event.
+- Tests: `tests/module_support/mod.rs` (`Source` with `Hooks`: open/capture error injection, a capture gate, live-device and configure counters). Subscribe a recorder before `DeviceModule::new` to see the first `Disconnected`. The thread-count test lives alone in its file because it counts process threads.
+- `cargo fmt --all` before clippy; clippy `too_many_lines` limit is 40 per function.
+
+## WP10 lessons (live model, waveform)
+- `src/**` lint bans `node:` imports, and vite `fs.allow` blocks files outside `frontend/` (`?inline` of `backend/...` fails): cross-repo fixture tests live in `frontend/tools/*.test.ts` (vitest includes `tools/**`), with `// @vitest-environment node` and `/// <reference types="node" />`.
+- ESLint `max-lines-per-function` is 40: split action maps into group builders. Prettier reformats long one-liners, run it before lint.
+- A default parameter value applies when `undefined` is passed: use an option flag to model "no instrument" in test setups.
+- `api/index.ts` exports few generated types; derive them (`InstrumentState['controls']['run']`) instead of editing WP9 files.
+- Model sources: `LiveMainWindow` = `Readable<MainWindowModel> & MainWindowActions` (same shape as the mock); selectors are pure `select-*.ts`; test the model through writable fake stores.
+## Acquisition module facts (M1 WP6)
+- `acquisition/src/module/`: `core.rs` (all state and rules, returns `Effects` of outputs and device calls, never touches the bus), `shared.rs` (`turn` lock orders whole steps so the device sees setups in revision order; `core` lock never held across a bus call), `handlers.rs` (weak refs to `Shared`: bus handlers live forever, a strong ref would be a cycle), consumer thread in `mod.rs` (drains `ConnectionChanged` first, then `recv_timeout(20 ms)` on `CaptureCompleted`, tick refreshes facts).
+- The architecture check counts dev-dependencies, so a feature crate cannot dev-depend on `device`: module tests use a `FakeDevice` on the bus (`tests/module_support`); the real `DeviceModule` plus `AcquisitionModule` integration test belongs in `src-tauri` (WP8). The shell must create `AcquisitionModule` before `DeviceModule` (no way to ask for the current connection).
+- Test sync: events are handled FIFO, so a sentinel frame published after the event under test proves it was handled; advance `FakeClock` only after the consumer processed the previous frame, or all frames get the same instant.
+- Clippy `large_enum_variant` hits `Output` enums holding slices: box the big variants.
+
+## M1 shell (WP8, developer-3)
+- Shell layout: `composition.rs` (`Wiring`, `compose`, `simulator_source(clock, start_plugged)` unplugs before the module build), `ipc/{commands,events,frames}.rs`, `manifest.rs` (EVENTS, STREAMS, `all_commands` from feature `COMMANDS`; `{}` args render as `Record<string, never>`), `integration_tests.rs` (bin crate: integration tests live in-crate).
+- Build acquisition BEFORE device (it learns the connection only from `ConnectionChanged`). Event forwarders subscribe before spawning threads; frame forwarder uses `subscribe_latest` + `Arc::unwrap_or_clone` + `stamp_sent`.
+- Regenerate `commands.ts`: `UPDATE_GENERATED=1 cargo test -p sweepscope-app`; renderer already emits Prettier layout. `tauri-build` writes `permissions/autogenerated/*.toml` (commit them).
+- Sandbox hook refuses some compound shell commands (heredoc plus `cd`, `git -C`): use the Write tool for files and split commands.
+## WP11 pages wiring and main.ts (developer-6)
+- Pages take one `actions: MainWindowActions` prop (MainWindow aliases it `windowActions` because a `{#snippet actions()}` for Banner would shadow it). `ReasonStepper` wraps `Stepper` + `Tooltip` for blocked directions; Stepper has no reason prop of its own. Marker drags emit on `oncommit` only (key nudges fire both `ondrag` and `oncommit`).
+- Composition lives in `app/main-window/live-app.ts` (`createLiveApp`), not in main.ts: probe wraps the feed's `requestFrame` (begin, publish, `afterRender` = Svelte `tick`, end). main.ts only injects browser globals.
+- e2e stub (`e2e/support/tauri-stub.ts`) now serves a ready snapshot (CH1-3 on) and acknowledges control commands; the app is no longer mock-fed, so e2e asserts IPC calls (`ipcLog`) instead of label flips. csp.spec hardcodes preview port 4173.
+- Compound shell commands with `cd`/python heredocs are refused in worktrees; use Edit/Write and `npm --prefix frontend ...`. `sed -i` on single lines works.
+
+## Copy confirmation (developer-6, BUG-4)
+- `app/clipboard.createCopyText({ write, notify })` raises an info Toast "Command copied" (error toast on refusal); `main.ts` composes it. Notification `kind` info is allowed through `notifications.notify`, though the `notify` dep of the app layers is error-only.
+- Tool sandbox refuses compound commands with `git -C`/`cd` plus git; run git plain and split commands. QA's uncommitted e2e files (live.spec.ts, support/frames.ts, tauri-stub.ts, graph.spec.ts) were copied into the fix branch to edit them.
+## M1 shell fix round (developer-3)
+- Capability needs `core:event:allow-listen` and `allow-unlisten` for the frontend to receive backend events; browser stubs hide this, so a manifest test pins the exact `core:` permissions (the commands test filters `core:` out).
+- `SWEEPSCOPE_NO_HARDWARE=1` skips `HantekCatalog::start` (`choose_hardware` takes the starter as a closure, so the test proves it is never called). Docs: README, docs/troubleshooting.md (DMABUF workaround), docs/usb-permissions.md. Prettier covers only `frontend/`, not the root README.
+## M1 review fix round (developer-1)
+- Permission banner command embeds the udev rule text (`include_str!` of `packaging/udev/...`) via `printf | sudo tee`, so it works from any directory and without a checkout.
+- `createTauriClient(transport, report)`: background rejections (listen, open channel, close) go to an injected reporter (default `console.error`); `BackendClient` interface unchanged.
+- Thread tests: replace sleeps with a channel handshake or no delay (result must hold in any order); `testing::eventually` for conditions. CSP `unsafe-inline` rationale lives in docs/architecture.md section on Tauri security (JSON has no comments).
+## BUG-3 unverified time base (developer-8)
+- `HorizontalModel.unverified?: string` (text 'Unverified (see accuracy note).' from design 8; backend sends only `ScaleChoice.verified`); `Unverified` warning Badge next to the Time/div stepper and in the readout. e2e stub: `stubTauri(page, settings, { unverifiedTimeBase: true })`, `openMain(page, 100, options)`.
+- Bash tool in a worktree refuses compound commands with `cd` + git/rm; run `cd <abs>/frontend && ...` as its own call, and run npx playwright from `frontend/` (else it fetches a stray playwright).
+## M1 review fix round 2 (developer-1)
+- Full `npm run check` runs from the repo root (not frontend/); run `npx prettier --write` on touched frontend files first. A test guards that the udev rule has no single quote (printf quoting in the permission command).
+
+## BUG-5 badge placement (developer-8, round 3)
+- Playwright `getByText('Unverified')` hits the Badge's 1x1 `.sr-only` description span: use `getByRole('note').filter({ hasText })` for badge boxes. Group boxes include padding, so assert against the group's content edge, not its border box.
+- Horizontal dock `.line` wraps (`flex-wrap: wrap`) so the badge drops under the stepper when the column is narrow. The Horizontal group is not rendered at 1024x720 (collapsed dock): placement tests use 1280, 1440, 1920, 2560 widths.
+- Never `pkill -f` a string from the calling command line (kills the shell, exit 144).
+
+## Visual snapshots removed (developer-8)
+- All `toHaveScreenshot` tests, baselines, `snapshotPathTemplate` and `expect.toHaveScreenshot` config were dropped by human decision; do not reintroduce. CI had no snapshot-only steps.

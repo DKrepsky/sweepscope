@@ -1,5 +1,6 @@
-use std::time::Duration;
-use sweepscope_kernel::testing::{EventRecorder, FakeClock};
+use std::thread;
+use std::time::{Duration, Instant};
+use sweepscope_kernel::testing::{eventually, EventRecorder, FakeClock};
 use sweepscope_kernel::{Bus, Clock, ErrorCategory, Event, Request};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -100,4 +101,88 @@ fn given_a_fake_clock_when_advanced_then_now_reflects_it() {
     clock.advance(Duration::from_secs(3));
 
     assert_eq!(clock.now() - start, Duration::from_secs(3));
+}
+
+#[test]
+fn given_a_subscriber_waiting_when_an_event_is_published_from_another_thread_then_it_returns_before_the_timeout() {
+    let bus = Bus::new();
+    let subscription = bus.subscribe::<Ping>();
+    let publisher = bus.clone();
+
+    let handle = thread::spawn(move || {
+        publisher.publish(Ping(5));
+    });
+    let received = subscription.recv_timeout(Duration::from_secs(5));
+    handle.join().unwrap();
+
+    assert_eq!(received, Some(Ping(5)));
+}
+
+#[test]
+fn given_a_queued_event_when_recv_timeout_is_called_then_it_returns_at_once() {
+    let bus = Bus::new();
+    let subscription = bus.subscribe::<Ping>();
+    bus.publish(Ping(1));
+
+    assert_eq!(subscription.recv_timeout(Duration::ZERO), Some(Ping(1)));
+}
+
+#[test]
+fn given_no_event_when_recv_timeout_elapses_then_it_returns_none_after_waiting() {
+    let subscription = Bus::new().subscribe::<Ping>();
+    let started = Instant::now();
+
+    let received = subscription.recv_timeout(Duration::from_millis(40));
+
+    assert_eq!(received, None);
+    assert!(started.elapsed() >= Duration::from_millis(40));
+}
+
+#[test]
+fn given_a_latest_subscription_when_three_events_are_published_then_only_the_last_is_received_and_two_lagged() {
+    let bus = Bus::new();
+    let subscription = bus.subscribe_latest::<Ping>();
+
+    bus.publish(Ping(1));
+    bus.publish(Ping(2));
+    bus.publish(Ping(3));
+
+    assert_eq!(subscription.lagged(), 2);
+    assert_eq!(subscription.drain(), vec![Ping(3)]);
+}
+
+#[test]
+fn given_a_latest_subscription_when_it_waits_then_it_wakes_on_publish() {
+    let bus = Bus::new();
+    let subscription = bus.subscribe_latest::<Ping>();
+    let publisher = bus.clone();
+
+    let handle = thread::spawn(move || {
+        publisher.publish(Ping(9));
+    });
+    let received = subscription.recv_timeout(Duration::from_secs(5));
+    handle.join().unwrap();
+
+    assert_eq!(received, Some(Ping(9)));
+}
+
+#[test]
+fn given_a_condition_that_becomes_true_when_eventually_polls_then_it_returns_true() {
+    let flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let setter = flag.clone();
+    let handle = thread::spawn(move || {
+        setter.store(true, std::sync::atomic::Ordering::SeqCst);
+    });
+
+    let reached = eventually(Duration::from_secs(5), || {
+        flag.load(std::sync::atomic::Ordering::SeqCst)
+    });
+    handle.join().unwrap();
+
+    assert!(reached);
+}
+
+#[test]
+fn given_a_condition_that_stays_false_when_eventually_times_out_then_it_returns_false() {
+    assert!(!eventually(Duration::from_millis(30), || false));
 }

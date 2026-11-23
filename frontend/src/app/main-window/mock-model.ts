@@ -1,12 +1,18 @@
-import type { ChannelModel, MainWindowModel, MeasurementsModel } from './types';
+import type { ChannelModel, MainWindowModel, MeasurementsModel, ScaleQuantity } from './types';
 import { sineWave, squareWave, triangleWave } from './mock-signals';
 
 /** Illustrative placeholders from the design prototype; not hardware statements. */
 
+export const scale = (value: string, unit: string): ScaleQuantity => ({
+  value,
+  unit,
+  step: { faster: { enabled: true }, slower: { enabled: true } },
+});
+
 const channel = (overrides: Partial<ChannelModel> & Pick<ChannelModel, 'number'>): ChannelModel => ({
   enabled: true,
   selected: false,
-  voltsPerDiv: { value: '1', unit: 'V/div' },
+  voltsPerDiv: scale('1', 'V/div'),
   position: { value: '0.00', unit: 'div' },
   coupling: 'dc',
   bandwidthLimit: false,
@@ -20,20 +26,20 @@ export const mockChannels = (): ChannelModel[] => [
   channel({
     number: 1,
     selected: true,
-    voltsPerDiv: { value: '500', unit: 'mV/div' },
+    voltsPerDiv: scale('500', 'mV/div'),
     position: { value: '−2.00', unit: 'div' },
     groundPosition: 0.25,
   }),
   channel({
     number: 2,
-    voltsPerDiv: { value: '20', unit: 'mV/div' },
+    voltsPerDiv: scale('20', 'mV/div'),
     position: { value: '+3.00', unit: 'div' },
     groundPosition: 0.875,
     unverified: 'Unverified range: below 50 mV/div. Accuracy up to about 5 % of a division.',
   }),
   channel({
     number: 3,
-    voltsPerDiv: { value: '2', unit: 'V/div' },
+    voltsPerDiv: scale('2', 'V/div'),
     unverified: 'Unverified range: above 1 V/div.',
   }),
   channel({

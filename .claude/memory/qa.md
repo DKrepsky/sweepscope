@@ -47,8 +47,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Stop everything by PID afterwards (app, openbox, Xvfb, vite) and delete the temp HOME.
 
 ## Pitfalls added in round 2
-- `toHaveScreenshot` defaults to `scale: 'css'`: HiDPI snapshots need `{ scale: 'device' }` or they cannot show device-pixel changes.
-- The gallery snapshot test stops at the first mismatch: fix one section, rerun, others may be hidden behind it.
 - Playwright `page.clock` does not work with the Svelte timers here (elements never appear); measure Toast timing with real timers and a margin.
 - `addInitScript` order matters: a wrapper of `__TAURI_INTERNALS__.invoke` must be added after `stubTauri`, and `openMain` adds the stub again, so
   for failing saves call `stubTauri`, then the wrapper, then `page.goto` yourself.
@@ -59,19 +57,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
   (Settings popover labels wrap in WebKitGTK). Window minimum is 1024 x 720 (content floor 64 x 45 rem), Stop is #f2766f.
 - Known limit: banners are not counted in the height thresholds.
 
-## Visual snapshots and CI (PR #1)
-- Baselines in `frontend/e2e/__screenshots__/chromium/` must come from the CI runner (ubuntu-24.04): a local host and even the official
-  `mcr.microsoft.com/playwright:v1.65.1-noble` container render differently from the runner (the container differed from CI more than the
-  old local baselines did). Fonts are not bundled, so wrapping can differ (StatusChip row wrapped differently).
-- How to regenerate: temporarily change the browser job's Run Playwright step to
-  `npm --prefix frontend run test:e2e -- --project=chromium e2e/visual.spec.ts --update-snapshots all --retries=0` plus an
-  `upload-artifact` of `frontend/e2e/__screenshots__/chromium/visual.spec.ts/`, push, `gh run download <run> -n snapshots`, copy the images,
-  revert the workflow in the next commit. (`npm --prefix frontend exec` does not find the config; use `run test:e2e`.) Pushing a new
-  branch for this was denied by the permission classifier: use the PR branch only.
-- The gallery snapshot test stops at the first mismatch, so a failed run shows only one gallery section; regenerate all at once.
-- CI renders are deterministic (two runs gave 0 differing pixels). Graph scope-screen snapshots passed on CI unchanged.
+## CI notes (PR #1)
 - Working tree may hold another agent's uncommitted edits: use a `git worktree add --detach` in the scratchpad and push `HEAD:<branch>`.
-- Gallery crops use `maxDiffPixelRatio: 0.01` (global 0.002 stays for full-window shots): Dialog text differed by 518 px between two CI runs.
 
 ## Backend-only stories (M0 #3, device crate)
 - No UI: verify by `cargo test -p sweepscope-device` (repeat 20x for flakiness), `npm run check` at the REPO ROOT (frontend has no `check` script), and inspection
@@ -79,3 +66,39 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Check simulator tables against PRD 5.1 (time base verified indexes 0-22, 24, 25, 27, 30; ranges 50 mV to 1 V) and that events match the real monitor
   (it replays already connected scopes). Test plan and report: `docs/specs/m0-spike/`.
 - Retest pattern: after a fix round run `cargo test --workspace`, loop `cargo test -p sweepscope-device` 20x (filter `^test result` for non-"0 failed"), `npm run check` at root. Device crate has 110 tests at 30ef39c. The main tree is /home/kr/workspace/sweepscope (agent worktrees may be on other branches).
+
+## Spike harness review (M0 #2)
+- Review a spike by `git archive <commit> | tar -x -C <scratch>` (clean copy, no build artefacts), then follow the README literally. Xvfb needs an unused display
+  number (check `/tmp/.X11-unix`), isolated HOME/XDG dirs, `GDK_BACKEND=x11`, `unset WAYLAND_DISPLAY`. Full release build took about 70 s.
+- Harness has no duration override: cut `web/scenarios.json` (warmupS, durationS) in the scratch copy for 4 s runs. Test failure paths with `--binary /bin/false`
+  and a copy of run-all.sh with a short `run_timeout_s`. Software-rendered numbers are invalid; never keep them.
+- Screenshots of Xvfb windows are safe; real desktops are not (see root-screenshot rule above).
+
+## Spike harness checks (#2, spikes/2-frame-streaming)
+- Xvfb run: isolated HOME breaks rustup: also export RUSTUP_HOME=/home/kr/.rustup CARGO_HOME=/home/kr/.cargo; no CARGO_TARGET_DIR (run-all hardcodes target/release). Use Xvfb from /tmp/claude-1000/xv/root with `:94`-style unused display (X0 is the user's, others may run too).
+- Background jobs ignore SIGINT: to test Ctrl+C use python Popen(start_new_session, SIGINT default) and os.killpg. `timeout` puts the app in its own group (run-all did not stop on Ctrl+C at e34f3a9).
+- Never `pkill -f` patterns (kills own shell, exit 144); use pgrep and kill by PID.
+- Synthetic summarize checks: clone a real JSON, drop quickRun, set configuredDurationS 60, vary drawMs.mean / ipcMs.p99 (4 ms floor, 1.5 ratio, ipc-only rule).
+
+## M1 live view lessons (real Tauri app + simulator)
+- The Tauri app ALWAYS composes `HantekCatalog`: `SWEEPSCOPE_SIMULATOR=1` does not stop it opening a plugged-in 6254BC (happened once, killed at once). Run the app
+  only as `unshare -rm ./run-app.sh ...` where run-app.sh does `mount -t tmpfs none /dev/bus/usb && mount -t tmpfs none /sys/bus/usb/devices` first. Check `lsusb | grep 04b5`.
+- Xvfb recipe: debs already extracted in `/tmp/claude-1000/xv/root`; env also needs `__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json`
+  and `RUSTUP_HOME/CARGO_HOME`. The window shows black for ~15 s after start and clicks sent too early are lost: `xdotool windowmap/windowmove` the "SweepScope" window,
+  wait, then click. Capture with `import -window root` (DISPLAY must be the Xvfb). F5 does not reload; right click, Inspect Element docks devtools, console prompt at the bottom.
+- The vite dev server log prints webview console errors (`[vite] (client) ...`): grep it for capability errors (`not allowed`). Browser stubs hide capability gaps
+  (BUG-1: `core:event:allow-listen` missing); always smoke the real window once.
+- Drive the backend from devtools: `window.__TAURI_INTERNALS__.invoke('use_simulator',{enabled:false|true})` = unplug/replug; 20-cycle loop and `/proc/<pid>/task` count work.
+- To test a capability fix without editing the repo: `git archive HEAD | tar -x` into scratch, patch, `CARGO_TARGET_DIR=<scratch> cargo build -p sweepscope-app` (~70 s with warm deps cache), run that binary.
+- e2e stub now has `emit(page, event, payload)` and `sendFrame(page, bytes)` (support/tauri-stub.ts) and `wireFrame` (support/frames.ts); wait for `open_frame_stream` in the IPC log before the first frame.
+  Pixel counting of traces: count bright pixels (max channel > 80) against an empty baseline; frozen traces are dimmed.
+
+## M1 retest lessons
+- Use `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off`) together with the `unshare -rm` USB-hiding recipe: both guards, every real-app run. Scripts live in the scratchpad (env.sh, run-app.sh); `import -window root -crop WxH+X+Y` then `convert -scale` to zoom (import has no -scale).
+- Window at Xvfb 1440x900 sits at 0,0: Run button (188,21), V/div `+` (177,747) and `-` (59,747), TIME/DIV `+` (738,745); devtools console prompt about (400,886) after Inspect Element. One devtools command at a time; a 20-cycle async loop in one line works (`/proc/<pid>/task` stayed 32).
+- Do not wait with `pgrep -f "playwright test"` in an until-loop: the waiter matches itself. Full Playwright run takes about 4 min and is moved to the background by the harness (exit code shown is of the wrapped pipeline, read the log).
+- Dry check of a shell install command: rebuild it from the source constants, `bash -n`/`sh -n`, run only the `printf` part into a scratch file and `cmp` with the shipped file; `udevadm verify <file>`. Never run the sudo part.
+- At 100 ms/div the simulator's 1 kHz sine aliases (2.5 kS/s) and fills the screen: not a bug. Check the Horizontal dock badge against the Trigger section at 1440x900 (BUG-5).
+
+## No visual snapshots
+- Screenshot-comparison tests (`toHaveScreenshot`) were removed by decision of the human (cost over value). Do not add baselines or regenerate them; check looks with layout, bounding-box, token and pixel-scan assertions, and manual UI checks.

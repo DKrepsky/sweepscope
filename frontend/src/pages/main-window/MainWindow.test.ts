@@ -4,10 +4,11 @@ import { get, writable, type Readable } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LayoutTier } from '../../app/layout';
 import type { Notification } from '../../app/notifications';
-import { createMockMainWindow } from '../../app/main-window';
+import { createMockMainWindow, type MainWindowModel } from '../../app/main-window';
 import { createTextScaleStore, setTextScale, type TextScalePercent } from '../../app/text-scale';
 import { createRecordingContext } from '../../ui/graph/recording-context';
 import MainWindow from './MainWindow.svelte';
+import { spyActions } from './test-support';
 
 const tiers = {
   w1: { width: 'w1', height: 'h1', rootFontPx: 16 },
@@ -26,9 +27,9 @@ beforeEach(() => {
 function renderShell(
   tier: LayoutTier,
   overrides: {
-    ontogglerun?: () => void;
     ontextscale?: (p: TextScalePercent) => void;
     notifications?: Readable<Notification[]>;
+    model?: Readable<MainWindowModel>;
   } = {},
 ) {
   const props = {
@@ -37,7 +38,7 @@ function renderShell(
     textScale: writable<TextScalePercent>(100),
     notifications: writable<Notification[]>([]),
     onnotificationdismiss: () => {},
-    ontogglerun: () => {},
+    actions: spyActions(),
     ontextscale: () => {},
     ...overrides,
   };
@@ -104,15 +105,6 @@ describe('MainWindow tiers', () => {
 });
 
 describe('MainWindow behaviour', () => {
-  it('given the run button, when clicked, then the shell asks to toggle run', async () => {
-    const ontogglerun = vi.fn();
-    renderShell(tiers.w1, { ontogglerun });
-
-    await userEvent.setup().click(screen.getByRole('button', { name: /Stop/ }));
-
-    expect(ontogglerun).toHaveBeenCalledOnce();
-  });
-
   it('given the text-scale control, when 150 is selected, then SaveUiState is sent and the root font is applied', async () => {
     const send = vi.fn(async () => undefined);
     const client = { send } as never;
@@ -126,7 +118,7 @@ describe('MainWindow behaviour', () => {
         textScale: store,
         notifications: writable<Notification[]>([]),
         onnotificationdismiss: () => {},
-        ontogglerun: () => {},
+        actions: spyActions(),
         ontextscale: (percent: TextScalePercent) => void setTextScale(store, percent),
       },
     });
@@ -234,6 +226,30 @@ describe('MainWindow behaviour', () => {
     renderShell(tiers.w1);
 
     expect(screen.getByText('Illustrative numbers (placeholders)')).toBeInTheDocument();
+  });
+});
+
+describe('MainWindow unverified time base', () => {
+  it('given a verified time base, when rendered, then the Horizontal group has no unverified badge', () => {
+    renderShell(tiers.w1);
+
+    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
+    expect(within(group).queryByText('Unverified')).not.toBeInTheDocument();
+  });
+
+  it('given an unverified time base, when rendered, then the Horizontal group and the readout show the badge', () => {
+    const model = createMockMainWindow();
+    const unverified = {
+      ...get(model),
+      horizontal: { ...get(model).horizontal, unverified: 'Unverified (see accuracy note).' },
+    };
+
+    renderShell(tiers.w1, { model: writable(unverified) });
+
+    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
+    const readout = document.querySelector<HTMLElement>('[data-region="readout"]')!;
+    expect(within(group).getByText('Unverified')).toBeInTheDocument();
+    expect(within(readout).getByText('Unverified')).toBeInTheDocument();
   });
 });
 

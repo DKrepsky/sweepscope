@@ -1,7 +1,8 @@
 use std::any::{type_name, Any, TypeId};
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, Weak};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
+use std::time::{Duration, Instant};
 
 use crate::KernelError;
 
@@ -21,6 +22,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 struct Queue<E> {
     items: Mutex<VecDeque<E>>,
+    arrived: Condvar,
     lagged: AtomicU64,
     capacity: usize,
 }
@@ -33,6 +35,16 @@ impl<E> Queue<E> {
             self.lagged.fetch_add(1, Ordering::Relaxed);
         }
         items.push_back(event);
+        self.arrived.notify_one();
+    }
+
+    fn with_capacity(capacity: usize) -> Arc<Self> {
+        Arc::new(Self {
+            items: Mutex::new(VecDeque::new()),
+            arrived: Condvar::new(),
+            lagged: AtomicU64::new(0),
+            capacity,
+        })
     }
 }
 
@@ -44,6 +56,24 @@ pub struct Subscription<E> {
 impl<E> Subscription<E> {
     pub fn try_next(&self) -> Option<E> {
         lock(&self.queue.items).pop_front()
+    }
+
+    /// Waits up to `wait` for the next event; wakes as soon as one is published.
+    pub fn recv_timeout(&self, wait: Duration) -> Option<E> {
+        let deadline = Instant::now() + wait;
+        let mut items = lock(&self.queue.items);
+        loop {
+            if let Some(event) = items.pop_front() {
+                return Some(event);
+            }
+            let remaining = deadline.checked_duration_since(Instant::now())?;
+            items = self
+                .queue
+                .arrived
+                .wait_timeout(items, remaining)
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .0;
+        }
     }
 
     pub fn drain(&self) -> Vec<E> {
@@ -88,11 +118,16 @@ impl Bus {
     }
 
     pub fn subscribe<E: Event>(&self) -> Subscription<E> {
-        let queue = Arc::new(Queue {
-            items: Mutex::new(VecDeque::new()),
-            lagged: AtomicU64::new(0),
-            capacity: SUBSCRIBER_CAPACITY,
-        });
+        self.subscribe_with_capacity(SUBSCRIBER_CAPACITY)
+    }
+
+    /// Keeps only the newest event; replaced ones count in `lagged()` (latest-wins streams such as frames).
+    pub fn subscribe_latest<E: Event>(&self) -> Subscription<E> {
+        self.subscribe_with_capacity(1)
+    }
+
+    fn subscribe_with_capacity<E: Event>(&self, capacity: usize) -> Subscription<E> {
+        let queue = Queue::with_capacity(capacity);
         let mut registry = lock(&self.registry);
         let entry = registry
             .subscribers

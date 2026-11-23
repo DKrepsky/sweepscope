@@ -45,12 +45,14 @@ test.describe('main window shell', () => {
     expect(failures).toEqual([]);
   });
 
-  test('given the Run button, when clicked, then its label toggles between Stop and Run', async ({ page }) => {
+  test('given a running scope, when Stop is clicked, then set_running is sent with running false', async ({ page }) => {
     await openMain(page);
     const stop = page.getByRole('button', { name: /^Stop/ });
     await expect(stop).toBeVisible();
     await stop.click();
-    await expect(page.getByRole('button', { name: /^Run/ })).toBeVisible();
+    await expect
+      .poll(async () => (await ipcLog(page)).filter((call) => call.command === 'set_running'))
+      .toEqual([{ command: 'set_running', args: { running: false } }]);
   });
 
   test('given the shell, when checked, then the placeholder note is visible', async ({ page }) => {
@@ -174,6 +176,54 @@ test.describe('main window shell', () => {
     );
     expect(unnamed).toEqual([]);
   });
+});
+
+test.describe('unverified time base', () => {
+  test('given a measured time base, when the window opens, then no Unverified badge shows in Horizontal', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toHaveCount(0);
+  });
+
+  test('given an unmeasured time base, when the window opens, then the Horizontal group and the readout show Unverified', async ({
+    page,
+  }) => {
+    await openMain(page, 100, { unverifiedTimeBase: true });
+    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toBeVisible();
+    await expect(page.locator('[data-region="readout"]').getByText('Unverified')).toBeVisible();
+  });
+});
+
+test.describe('unverified badge placement', () => {
+  const windows: [number, number][] = [
+    [1440, 900],
+    [1920, 1080],
+    [1280, 800],
+    [2560, 1440],
+  ];
+
+  for (const [width, height] of windows) {
+    test(`given an unmeasured time base at ${width}x${height}, when the Horizontal group shows, then the badge stays inside its group and clear of the Trigger Type label`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page, 100, { unverifiedTimeBase: true });
+      const group = page.locator('[data-region="horizontal"]');
+      const badge = await group.getByRole('note').filter({ hasText: 'Unverified' }).boundingBox();
+      const groupBox = await group.boundingBox();
+      const typeLabel = await page.locator('[data-region="trigger"]').getByText('Type', { exact: true }).boundingBox();
+      if (!badge || !groupBox || !typeLabel) throw new Error('missing box');
+      const groupPadding = 8;
+      expect(badge.x + badge.width).toBeLessThanOrEqual(groupBox.x + groupBox.width - groupPadding);
+      const overlapsType =
+        badge.x < typeLabel.x + typeLabel.width &&
+        typeLabel.x < badge.x + badge.width &&
+        badge.y < typeLabel.y + typeLabel.height &&
+        typeLabel.y < badge.y + badge.height;
+      expect(overlapsType).toBe(false);
+    });
+  }
 });
 
 test.describe('security', () => {

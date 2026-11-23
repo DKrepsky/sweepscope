@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import Segmented from './Segmented.svelte';
+import source from './Segmented.svelte?raw';
 
 const options = [
   { id: 'edge', label: 'Edge' },
@@ -50,5 +51,10 @@ describe('Segmented', () => {
     setup();
     screen.getByRole('button', { name: 'Video' }).focus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Experimental');
+  });
+
+  it('given the option button style, when read, then white-space is nowrap (jsdom has no component CSS, e2e checks the layout)', () => {
+    const rule = /\n {2}button \{([^}]*)\}/.exec(source)?.[1] ?? '';
+    expect(rule).toMatch(/white-space:\s*nowrap/);
   });
 });

@@ -32,4 +32,22 @@ describe('fake client', () => {
     client.emit(eventName, 1 as never);
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('given an open stream, when a message is pushed, then the callback receives it', () => {
+    const client = createFakeClient();
+    const onMessage = vi.fn();
+    client.openStream('frames', onMessage);
+    const buffer = new ArrayBuffer(4);
+    client.pushStream('frames', buffer);
+    expect(onMessage).toHaveBeenCalledExactlyOnceWith(buffer);
+  });
+
+  it('given a closed stream, when a message is pushed, then the callback is not called and the close is counted', () => {
+    const client = createFakeClient();
+    const onMessage = vi.fn();
+    client.openStream('frames', onMessage).close();
+    client.pushStream('frames', new ArrayBuffer(4));
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(client.openStreamCount('frames')).toBe(0);
+  });
 });

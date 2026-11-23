@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openGallery, openMain, SCOPE_SCREEN } from './support/app';
+import { openGallery, openMain } from './support/app';
 
 const SCALES = [1, 1.25, 1.5, 2];
 
@@ -71,15 +71,6 @@ for (const scale of SCALES) {
       // No anti-aliased blend: only the token colours of the grid appear.
       expect(scan.row.colours.length).toBeLessThanOrEqual(3);
       expect(scan.column.colours.length).toBeLessThanOrEqual(3);
-    });
-
-    test(`given scale ${scale}, when checked, then the scope screen matches its stored snapshot`, async ({
-      page,
-      browserName,
-    }) => {
-      test.skip(browserName !== 'chromium', 'Snapshots are stored for Chromium only');
-      await openWithFreshGraticule(page);
-      await expect(page.locator(SCOPE_SCREEN)).toHaveScreenshot(`scope-screen-${scale}.png`, { scale: 'device' });
     });
   });
 }

@@ -83,3 +83,12 @@ Open design questions, answered here:
   again; the caller opens a new handle after the next `Attached` (PRD 5.2, the device returns with a new address).
 - In `Sweep::Auto` the capture `timeout` is ignored: auto sweep always returns a frame within the record time (`TriggerOutcome::Auto`
   when no edge was found). Only `Sweep::Normal` returns `Timeout`.
+
+## Amendment (2026-11-22, M1 planning, see ADR 0010 and ADR 0012)
+- Decision 1 and 6: the data types `Capabilities`, `TimeBaseStep`, `VerticalRange`, `DeviceIdentity`, `CalibrationStatus`, `AcquisitionSetup`
+  (with its parts), `Frame`, `ChannelData` and `TriggerOutcome` move to `kernel::contracts` because `acquisition` and `display` need them and features
+  may not import each other. `device` re-exports them. The traits stay in `device`. `VerticalRange` gains `max_position_divs`.
+- Decision 3: `ScopeDevice` gains `force_capture(timeout) -> Result<Frame, DeviceError>`.
+- Decision 4: `DeviceError` gains `PermissionDenied` (category `Recoverable`).
+- The "M1 device module" of decision 1 is split: `device` keeps the thread, sessions and capture loop; run intent and setup state belong to the new
+  `acquisition` crate.

@@ -6,12 +6,10 @@ const PREVIEW_PORT = 4173;
 export default defineConfig({
   testDir: './e2e',
   outputDir: './test-results',
-  snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.002 } },
   use: { baseURL: `http://localhost:${PORT}`, colorScheme: 'dark', trace: 'retain-on-failure' },
   webServer: [
     {

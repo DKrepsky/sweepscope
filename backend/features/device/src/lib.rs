@@ -1,21 +1,27 @@
 //! Device-neutral instrument interfaces: one opened instrument (`ScopeDevice`), what exists and when it
-//! appears (`DeviceCatalog`), and the value types they exchange. No hardware driver types appear here.
+//! appears (`DeviceCatalog`), and the session module that connects them to the bus. The value types live in
+//! `sweepscope_kernel::contracts` and are re-exported here; driver types appear only in `hantek`.
 #![forbid(unsafe_code)]
 
-mod capabilities;
 mod catalog;
 mod device;
 mod error;
-mod frame;
+mod hantek;
 mod identity;
-mod setup;
+mod messages;
+mod module;
+mod profile;
 mod simulator;
 
-pub use capabilities::{Capabilities, TimeBaseStep, VerticalRange};
 pub use catalog::{CatalogEvent, DeviceCatalog};
 pub use device::ScopeDevice;
 pub use error::DeviceError;
-pub use frame::{ChannelData, Frame, TriggerOutcome};
-pub use identity::{CalibrationStatus, DeviceId, DeviceIdentity};
-pub use setup::{AcquisitionSetup, ChannelSetup, Coupling, Slope, Sweep, TriggerSetup};
+pub use hantek::{HantekCatalog, HantekDevice};
+pub use identity::DeviceId;
+pub use messages::{GetConnection, RetryConnection, UseSimulator};
+pub use module::{DeviceDeps, DeviceModule, SimulatorSource, COMMANDS};
 pub use simulator::{device_id, SignalKind, SimulatedCatalog, SimulatedDevice, SimulatorControl};
+pub use sweepscope_kernel::contracts::{
+    AcquisitionSetup, CalibrationStatus, Capabilities, ChannelData, ChannelSetup, Coupling, DeviceIdentity, Frame,
+    Slope, Sweep, TimeBaseStep, TriggerOutcome, TriggerSetup, VerticalRange,
+};

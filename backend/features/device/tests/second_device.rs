@@ -66,6 +66,9 @@ impl ScopeDevice for ScriptedDevice {
             _ => Err(DeviceError::Timeout),
         }
     }
+    fn force_capture(&mut self, _: Duration) -> Result<Frame, DeviceError> {
+        Ok(self.frame())
+    }
     fn start_roll(&mut self) -> Result<(), DeviceError> {
         Ok(())
     }

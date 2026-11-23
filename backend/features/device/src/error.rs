@@ -10,6 +10,8 @@ pub enum DeviceError {
     Overrun,
     InvalidSetting(String),
     CalibrationInvalid,
+    /// The operating system refused access to the USB device.
+    PermissionDenied,
     Io(String),
 }
 
@@ -31,6 +33,7 @@ impl fmt::Display for DeviceError {
             Self::Overrun => f.write_str("samples were lost because they were not read in time"),
             Self::InvalidSetting(reason) => write!(f, "invalid setting: {reason}"),
             Self::CalibrationInvalid => f.write_str("the oscilloscope calibration data is invalid"),
+            Self::PermissionDenied => f.write_str("the system does not allow access to the oscilloscope"),
             Self::Io(reason) => write!(f, "communication error: {reason}"),
         }
     }
@@ -56,6 +59,7 @@ mod tests {
             DeviceError::Overrun,
             DeviceError::InvalidSetting("range".into()),
             DeviceError::CalibrationInvalid,
+            DeviceError::PermissionDenied,
             DeviceError::Io("usb".into()),
         ]
     }
@@ -71,6 +75,14 @@ mod tests {
         for error in all().into_iter().skip(2) {
             assert_eq!(error.category(), ErrorCategory::Recoverable, "{error:?}");
         }
+    }
+
+    #[test]
+    fn given_a_permission_error_when_categorised_then_it_is_recoverable_and_says_so() {
+        let kernel: KernelError = DeviceError::PermissionDenied.into();
+
+        assert_eq!(kernel.category, ErrorCategory::Recoverable);
+        assert!(kernel.message.contains("access"), "{}", kernel.message);
     }
 
     #[test]
