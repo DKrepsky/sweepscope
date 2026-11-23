@@ -1,6 +1,15 @@
 //! Automatic measurements of a sampled waveform (ADR 0014). Pure: no text, no units beyond SI numbers.
 #![forbid(unsafe_code)]
 
+mod crossings;
+mod edges;
+mod stats;
+
+use crossings::Crossing;
+
+const MIN_SWING_COUNTS: f64 = 10.0;
+const HYSTERESIS_FRACTION: f64 = 0.1;
+
 /// Why a quantity has no value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Invalid {
@@ -28,24 +37,90 @@ pub struct Measured {
     pub fall_time: Result<f64, Invalid>,
 }
 
+impl Measured {
+    fn all_invalid(vmax: f64, vmin: f64, reason: Invalid) -> Self {
+        let none = Err(reason);
+        Self {
+            vmax,
+            vmin,
+            vpp: vmax - vmin,
+            vmean: none,
+            vrms: none,
+            frequency: none,
+            period: none,
+            positive_width: none,
+            negative_width: none,
+            duty_cycle: none,
+            rise_time: none,
+            fall_time: none,
+        }
+    }
+}
+
 /// Empty input gives zero amplitudes and `Err(NoSignal)` everywhere else.
 pub fn measure(volts: &[f64], sample_interval_s: f64, volts_per_count: f64) -> Measured {
-    let _ = (volts, sample_interval_s, volts_per_count);
-    let none = Err(Invalid::NoSignal);
-    Measured {
-        vmax: 0.0,
-        vmin: 0.0,
-        vpp: 0.0,
-        vmean: none,
-        vrms: none,
-        frequency: none,
-        period: none,
-        positive_width: none,
-        negative_width: none,
-        duty_cycle: none,
-        rise_time: none,
-        fall_time: none,
+    if volts.is_empty() {
+        return Measured::all_invalid(0.0, 0.0, Invalid::NoSignal);
     }
+    let (vmin, vmax) = volts
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(lo, hi), &v| (lo.min(v), hi.max(v)));
+    let vpp = vmax - vmin;
+    if vpp < MIN_SWING_COUNTS * volts_per_count {
+        let (mean, rms) = stats::mean_and_rms(volts);
+        return Measured {
+            vmean: Ok(mean),
+            vrms: Ok(rms),
+            ..Measured::all_invalid(vmax, vmin, Invalid::NoSignal)
+        };
+    }
+    let mid = (vmin + vmax) / 2.0;
+    let hysteresis = (HYSTERESIS_FRACTION * vpp).max(2.0 * volts_per_count);
+    let crossings = crossings::find(volts, mid, hysteresis);
+    let rising = crossings::rising_positions(&crossings);
+    let edges = edges::measure(volts, &crossings, mid, sample_interval_s);
+    let (vmean, vrms) = stats::mean_and_rms(whole_periods(volts, &rising));
+    Measured {
+        vmax,
+        vmin,
+        vpp,
+        vmean: Ok(vmean),
+        vrms: Ok(vrms),
+        rise_time: edges.rise,
+        fall_time: edges.fall,
+        ..timing(&crossings, &rising, sample_interval_s)
+    }
+}
+
+fn whole_periods<'a>(volts: &'a [f64], rising: &[f64]) -> &'a [f64] {
+    match (rising.first(), rising.last()) {
+        (Some(first), Some(last)) if rising.len() >= 2 => stats::between(volts, *first, *last),
+        _ => volts,
+    }
+}
+
+/// Period, frequency, widths and duty cycle; the other fields are placeholders for the caller to replace.
+fn timing(crossings: &[Crossing], rising: &[f64], sample_interval_s: f64) -> Measured {
+    let mut measured = Measured::all_invalid(0.0, 0.0, Invalid::FewerThanOnePeriod);
+    if let (Some(first), Some(last)) = (rising.first(), rising.last()) {
+        if rising.len() >= 2 {
+            let period = (last - first) / (rising.len() - 1) as f64 * sample_interval_s;
+            measured.period = Ok(period);
+            measured.frequency = Ok(1.0 / period);
+        }
+    }
+    let width = |starts_rising| {
+        crossings::mean_pulse_width(crossings, starts_rising)
+            .map(|samples| samples * sample_interval_s)
+            .ok_or(Invalid::NoCompletePulse)
+    };
+    measured.positive_width = width(true);
+    measured.negative_width = width(false);
+    measured.duty_cycle = match (measured.positive_width, measured.negative_width) {
+        (Ok(high), Ok(low)) => Ok(100.0 * high / (high + low)),
+        _ => Err(Invalid::NoCompletePulse),
+    };
+    measured
 }
 
 /// True when any code sits on a converter rail (0 or 255).
