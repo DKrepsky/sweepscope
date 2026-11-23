@@ -12,3 +12,5 @@ workspace = true
 sweepscope-kernel = { path = "../../kernel" }
 serde = { version = "1", features = ["derive"] }
 ts-rs = "12"
+engineering-format = { path = "../../libs/engineering-format" }
+measurements = { path = "../../libs/measurements" }
