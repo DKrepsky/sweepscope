@@ -87,6 +87,7 @@
       onforce={windowActions.forceTrigger}
       ontoggledrawer={() => (drawerRequested = !drawerRequested)}
       {ontextscale}
+      onfile={(action) => windowActions[action]()}
     />
     <div class="content" data-region="content">
       {#each shownBanners as banner (banner.id)}

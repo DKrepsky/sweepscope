@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TextScalePercent } from '../../app/text-scale';
   import { textScaleOptions } from '../../app/text-scale';
+  import type { FileActions } from '../../app/files';
   import type { ToolbarModel } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
@@ -24,6 +25,7 @@
     onforce: () => void;
     ontoggledrawer: () => void;
     ontextscale: (percent: TextScalePercent) => void;
+    onfile: (action: keyof FileActions) => void;
   }
 
   const {
@@ -37,6 +39,7 @@
     onforce,
     ontoggledrawer,
     ontextscale,
+    onfile,
   }: Props = $props();
 
   const noop = () => {};
@@ -51,7 +54,26 @@
   ];
   const scaleOptions = textScaleOptions.map((percent) => ({ id: String(percent), label: `${percent} %` }));
 
+  const fileItems = $derived(
+    (
+      [
+        ['saveSetup', 'Save setup...', toolbar.files.saveSetup],
+        ['loadSetup', 'Load setup...', toolbar.files.loadSetup],
+        ['exportCsv', 'Export CSV...', toolbar.files.exportCsv],
+        ['exportRaw', 'Export raw capture...', toolbar.files.exportRaw],
+        ['saveScreenshot', 'Save screenshot...', toolbar.files.screenshot],
+      ] as const
+    ).map(([id, label, availability]) => ({
+      id,
+      label,
+      disabled: !availability.enabled,
+      disabledReason: availability.reason,
+    })),
+  );
+
   let persistenceAnchor = $state<{ x: number; y: number } | null>(null);
+  let fileAnchor = $state<{ x: number; y: number } | null>(null);
+  let fileHost: HTMLElement;
   let settingsOpen = $state(false);
 
   let persistenceHost: HTMLElement;
@@ -59,6 +81,16 @@
   function openPersistence() {
     const box = persistenceHost.getBoundingClientRect();
     persistenceAnchor = { x: box.left, y: box.bottom };
+  }
+
+  function openFileMenu() {
+    const box = fileHost.getBoundingClientRect();
+    fileAnchor = { x: box.left, y: box.bottom };
+  }
+
+  function selectFile(id: string) {
+    fileAnchor = null;
+    onfile(id as keyof FileActions);
   }
 
   const selectScale = (id: string) => ontextscale(Number(id) as TextScalePercent);
@@ -156,12 +188,25 @@
   </div>
 
   <div class="group" role="group" aria-label="Data">
-    <Button title="Save setup or capture" ariaLabel={toolLabels ? undefined : 'Save'}>
-      {#snippet left()}<Icon name="save" />{/snippet}
-      {#if toolLabels}Save{/if}
-      {#snippet right()}<Icon name="chevron" />{/snippet}
-    </Button>
-    <Button title="Screenshot to PNG (Ctrl+P)" ariaLabel="Screenshot">
+    <span class="anchor" bind:this={fileHost}>
+      <Button
+        title="Save or load a setup, export the capture, save a screenshot"
+        ariaLabel={toolLabels ? undefined : 'File'}
+        onclick={openFileMenu}
+        {...menuTriggerAttributes(fileAnchor !== null)}
+      >
+        {#snippet left()}<Icon name="save" />{/snippet}
+        {#if toolLabels}File{/if}
+        {#snippet right()}<Icon name="chevron" />{/snippet}
+      </Button>
+    </span>
+    <Button
+      title="Screenshot to PNG (Ctrl+P)"
+      ariaLabel="Screenshot"
+      onclick={() => onfile('saveScreenshot')}
+      disabled={!toolbar.files.screenshot.enabled}
+      disabledReason={toolbar.files.screenshot.reason}
+    >
       {#snippet left()}<Icon name="screenshot" />{/snippet}
     </Button>
     {#if drawerButton}
@@ -198,6 +243,10 @@
     </span>
   </div>
 </header>
+
+{#if fileAnchor}
+  <Menu items={fileItems} open={true} anchor={fileAnchor} onselect={selectFile} onclose={() => (fileAnchor = null)} />
+{/if}
 
 {#if persistenceAnchor}
   <Menu
