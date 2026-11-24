@@ -1,9 +1,11 @@
 //! Engineering notation for instrument readouts: SI prefix, three significant digits, a unit per quantity.
 #![forbid(unsafe_code)]
 
+mod parse;
 mod quantity;
 mod scale;
 
+pub use parse::{parse_seconds, ParseError};
 pub use quantity::Quantity;
 
 const TRUE_MINUS: &str = "\u{2212}";

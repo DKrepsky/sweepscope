@@ -14,6 +14,10 @@ pub enum Quantity {
     Percent,
     Divisions,
     Points,
+    /// Level ratio, one decimal and no prefix.
+    Decibel,
+    /// Scale of a multiplied channel; steps are shown exactly and without prefix.
+    VoltsSquaredPerDiv,
 }
 
 /// Powers of ten, in steps of three, a quantity may use for its prefix.
@@ -27,6 +31,7 @@ pub(crate) enum Digits {
     FourSignificant,
     /// Scale steps (1-2-5) are shown as they are, without trailing zeros.
     Exact,
+    OneDecimal,
 }
 
 impl Quantity {
@@ -42,12 +47,16 @@ impl Quantity {
             Self::Percent => ("%", ""),
             Self::Divisions => ("div", ""),
             Self::Points => ("pts", ""),
+            Self::Decibel => ("dB", ""),
+            Self::VoltsSquaredPerDiv => ("V\u{b2}", "/div"),
         }
     }
 
     pub(crate) fn prefix_range(self) -> PrefixRange {
         match self {
-            Self::Percent | Self::Divisions => PrefixRange { lowest: 0, highest: 0 },
+            Self::Percent | Self::Divisions | Self::Decibel | Self::VoltsSquaredPerDiv => {
+                PrefixRange { lowest: 0, highest: 0 }
+            }
             Self::Points => PrefixRange { lowest: 0, highest: 9 },
             _ => PrefixRange {
                 lowest: -12,
@@ -58,7 +67,8 @@ impl Quantity {
 
     pub(crate) fn digits(self) -> Digits {
         match self {
-            Self::VoltsPerDiv | Self::SecondsPerDiv => Digits::Exact,
+            Self::VoltsPerDiv | Self::SecondsPerDiv | Self::VoltsSquaredPerDiv => Digits::Exact,
+            Self::Decibel => Digits::OneDecimal,
             Self::Frequency | Self::Period => Digits::FourSignificant,
             _ => Digits::ThreeSignificant,
         }

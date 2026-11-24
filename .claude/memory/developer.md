@@ -307,3 +307,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `device` re-exports selected kernel contract types in `lib.rs`; `hantek/convert.rs` also imports the driver's `TriggerKind`, so the kernel one must be qualified there.
 - A new field on a generated state type breaks `npm run typecheck` in frontend test data (`app/instrument/test-data.ts`, `selectors.ts`, main-window tests) but not vitest; the frontend packages fix those.
 - cargo fmt rewrites `AutosetRun::default()` on a unit struct only after clippy objects: write `AutosetRun` directly.
+## M3 B3 lessons
+- Worktree-isolated shell refuses compound commands that mix git with other pipes; run one simple command per call. Fresh worktrees lack `frontend/node_modules`: `npm ci --prefer-offline` works.
+- Shared golden vectors: `engineering-format/tests/golden*.tsv` (value, quantity, text, unit); TS reads `golden.tsv` and `golden_analyse.tsv` in `frontend/tools/formatting-golden.test.ts`. Rust negative values that round to zero print no minus.
