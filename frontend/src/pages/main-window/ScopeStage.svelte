@@ -4,6 +4,7 @@
     type ChannelModel,
     type CursorsModel,
     type GraphModel,
+    type Interpolation,
     type MainWindowActions,
     type TriggerModel,
   } from '../../app/main-window';
@@ -20,12 +21,17 @@
     trigger: TriggerModel;
     cursors: CursorsModel;
     dots: boolean;
+    /** Wins over `dots` when given: the badge names the mode. */
+    interpolation?: Interpolation;
     actions: MainWindowActions;
     /** 1 rem in px (layout store): the screen minimum is in rem. */
     rootFontPx: number;
   }
 
-  const { graph, channels, trigger, cursors, dots, actions, rootFontPx }: Props = $props();
+  const { graph, channels, trigger, cursors, dots, interpolation, actions, rootFontPx }: Props = $props();
+
+  const mode = $derived(interpolation ?? (dots ? 'dots' : 'linear'));
+  const BADGES = { sinc: 'sin(x)/x SW', linear: 'Linear SW', dots: 'Dots' } as const;
 
   const triggerOff = $derived(trigger.availability?.enabled === false);
   const triggerReason = $derived(trigger.availability?.reason);
@@ -61,11 +67,11 @@
     role="group"
     aria-label="Scope screen"
   >
-    <Graph frame={graph} summary={graph.summary} {dots}>
+    <Graph frame={graph} summary={graph.summary} dots={mode === 'dots'}>
       {#snippet overlay()}
-        <CursorOverlay {cursors} />
+        <CursorOverlay {cursors} onmove={actions.moveCursor} onremove={actions.removeCursor} />
         <div class="corner">
-          <Badge kind="software" tooltip="Interpolation is computed in software">{dots ? 'Dots' : 'Linear SW'}</Badge>
+          <Badge kind="software" tooltip="Interpolation is computed in software">{BADGES[mode]}</Badge>
         </div>
       {/snippet}
       {#snippet gutterLeft()}

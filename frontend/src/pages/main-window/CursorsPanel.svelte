@@ -18,7 +18,15 @@
   {#snippet header()}Cursors{/snippet}
   {#snippet actions()}
     <span class="note">on <b class="ss-num" style={channelStyle(cursors.source)}>CH{cursors.source}</b></span>
-    <Button size="sm" title="Remove all cursors (double-click a cursor removes it)" onclick={onclear}>Clear</Button>
+    <Button
+      size="sm"
+      title="Remove all cursors (double-click a cursor removes it)"
+      disabled={!cursors.enabled}
+      disabledReason={cursors.available.reason ?? 'No cursors'}
+      onclick={onclear}
+    >
+      Clear
+    </Button>
   {/snippet}
   {#snippet body()}
     <div class="kv ss-num">

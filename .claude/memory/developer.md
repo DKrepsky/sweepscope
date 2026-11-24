@@ -280,3 +280,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `api/index.ts` only re-exports some generated types (no `Measurement`, `MeasurementId`); derive from `MeasurementsState['channels'][number]` instead of editing the api layer. `FormattedValue` has `value: number` too.
 - Shell commands mixing heredocs, python and several `cd`/npx calls get refused in worktrees ("too complex"): use Write/Edit tools and short Bash calls.
 - Pin menu keeps `Menu` open after each toggle (onselect does not close); `MenuItem.checked` renders `menuitemcheckbox`.
+## M2 WP12 cursors UI (developer-9)
+- Cursor X readouts span 10 divisions (`fraction * 10 * s/div`); the spec example (X1 0.35 -> 700 us at 2 ms/div) is off by 10, tests use 0.035. Y: `(divisions above centre - positionDivs) * V/div`; `ScaleChoice.label.value` is SI in the backend but `instrumentState()` test-data fills it from the text, so cursor tests build SI scales themselves.
+- `ui/cursor`: position is x from left / y from top; ArrowUp on y reduces it. Dash 6/4 uses a rem repeating-linear-gradient (px banned in ui). ScopeStage `interpolation` prop is optional (falls back to `dots`) because MainWindow.svelte is WP11: it should pass `interpolation={model.horizontal.interpolation}`.
+- A fresh worktree needs `npm ci` in frontend/; heredocs (`cat > f <<EOF`) are refused, use Write.
