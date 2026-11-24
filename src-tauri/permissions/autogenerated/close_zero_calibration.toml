@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-zero-calibration"
+description = "Enables the close_zero_calibration command without any pre-configured scope."
+commands.allow = ["close_zero_calibration"]
+
+[[permission]]
+identifier = "deny-close-zero-calibration"
+description = "Denies the close_zero_calibration command without any pre-configured scope."
+commands.deny = ["close_zero_calibration"]

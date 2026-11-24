@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-zero-calibration"
+description = "Enables the open_zero_calibration command without any pre-configured scope."
+commands.allow = ["open_zero_calibration"]
+
+[[permission]]
+identifier = "deny-open-zero-calibration"
+description = "Denies the open_zero_calibration command without any pre-configured scope."
+commands.deny = ["open_zero_calibration"]

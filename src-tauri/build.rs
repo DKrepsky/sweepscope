@@ -31,6 +31,10 @@ const COMMANDS: &[&str] = &[
     "close_roll_stream",
     "open_spectrum_stream",
     "close_spectrum_stream",
+    "open_zero_calibration",
+    "start_zero_calibration",
+    "measure_zero_calibration",
+    "close_zero_calibration",
 ];
 
 fn main() {

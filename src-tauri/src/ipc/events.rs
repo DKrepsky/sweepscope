@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 use sweepscope_acquisition::{FactsChanged, InstrumentChanged, StatusChanged};
+use sweepscope_calibration::ZeroCalibrationChanged;
 use sweepscope_display::DisplayChanged;
 use sweepscope_kernel::contracts::ConnectionChanged;
 use sweepscope_kernel::{Bus, Event, KernelError, Subscription};
@@ -20,6 +21,7 @@ pub const DISPLAY_CHANGED: &str = "display_changed";
 pub const MEASUREMENTS_CHANGED: &str = "measurements_changed";
 pub const SPECTRUM_CHANGED: &str = "spectrum_changed";
 pub const RECORDING_CHANGED: &str = "recording_changed";
+pub const ZERO_CALIBRATION_CHANGED: &str = "zero_calibration_changed";
 
 const POLL: Duration = Duration::from_millis(50);
 
@@ -69,6 +71,9 @@ impl EventForwarders {
             serde_json::to_value(e.0)
         })?;
         forwarders.forward(bus, emitter, RECORDING_CHANGED, |e: RecordingChanged| {
+            serde_json::to_value(e.0)
+        })?;
+        forwarders.forward(bus, emitter, ZERO_CALIBRATION_CHANGED, |e: ZeroCalibrationChanged| {
             serde_json::to_value(e.0)
         })?;
         Ok(forwarders)
@@ -235,7 +240,6 @@ mod tests {
         bus.publish(MeasurementsChanged(MeasurementsState {
             revision: 6,
             channels: Vec::new(),
-            accuracy_note: String::new(),
             warnings: Vec::new(),
         }));
 
