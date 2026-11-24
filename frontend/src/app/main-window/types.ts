@@ -6,6 +6,12 @@ export type { CursorId };
 
 export type ChannelNumber = 1 | 2 | 3 | 4;
 
+/** Backend alias warning: badge text and the one tooltip every badge of that channel shares. */
+export interface AliasNotice {
+  short: string;
+  message: string;
+}
+
 export interface Quantity {
   value: string;
   unit: string;
@@ -95,7 +101,9 @@ export interface ChannelModel {
   /** A sample of the newest record sits on a converter rail. */
   clipped?: boolean;
   /** Possible aliasing at the current sample rate: badge text and the one shared tooltip. */
-  alias?: { short: string; message: string };
+  alias?: AliasNotice;
+  /** Axis role in XY, shown as a letter after the scale. */
+  role?: 'x' | 'y';
 }
 
 export type PulseCondition = 'equal' | 'notEqual' | 'greater' | 'less';
@@ -159,15 +167,19 @@ export interface MeasurementCellModel {
   unit?: string;
   footnote?: number;
   tooltip?: string;
+  /** Amber edge: the value is suspect (aliasing); the footnote carries the reason. */
+  warning?: boolean;
 }
 
 /** Columns, rows (pinned only), footnotes and frozen label have the shape of the `MeasurementMatrix` props. */
 export interface MeasurementsModel {
-  columns: { id: string; label: string; color: string }[];
+  columns: { id: string; label: string; color: string; alias?: AliasNotice }[];
   rows: { id: string; label: string; cells: Record<string, MeasurementCellModel> }[];
   footnotes: { key: number; text: string }[];
   frozenLabel?: 'Frozen' | 'Offline';
   accuracyNote: string;
+  /** Why no values are shown (roll mode). */
+  unavailableNote?: string;
   /** Every row the pin menu offers, with whether it is shown. */
   pinnable: { id: string; label: string; pinned: boolean }[];
   /** Hidden in the live window until the statistics story (D4). */
@@ -176,7 +188,7 @@ export interface MeasurementsModel {
 
 export interface StatusModel {
   connection: { state: string; detail: string; tooltip: string; simulated: boolean };
-  sampleRate: { value: string; tooltip: string };
+  sampleRate: { value: string; tooltip: string; alias?: AliasNotice };
   record: { points: string; span: string };
   capture: { rate: string; deadTime: string; tooltip: string };
   renderer: string;

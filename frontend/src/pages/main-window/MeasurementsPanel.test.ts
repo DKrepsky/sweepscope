@@ -23,6 +23,31 @@ describe('MeasurementsPanel', () => {
     expect(screen.getByText('Volts accurate to 2 to 3 counts.')).toBeInTheDocument();
   });
 
+  it('given an unavailable note, when rendered, then the reason shows as text', () => {
+    const measurements = model({
+      columns: [],
+      rows: [],
+      unavailableNote: 'Measurements are not available in roll mode.',
+    });
+
+    render(MeasurementsPanel, { props: { measurements, onpin: vi.fn() } });
+
+    expect(screen.getByText('Measurements are not available in roll mode.')).toBeInTheDocument();
+  });
+
+  it('given an alias column, when rendered, then its header carries the Alias badge and the footnote shows', () => {
+    const alias = { short: 'Alias CH1', message: 'Possible aliasing on CH1.' };
+    const measurements = model({
+      columns: [{ id: 'ch1', label: 'CH1', color: 'color-ch1', alias }],
+      footnotes: [{ key: 1, text: alias.message }],
+    });
+
+    render(MeasurementsPanel, { props: { measurements, onpin: vi.fn() } });
+
+    expect(screen.getByText('Alias')).toBeInTheDocument();
+    expect(screen.getByRole('listitem')).toHaveTextContent(alias.message);
+  });
+
   it('given a frozen model, when rendered, then the Frozen label shows', () => {
     render(MeasurementsPanel, { props: { measurements: model({ frozenLabel: 'Frozen' }), onpin: vi.fn() } });
 

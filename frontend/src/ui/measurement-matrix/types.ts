@@ -4,6 +4,7 @@ export type MeasurementCell = {
   unit?: string;
   footnote?: number;
   tooltip?: string;
+  warning?: boolean;
 };
 
 /** `color` is a design token name such as `color-ch1`. */

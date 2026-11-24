@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { StatusModel } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
+  import Icon from '../../ui/icon/Icon.svelte';
   import StatusBar from '../../ui/status-bar/StatusBar.svelte';
   import StatusChip, { type StatusChipKind } from '../../ui/status-chip/StatusChip.svelte';
   import AnchoredPopover from './AnchoredPopover.svelte';
@@ -45,8 +46,11 @@
 {/snippet}
 
 {#snippet sampleRate()}
-  <span title={status.sampleRate.tooltip}>
+  <span class:alias={status.sampleRate.alias} title={status.sampleRate.alias?.message ?? status.sampleRate.tooltip}>
     <span class="k">Fs</span> <span class="v ss-num">{status.sampleRate.value}</span>
+    {#if status.sampleRate.alias}
+      <span class="alias-note" role="status"><Icon name="warning" /> {status.sampleRate.alias.short}</span>
+    {/if}
   </span>
 {/snippet}
 
@@ -98,6 +102,17 @@
   }
   .v {
     color: var(--ss-color-text-primary);
+    font-size: var(--ss-font-size-sm);
+  }
+  .alias .k,
+  .alias .v,
+  .alias-note {
+    color: var(--ss-color-status-warning);
+  }
+  .alias-note {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ss-space-1);
     font-size: var(--ss-font-size-sm);
   }
   .anchor {

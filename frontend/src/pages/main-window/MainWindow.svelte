@@ -118,6 +118,7 @@
             <ScaleStrip
               channels={model.channels}
               cursorSource={model.cursors.source}
+              math={model.math}
               triggerSummary={collapse.groupTabs ? triggerSummary : undefined}
             />
             <FrontPanelDock
