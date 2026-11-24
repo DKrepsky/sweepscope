@@ -69,7 +69,7 @@ test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
     expect(await violations(page)).toEqual([]);
   });
 
-  test('given the Settings popover, the persistence menu and the Accuracy popover, when axe runs on each, then there are no violations', async ({
+  test('given the Settings popover, the persistence menu and the calibration tag tooltip, when axe runs on each, then there are no violations', async ({
     page,
   }) => {
     await openMain(page);
@@ -79,9 +79,10 @@ test.describe('axe (WCAG 2.1 A and AA, includes colour contrast)', () => {
     await page.getByRole('button', { name: /^Persist/ }).click();
     const menu = await violations(page);
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: /^Accuracy/ }).click();
-    const accuracy = await violations(page);
-    expect({ settings, menu, accuracy }).toEqual({ settings: [], menu: [], accuracy: [] });
+    await page.getByRole('button', { name: /^No calibration/ }).focus();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    const tag = await violations(page);
+    expect({ settings, menu, tag }).toEqual({ settings: [], menu: [], tag: [] });
   });
 
   test('given the gallery with the modal dialog open, when axe runs, then there are no violations', async ({

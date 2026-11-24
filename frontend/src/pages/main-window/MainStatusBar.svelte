@@ -1,30 +1,31 @@
 <script lang="ts">
+  import type { CalibrationTagModel } from '../../app/calibration';
   import type { StatusModel } from '../../app/main-window';
-  import Button from '../../ui/button/Button.svelte';
+  import ConnectionItem, { type ConnectionItemState } from '../../ui/connection-item/ConnectionItem.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
   import StatusBar from '../../ui/status-bar/StatusBar.svelte';
-  import StatusChip, { type StatusChipKind } from '../../ui/status-chip/StatusChip.svelte';
-  import AnchoredPopover from './AnchoredPopover.svelte';
+  import CalibrationTag from './CalibrationTag.svelte';
 
-  const CONNECTION_KINDS: Record<string, StatusChipKind> = {
-    Error: 'error',
+  const CONNECTION_STATES: Record<StatusModel['connection']['state'], ConnectionItemState> = {
+    Ready: 'ready',
+    Connecting: 'connecting',
     Disconnected: 'disconnected',
-    Connecting: 'info',
+    Error: 'error',
   };
 
   interface Props {
     status: StatusModel;
+    calibration: CalibrationTagModel;
+    onopencalibration: () => void;
     /** W3 and below: everything after connection and sample rate may wrap. */
     wrap: boolean;
     /** h3 and below: only connection and sample rate stay (they never drop, design 3.2). */
     essentialOnly: boolean;
   }
 
-  const { status, wrap, essentialOnly }: Props = $props();
+  const { status, calibration, onopencalibration, wrap, essentialOnly }: Props = $props();
 
-  let accuracyOpen = $state(false);
-
-  /** Order is the prototype's; priorities let items below `Never wrapped` stay on the first row (design 3.2). */
+  /** The tag shares the priority of the sample rate: it never wraps and survives the collapse (design 2). */
   const ESSENTIAL_PRIORITY = 1;
   const allItems = $derived([
     { id: 'connection', priority: 0, content: connection },
@@ -32,17 +33,18 @@
     { id: 'record', priority: 2, content: record },
     { id: 'capture', priority: 3, content: capture },
     { id: 'renderer', priority: 4, content: renderer },
-    { id: 'accuracy', priority: 5, content: accuracy },
+    { id: 'calibration', priority: ESSENTIAL_PRIORITY, end: true, content: calibrationTag },
   ]);
   const items = $derived(allItems.filter((item) => !essentialOnly || item.priority <= ESSENTIAL_PRIORITY));
 </script>
 
 {#snippet connection()}
-  <span class="connection" title={status.connection.tooltip}>
-    <StatusChip kind={CONNECTION_KINDS[status.connection.state] ?? 'ok'}>{status.connection.state}</StatusChip>
-    {#if status.connection.simulated}<StatusChip kind="info">Simulator</StatusChip>{/if}
-    <span class="k">{status.connection.detail}</span>
-  </span>
+  <ConnectionItem
+    state={CONNECTION_STATES[status.connection.state]}
+    word={status.connection.state}
+    detail={status.connection.detail}
+    title={status.connection.tooltip}
+  />
 {/snippet}
 
 {#snippet sampleRate()}
@@ -72,18 +74,8 @@
   <span><span class="k">Renderer</span> <span class="v ss-num">{status.renderer}</span></span>
 {/snippet}
 
-{#snippet accuracy()}
-  <span class="anchor">
-    <Button size="sm" pressed={accuracyOpen} title="Accuracy note" onclick={() => (accuracyOpen = !accuracyOpen)}>
-      Accuracy
-    </Button>
-    {#if accuracyOpen}
-      <AnchoredPopover label="Accuracy note" placement="above-end" onclose={() => (accuracyOpen = false)}>
-        {#snippet title()}Accuracy{/snippet}
-        <p class="popover-text">{status.accuracy}</p>
-      </AnchoredPopover>
-    {/if}
-  </span>
+{#snippet calibrationTag()}
+  <CalibrationTag tag={calibration} onopen={onopencalibration} />
 {/snippet}
 
 <div data-region="status">
@@ -91,12 +83,6 @@
 </div>
 
 <style>
-  .connection {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--ss-space-3);
-    color: var(--ss-color-text-primary);
-  }
   .k {
     color: var(--ss-color-text-muted);
   }
@@ -114,14 +100,5 @@
     align-items: center;
     gap: var(--ss-space-1);
     font-size: var(--ss-font-size-sm);
-  }
-  .anchor {
-    position: relative;
-    display: inline-flex;
-  }
-  .popover-text {
-    max-inline-size: 22rem;
-    font-size: var(--ss-font-size-xs);
-    color: var(--ss-color-text-secondary);
   }
 </style>

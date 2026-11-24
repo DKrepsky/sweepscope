@@ -100,9 +100,8 @@ const cursors = (): MainWindowModel['cursors'] => ({
 const status = (): MainWindowModel['status'] => ({
   connection: {
     state: 'Ready',
-    detail: 'Hantek 6254BC · FW · FPGA · Cal (placeholders)',
+    detail: 'Hantek 6254BC · FW · FPGA',
     tooltip: 'Device state machine: disconnected, settling, ready, acquiring, error',
-    simulated: false,
   },
   sampleRate: { value: '1.25 MS/s', tooltip: 'Effective sample rate for this time base and channel count' },
   record: { points: '4 096 pts/ch', span: '16.4 div' },
@@ -112,7 +111,6 @@ const status = (): MainWindowModel['status'] => ({
     tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
   },
   renderer: 'WebGL2',
-  accuracy: 'Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions).',
 });
 
 const initialModel = (): MainWindowModel => ({

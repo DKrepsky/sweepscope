@@ -45,6 +45,7 @@ export const ACKNOWLEDGED_COMMANDS: string[] = [
   'set_trigger',
   'use_simulator',
   'retry_connection',
+  'open_zero_calibration',
   'set_interpolation',
 ];
 

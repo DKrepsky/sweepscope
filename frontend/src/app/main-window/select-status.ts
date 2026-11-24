@@ -1,5 +1,4 @@
 import type { ConnectionSnapshot, InstrumentFacts, InstrumentState, MeasurementsState } from '../../api';
-import { connectionChip } from '../instrument';
 import { NOT_MEASURED } from './select-common';
 import { aliasSummary } from './select-warnings';
 import type { StatusModel } from './types';
@@ -12,8 +11,31 @@ const factText = (fact: Fact | undefined): string => (fact ? `${fact.text} ${fac
 const recordSpan = (instrument: InstrumentState | undefined): string =>
   /\bof (.+)$/.exec(instrument?.horizontal.windowText ?? '')?.[1] ?? NOT_MEASURED;
 
-/** Kept until the status bar shows the calibration tag instead of the accuracy popover. */
-const NO_ACCURACY_NOTE = 'No measurement yet';
+const DETAIL_SEPARATOR = ' · ';
+
+const joined = (parts: (string | null | undefined)[]): string => parts.filter(Boolean).join(DETAIL_SEPARATOR);
+
+function readyConnection(connection: ConnectionSnapshot): StatusModel['connection'] {
+  const identity = connection.identity;
+  const firmware = identity?.firmware;
+  const detail = connection.simulatorActive
+    ? joined(['Simulator', identity?.model])
+    : joined([identity?.model, firmware && `FW ${firmware}`, identity?.fpgaVersion && `FPGA ${identity.fpgaVersion}`]);
+  return { state: 'Ready', detail, tooltip: firmware ? `Firmware ${firmware}` : '' };
+}
+
+export function selectConnection(connection: ConnectionSnapshot | undefined): StatusModel['connection'] {
+  switch (connection?.state) {
+    case 'ready':
+      return readyConnection(connection);
+    case 'disconnected':
+      return { state: 'Disconnected', detail: 'No scope found. Connect the scope', tooltip: '' };
+    case 'error':
+      return { state: 'Error', detail: connection.issue?.message ?? 'Connection failed', tooltip: '' };
+    default:
+      return { state: 'Connecting', detail: 'Waiting for the scope to settle', tooltip: '' };
+  }
+}
 
 export function selectStatus(
   connection: ConnectionSnapshot | undefined,
@@ -25,7 +47,7 @@ export function selectStatus(
   const dead = facts?.deadTime;
   const alias = aliasSummary(measurements);
   return {
-    connection: connectionChip(connection),
+    connection: selectConnection(connection),
     sampleRate: {
       value: factText(facts?.sampleRate),
       tooltip: 'Effective sample rate for this time base and channel count',
@@ -38,6 +60,5 @@ export function selectStatus(
       tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
     },
     renderer,
-    accuracy: NO_ACCURACY_NOTE,
   };
 }

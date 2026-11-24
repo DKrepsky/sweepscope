@@ -31,12 +31,12 @@ describe('createMockMainWindow', () => {
     expect(Math.max(...values)).toBeLessThanOrEqual(8);
   });
 
-  it('given the mock, when read, then every stepped setting reports step availability and the connection is not simulated', () => {
+  it('given the mock, when read, then every stepped setting reports step availability and the connection is ready', () => {
     const model = get(createMockMainWindow());
 
     expect(model.horizontal.timePerDiv.step.faster.enabled).toBe(true);
     expect(model.channels.every((channel) => channel.voltsPerDiv.step.slower.enabled)).toBe(true);
-    expect(model.status.connection.simulated).toBe(false);
+    expect(model.status.connection.state).toBe('Ready');
     expect(model.banners).toEqual([]);
   });
 
