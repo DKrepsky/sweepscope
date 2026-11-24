@@ -1,5 +1,5 @@
 import type { MainWindowModel, MeasurementCellModel } from '../../app/main-window';
-import { drawScreenshot, screenshotSize, type ScreenshotCell, type ScreenshotSpec } from '../../ui/screenshot';
+import { drawScreenshot, specSize, type ScreenshotCell, type ScreenshotSpec } from '../../ui/screenshot';
 
 const NO_VALUE = '—';
 
@@ -95,11 +95,7 @@ function createCanvas(width: number, height: number): PngCanvas {
 /** Draws the window into a canvas of css size times `ratio` and returns the PNG bytes. */
 export async function composeScreenshot(model: MainWindowModel, ratio: number): Promise<Uint8Array> {
   const spec = buildScreenshotSpec(model);
-  const size = screenshotSize({
-    header: spec.header,
-    tableRows: spec.table.rows.length,
-    footnotes: spec.footnotes.length,
-  });
+  const size = specSize(spec);
   const { context, toPng } = createCanvas(Math.round(size.width * ratio), Math.round(size.height * ratio));
   drawScreenshot(context, spec, ratio);
   return new Uint8Array(await (await toPng()).arrayBuffer());

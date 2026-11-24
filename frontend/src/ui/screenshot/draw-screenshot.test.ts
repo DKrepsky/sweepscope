@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { tokens } from '../../design-system';
 import { createRecordingContext } from '../graph/recording-context';
-import { drawScreenshot, type ScreenshotSpec } from './draw-screenshot';
-import { GRAPH_SIZE, screenshotLayout, screenshotSize } from './screenshot-layout';
+import { drawScreenshot, horizontalTagY, specSize, type ScreenshotSpec } from './draw-screenshot';
+import { GRAPH_SIZE, screenshotLayout, screenshotNotes, screenshotSize } from './screenshot-layout';
 
 function textRecordingContext() {
   const recording = createRecordingContext();
@@ -75,7 +75,7 @@ describe('drawScreenshot', () => {
 
     drawScreenshot(ctx, spec(), 2);
 
-    const layout = screenshotLayout({ header: spec().header, tableRows: 1, footnotes: 1 });
+    const layout = screenshotLayout({ header: spec().header, tableRows: 1, noteLines: 2 });
     expect(transforms).toContainEqual([2, 0, 0, 2, layout.graph.x * 2, layout.graph.y * 2]);
     expect(transforms.every(([, , , , e = 0, f = 0]) => Number.isInteger(e) && Number.isInteger(f))).toBe(true);
   });
@@ -98,10 +98,71 @@ describe('drawScreenshot', () => {
   });
 });
 
+const LONG_NOTE =
+  'Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). ' +
+  'Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit only.';
+
+describe('screenshot accuracy note', () => {
+  it('given a long accuracy note when wrapped then every line fits the picture width', () => {
+    const { accuracy } = screenshotNotes([], LONG_NOTE);
+
+    expect(accuracy.length).toBeGreaterThan(1);
+    expect(accuracy.join(' ')).toBe(LONG_NOTE);
+    for (const line of accuracy) expect(line.length * 11 * 0.5).toBeLessThanOrEqual(GRAPH_SIZE.width);
+  });
+
+  it('given a long accuracy note when drawn then no note line is left out and the picture is tall enough', () => {
+    const { ctx, texts } = textRecordingContext();
+    const long = spec({ accuracyNote: LONG_NOTE });
+
+    drawScreenshot(ctx, long, 1);
+
+    const { accuracy } = screenshotNotes(long.footnotes, LONG_NOTE);
+    for (const line of accuracy) expect(texts).toContain(line);
+    const layout = screenshotLayout({ header: long.header, tableRows: 1, noteLines: 1 + accuracy.length });
+    expect(specSize(long).height).toBe(layout.size.height);
+  });
+
+  it('given a short accuracy note when wrapped then it stays on one line', () => {
+    expect(screenshotNotes([], 'Volts accurate to 2 counts').accuracy).toEqual(['Volts accurate to 2 counts']);
+  });
+});
+
+describe('horizontal marker tag', () => {
+  const half = 6;
+  const axis = GRAPH_SIZE.height / 2;
+  const clearOfAxis = (y: number) => Math.abs(y - axis) > half;
+
+  it('given a marker on the centre line when labelled then the label does not touch the centre line', () => {
+    expect(clearOfAxis(horizontalTagY(axis, GRAPH_SIZE.height))).toBe(true);
+  });
+
+  it('given a marker just below the centre line when labelled then the label is placed clear of the centre line', () => {
+    for (const offset of [1, 5, 10, 14]) {
+      expect(clearOfAxis(horizontalTagY(axis + offset, GRAPH_SIZE.height))).toBe(true);
+    }
+  });
+
+  it('given a marker at the top edge when labelled then the label stays inside the screen', () => {
+    expect(horizontalTagY(0, GRAPH_SIZE.height) - half).toBeGreaterThanOrEqual(0);
+  });
+
+  it('given a trigger level at 0 V when drawn then the T1 label is written clear of the centre line', () => {
+    const { ctx } = textRecordingContext();
+    const calls: [string, number][] = [];
+    Object.assign(ctx, { fillText: (value: string, _x: number, y: number) => calls.push([value, y]) });
+
+    drawScreenshot(ctx, spec({ triggerMarkers: [{ axis: 'y', position: 0.5, tag: 'T1 ↗ 0.00 V' }] }), 1);
+
+    const tag = calls.find(([value]) => value.startsWith('T1'));
+    expect(tag && clearOfAxis(tag[1])).toBe(true);
+  });
+});
+
 describe('screenshotSize', () => {
   it('given more table rows when sized then the picture is taller by whole rows', () => {
-    const base = screenshotSize({ header: ['a'], tableRows: 1, footnotes: 0 });
-    const more = screenshotSize({ header: ['a'], tableRows: 3, footnotes: 0 });
+    const base = screenshotSize({ header: ['a'], tableRows: 1, noteLines: 1 });
+    const more = screenshotSize({ header: ['a'], tableRows: 3, noteLines: 1 });
 
     expect(more.height - base.height).toBe(44);
     expect(more.width).toBe(GRAPH_SIZE.width + 48);
