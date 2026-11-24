@@ -153,7 +153,6 @@ test.describe('M2 cursors (#14)', () => {
   });
 
   test('given the empty screen, when C is pressed, then no cursor is added', async ({ page }) => {
-    test.fail(true, 'BUG-12: toggleCursors has no empty-graph guard, so C adds cursors on an empty screen');
     await openMain(page);
     await page.keyboard.press('c');
     await expect(page.getByRole('slider', { name: /Cursor/ })).toHaveCount(0);
@@ -162,14 +161,12 @@ test.describe('M2 cursors (#14)', () => {
   test('given the empty screen, when the Cursors tool is read, then it is disabled with the reason No waveform', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-11: the toolbar Cursors tool has no handler and no disabled state or reason');
     await openMain(page);
     const tool = page.getByRole('toolbar').getByRole('button', { name: /^Cursors/ });
     await expect(tool).toHaveAttribute('aria-disabled', 'true');
   });
 
   test('given a live frame, when the toolbar Cursors tool is clicked, then the cursors appear', async ({ page }) => {
-    test.fail(true, 'BUG-11: the toolbar Cursors tool has no click handler');
     await openMain(page);
     await liveFrame(page);
     await page

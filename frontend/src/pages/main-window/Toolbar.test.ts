@@ -7,6 +7,7 @@ import Toolbar from './Toolbar.svelte';
 
 function setup(change: (toolbar: ToolbarModel) => ToolbarModel = (toolbar) => toolbar) {
   const onfile = vi.fn();
+  const ontogglecursors = vi.fn();
   const toolbar = change(get(createMockMainWindow()).toolbar);
   render(Toolbar, {
     props: {
@@ -18,12 +19,13 @@ function setup(change: (toolbar: ToolbarModel) => ToolbarModel = (toolbar) => to
       textScale: 100,
       ontogglerun: () => {},
       onforce: () => {},
+      ontogglecursors,
       ontoggledrawer: () => {},
       ontextscale: () => {},
       onfile,
     },
   });
-  return { onfile, user: userEvent.setup() };
+  return { onfile, ontogglecursors, user: userEvent.setup() };
 }
 
 const noWaveform = (toolbar: ToolbarModel): ToolbarModel => ({
@@ -83,5 +85,24 @@ describe('file menu', () => {
     const { onfile, user } = setup();
     await user.click(screen.getByRole('button', { name: 'Screenshot' }));
     expect(onfile.mock.calls).toEqual([['saveScreenshot']]);
+  });
+});
+
+describe('cursors tool', () => {
+  const cursorsTool = () => screen.getByRole('button', { name: /^Cursors/ });
+
+  it('given a waveform, when the Cursors tool is clicked, then the toggle is requested', async () => {
+    const { ontogglecursors, user } = setup();
+    await user.click(cursorsTool());
+    expect(ontogglecursors).toHaveBeenCalledOnce();
+  });
+
+  it('given no waveform, when the Cursors tool is read, then it is disabled and a click requests nothing', async () => {
+    const { ontogglecursors, user } = setup((toolbar) => ({
+      ...toolbar,
+      cursorsAvailability: { enabled: false, reason: 'No waveform' },
+    }));
+    await user.click(cursorsTool());
+    expect([cursorsTool().getAttribute('aria-disabled'), ontogglecursors.mock.calls.length]).toEqual(['true', 0]);
   });
 });

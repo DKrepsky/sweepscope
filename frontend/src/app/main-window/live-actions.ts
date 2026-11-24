@@ -15,6 +15,7 @@ interface Deps {
   notify: (kind: 'error', text: string) => void;
   select: (channel: ChannelNumber) => void;
   cursors: Pick<CursorsStore, 'toggle' | 'move' | 'remove' | 'clear'>;
+  canToggleCursors: () => boolean;
   pinned: { set(id: string, pinned: boolean): Promise<void> };
   files: FileActions;
 }
@@ -85,9 +86,11 @@ function bannerAction({ commands, read, copyText }: Deps, id: BannerActionId) {
   }
 }
 
-function cursorAndMeasurementActions({ cursors, pinned }: Deps) {
+function cursorAndMeasurementActions({ cursors, pinned, canToggleCursors }: Deps) {
   return {
-    toggleCursors: cursors.toggle,
+    toggleCursors: () => {
+      if (canToggleCursors()) cursors.toggle();
+    },
     moveCursor: cursors.move,
     removeCursor: cursors.remove,
     clearCursors: cursors.clear,

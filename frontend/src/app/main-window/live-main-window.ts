@@ -107,6 +107,8 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
   const { stores, commands, cursors, pinned, files, copyText, notify } = deps;
   const selected = writable<ChannelNumber>(1);
 
+  const model = deriveModel(deps, selected);
+
   const actions = createLiveActions({
     commands,
     read: () => ({ instrument: get(stores.instrument), connection: get(stores.connection) }),
@@ -114,9 +116,10 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
     notify,
     select: (channel) => selected.set(channel),
     cursors,
+    canToggleCursors: () => get(model).toolbar.cursorsAvailability.enabled,
     pinned,
     files,
   });
 
-  return { subscribe: deriveModel(deps, selected).subscribe, ...actions };
+  return { subscribe: model.subscribe, ...actions };
 }

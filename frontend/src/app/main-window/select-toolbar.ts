@@ -42,6 +42,7 @@ export function selectToolbar(
     chips: statusChips(connection, instrument, status),
     ...PLACEHOLDERS,
     tools: { ...PLACEHOLDERS.tools, cursors: cursorsOn },
+    cursorsAvailability: hasWaveform || cursorsOn ? { enabled: true } : NO_WAVEFORM,
     files: selectFiles(connection, instrument, hasWaveform),
     availability: instrument ? toAvailability(instrument.controls.run) : unavailable,
     force: instrument ? toAvailability(instrument.controls.force) : unavailable,
