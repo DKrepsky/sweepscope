@@ -1,4 +1,4 @@
-//! Calibration module: five request handlers and one thread around the pure domain (ADR 0021 item 7).
+//! Calibration module: six request handlers and one thread around the pure domain (ADR 0021 item 7).
 //!
 //! Create it before the device module: it learns the connection from `ConnectionChanged` events and cannot ask for it.
 //! Handlers return at once; the sweep advances on the thread as probes come back.
@@ -16,7 +16,10 @@ use sweepscope_kernel::contracts::{ConnectionChanged, ProbeCaptured};
 use sweepscope_kernel::{Bus, Clock, KernelError, Storage, Subscription};
 
 use self::core::{Core, Environment};
-use crate::{CloseZeroCalibration, GetZeroCalibration, MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration};
+use crate::{
+    CloseZeroCalibration, ContinueZeroChannel, GetZeroCalibration, MeasureZeroChannel, OpenZeroCalibration,
+    StartZeroCalibration,
+};
 
 /// How long the thread waits for a probe before it looks at the deadlines and the connection.
 const TICK: Duration = Duration::from_millis(20);
@@ -81,6 +84,7 @@ fn register(bus: &Bus, shared: &Arc<Shared>) -> Result<(), KernelError> {
     on(bus, &weak, |core, _: OpenZeroCalibration| core.open())?;
     on(bus, &weak, |core, _: StartZeroCalibration| core.start())?;
     on(bus, &weak, |core, _: MeasureZeroChannel| core.measure())?;
+    on(bus, &weak, |core, _: ContinueZeroChannel| core.continue_channel())?;
     on(bus, &weak, |core, _: CloseZeroCalibration| core.close())?;
     bus.handle(move |_: GetZeroCalibration| {
         let shared = weak.upgrade().ok_or_else(gone)?;

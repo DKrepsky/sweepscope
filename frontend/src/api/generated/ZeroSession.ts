@@ -10,7 +10,15 @@ channel: number | null, doneChannels: [boolean, boolean, boolean, boolean],
 /**
  * Share of the ranges of the current channel that are measured, 0 to 1.
  */
-progress: number | null, notShorted: Array<string> | null, failure: string | null, 
+progress: number | null, notShorted: Array<string> | null, 
+/**
+ * True at `NotShorted` when `ContinueZeroChannel` may accept the rejected reading.
+ */
+canContinue: boolean, 
+/**
+ * Channels that were stored although the shorted-input check failed.
+ */
+overridden: [boolean, boolean, boolean, boolean], failure: string | null, 
 /**
  * One row per range, ascending; set at Done only.
  */

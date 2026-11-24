@@ -4,50 +4,74 @@ use sweepscope_kernel::contracts::Availability;
 
 use super::offsets::StoredUnit;
 use super::texts;
-use crate::{TooltipRow, TooltipText, UnitCalibration, ZeroCalibrationState, ZeroSession};
+use crate::{ChannelTooltip, TooltipText, UnitCalibration, ZeroCalibrationState, ZeroSession};
 
 const NO_OFFSET: &str = "-";
 const TRUE_MINUS: &str = "\u{2212}";
 
+/// Probe attenuation factors, in the slot order of a tooltip cell.
+const PROBE_FACTORS: [f64; 3] = [1.0, 10.0, 100.0];
+/// Typical zero error in millivolts of the four most sensitive ranges (protocol A.3).
+const TYPICAL_MILLIVOLTS: [f64; 4] = [0.66, 1.04, 0.83, 0.83];
+const COUNTS_PER_DIV: f64 = 24.15;
+const TYPICAL_COUNTS_ABOVE: f64 = 2.0;
+
 pub fn unit_calibration(stored: Option<&StoredUnit>, ranges: &[f64]) -> UnitCalibration {
-    let rows = match stored {
-        Some(unit) => largest_rows(unit, ranges),
-        None => texts::typical_rows(),
+    let channels = match stored {
+        Some(unit) => std::array::from_fn(|channel| calibrated_channel(unit.volts.get(channel), ranges)),
+        None => std::array::from_fn(|_| typical_channel(ranges)),
     };
     UnitCalibration {
         calibrated: stored.is_some(),
         stored_at_utc: stored.map(|unit| unit.stored_at_utc.clone()),
         tooltip: TooltipText {
-            rows,
-            notes: texts::notes(stored.is_some()),
+            heading: texts::heading(stored.is_some()).to_owned(),
+            channels,
         },
     }
 }
 
-/// One row per channel: the offset that is largest relative to its range.
-fn largest_rows(unit: &StoredUnit, ranges: &[f64]) -> Vec<TooltipRow> {
-    unit.volts
-        .iter()
-        .enumerate()
-        .map(|(channel, volts)| TooltipRow {
-            label: format!("CH{}", channel + 1),
-            value: largest(volts, ranges).map_or_else(|| NO_OFFSET.to_owned(), |(v, range)| offset_text(v, range)),
-        })
-        .collect()
+fn calibrated_channel(volts: Option<&Vec<f64>>, ranges: &[f64]) -> ChannelTooltip {
+    cells(ranges, |index, range, factor| {
+        match volts.and_then(|v| v.get(index)).filter(|v| v.is_finite()) {
+            Some(offset) => offset_text(offset * factor, range * factor),
+            None => NO_OFFSET.to_owned(),
+        }
+    })
 }
 
-fn largest(volts: &[f64], ranges: &[f64]) -> Option<(f64, f64)> {
-    // Reversed so that ties (an all-zero channel) resolve to the most sensitive range, as `max_by` keeps the last.
-    volts
-        .iter()
-        .zip(ranges)
-        .rev()
-        .filter(|(v, range)| v.is_finite() && **range > 0.0)
-        .max_by(|a, b| (a.0.abs() / a.1).total_cmp(&(b.0.abs() / b.1)))
-        .map(|(&v, &range)| (v, range))
+fn typical_channel(ranges: &[f64]) -> ChannelTooltip {
+    cells(ranges, |index, range, factor| match TYPICAL_MILLIVOLTS.get(index) {
+        Some(millivolts) => trimmed(offset_text(millivolts * 1e-3 * factor, range * factor)),
+        None => {
+            let two_counts = TYPICAL_COUNTS_ABOVE * range / COUNTS_PER_DIV * factor;
+            format!("up to {} at {}", volts_text(two_counts), range_text(range * factor))
+        }
+    })
 }
 
-/// Millivolts with two to zero decimals: offsets are small and `+0.66 mV` reads better than `660 µV`.
+fn cells(ranges: &[f64], text: impl Fn(usize, f64, f64) -> String) -> ChannelTooltip {
+    ChannelTooltip {
+        cells: ranges
+            .iter()
+            .enumerate()
+            .map(|(index, &range)| PROBE_FACTORS.map(|factor| text(index, range, factor)))
+            .collect(),
+    }
+}
+
+/// `+6.60 mV at 20 mV/div` becomes `+6.6 mV at 20 mV/div`: the typical figures carry two or three digits only.
+fn trimmed(text: String) -> String {
+    let Some((number, rest)) = text.split_once(' ') else {
+        return text;
+    };
+    if !number.contains('.') {
+        return text;
+    }
+    format!("{} {rest}", number.trim_end_matches('0').trim_end_matches('.'))
+}
+
+/// Millivolts with two to zero decimals: offsets are small and `+0.66 mV` reads better than `660 uV`.
 fn offset_text(volts: f64, range: f64) -> String {
     let millivolts = volts * 1e3;
     let decimals = match millivolts.abs() {
@@ -62,8 +86,17 @@ fn offset_text(volts: f64, range: f64) -> String {
     } else {
         "+"
     };
+    format!("{sign}{magnitude} mV at {}", range_text(range))
+}
+
+fn range_text(range: f64) -> String {
     let shown = format(range, Quantity::VoltsPerDiv);
-    format!("{sign}{magnitude} mV at {} {}", shown.text, shown.unit)
+    format!("{} {}", shown.text, shown.unit)
+}
+
+fn volts_text(volts: f64) -> String {
+    let shown = format(volts, Quantity::Volts);
+    format!("{} {}", shown.text, shown.unit)
 }
 
 /// The slice: a revision that moves only when something shown changed.

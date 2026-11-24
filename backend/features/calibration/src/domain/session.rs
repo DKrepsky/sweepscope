@@ -24,6 +24,8 @@ pub struct SessionMachine {
     results: [Option<Vec<f64>>; CHANNELS],
     progress: Option<f64>,
     not_shorted: Option<Vec<String>>,
+    continuable: bool,
+    overridden: [bool; CHANNELS],
     failure: Option<String>,
 }
 
@@ -36,6 +38,8 @@ impl SessionMachine {
             results: Default::default(),
             progress: None,
             not_shorted: None,
+            continuable: false,
+            overridden: [false; CHANNELS],
             failure: None,
         }
     }
@@ -56,6 +60,7 @@ impl SessionMachine {
         self.step = ZeroStep::Measuring;
         self.progress = Some(0.0);
         self.not_shorted = None;
+        self.overridden[self.channel] = false;
         Ok(self.channel)
     }
 
@@ -78,11 +83,35 @@ impl SessionMachine {
     }
 
     /// Keeps the channel and the results of earlier ones; the user can retry.
-    pub fn reject(&mut self, lines: Vec<String>) -> Result<(), WrongStep> {
+    pub fn reject(&mut self, lines: Vec<String>, continuable: bool) -> Result<(), WrongStep> {
         self.require(&[ZeroStep::Measuring])?;
         self.step = ZeroStep::NotShorted;
         self.progress = None;
         self.not_shorted = Some(lines);
+        self.continuable = continuable;
+        Ok(())
+    }
+
+    /// Zero-based channel in turn.
+    pub fn channel(&self) -> usize {
+        self.channel
+    }
+
+    pub fn can_continue(&self) -> bool {
+        self.step == ZeroStep::NotShorted && self.continuable
+    }
+
+    /// Back to measuring the same channel with the rejection accepted; the channel counts as overridden.
+    pub fn resume(&mut self) -> Result<(), WrongStep> {
+        self.require(&[ZeroStep::NotShorted])?;
+        if !self.continuable {
+            return Err(WrongStep(self.step));
+        }
+        self.step = ZeroStep::Measuring;
+        self.progress = Some(self.progress.unwrap_or(0.0));
+        self.not_shorted = None;
+        self.continuable = false;
+        self.overridden[self.channel] = true;
         Ok(())
     }
 
@@ -112,6 +141,8 @@ impl SessionMachine {
             done_channels: self.results.each_ref().map(Option::is_some),
             progress: self.progress,
             not_shorted: self.not_shorted.clone(),
+            can_continue: self.can_continue(),
+            overridden: self.overridden,
             failure: self.failure.clone(),
             table: (self.step == ZeroStep::Done).then(|| self.table()),
         }
