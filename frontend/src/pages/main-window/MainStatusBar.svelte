@@ -71,12 +71,12 @@
 {#snippet accuracy()}
   <span class="anchor">
     <Button size="sm" pressed={accuracyOpen} title="Accuracy note" onclick={() => (accuracyOpen = !accuracyOpen)}>
-      Accuracy {status.accuracy}
+      Accuracy
     </Button>
     {#if accuracyOpen}
       <AnchoredPopover label="Accuracy note" placement="above-end" onclose={() => (accuracyOpen = false)}>
         {#snippet title()}Accuracy{/snippet}
-        <p class="popover-text">Accuracy note slot. The wording comes from PRD 5.2 and is a placeholder here.</p>
+        <p class="popover-text">{status.accuracy}</p>
       </AnchoredPopover>
     {/if}
   </span>
@@ -105,7 +105,7 @@
     display: inline-flex;
   }
   .popover-text {
-    max-inline-size: 18rem;
+    max-inline-size: 22rem;
     font-size: var(--ss-font-size-xs);
     color: var(--ss-color-text-secondary);
   }

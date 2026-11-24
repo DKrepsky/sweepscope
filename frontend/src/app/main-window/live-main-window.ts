@@ -72,7 +72,7 @@ function selectModel(i: Inputs): MainWindowModel {
     trigger: selectTrigger(connection, instrument),
     cursors: selectCursors(i.cursors, instrument, graph.state, selected),
     measurements: selectMeasurements(i.measurements, i.pinned, graph.state),
-    status: selectStatus(connection, instrument, i.facts, i.renderer),
+    status: selectStatus(connection, instrument, i.facts, i.renderer, i.measurements),
     graph,
     banners: selectBanners(connection),
   };
