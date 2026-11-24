@@ -1,8 +1,8 @@
 mod common;
 
 use common::*;
-use sweepscope_display::{encode, stamp_sent};
-use sweepscope_kernel::contracts::TriggerOutcome;
+use sweepscope_display::{encode, encode_in_mode, stamp_sent, InterpolationMode};
+use sweepscope_kernel::contracts::{DerivedTrace, DerivedUnit, TriggerOutcome};
 
 const HEADER_LEN: usize = 48;
 
@@ -161,6 +161,73 @@ fn given_an_encoded_frame_when_stamp_sent_is_called_then_bytes_16_to_24_change_a
     assert_eq!(f64_at(&stamped, 16), 99.25);
     assert_eq!(stamped[..16], original[..16]);
     assert_eq!(stamped[24..], original[24..]);
+}
+
+fn math(volts: Vec<f64>) -> DerivedTrace {
+    DerivedTrace {
+        volts,
+        unit: DerivedUnit::Volts,
+        volts_per_div: 0.5,
+        position_divs: 1.0,
+    }
+}
+
+#[test]
+fn given_a_derived_trace_when_encoded_then_channel_5_follows_the_position_and_scale_and_the_mask_has_bit_4() {
+    let f = one_channel(vec![128; 3], TriggerOutcome::None);
+    let trace = math(vec![0.0, 1.0, -0.5]);
+
+    let bytes = encode_in_mode(&f, &context(0, 3), Some(&trace), 0, 0.0, InterpolationMode::Linear);
+
+    assert_eq!(bytes[24], 0b1_0001);
+    let values = f32s(&bytes);
+    assert_eq!(values.len(), 6);
+    assert_eq!(&values[3..], &[3.0, 1.0, 4.0]);
+}
+
+#[test]
+fn given_a_derived_trace_and_a_window_when_encoded_then_it_is_cropped_like_the_channels() {
+    let f = one_channel(vec![128; 5], TriggerOutcome::None);
+    let trace = math(vec![0.0, 0.5, 1.0, 1.5, 2.0]);
+
+    let values = f32s(&encode_in_mode(
+        &f,
+        &context(1, 3),
+        Some(&trace),
+        0,
+        0.0,
+        InterpolationMode::Linear,
+    ));
+
+    assert_eq!(&values[3..], &[2.0, 1.0, 0.0]);
+}
+
+#[test]
+fn given_a_derived_trace_of_the_wrong_length_when_encoded_then_channel_5_is_left_out() {
+    let f = one_channel(vec![128; 3], TriggerOutcome::None);
+
+    let bytes = encode_in_mode(
+        &f,
+        &context(0, 3),
+        Some(&math(vec![0.0; 2])),
+        0,
+        0.0,
+        InterpolationMode::Linear,
+    );
+
+    assert_eq!(bytes[24], 0b0001);
+    assert_eq!(f32s(&bytes).len(), 3);
+}
+
+#[test]
+fn given_a_derived_trace_and_sinc_when_encoded_then_channel_5_has_as_many_points_as_the_others() {
+    let f = one_channel(vec![128; 51], TriggerOutcome::None);
+    let trace = math(vec![0.0; 51]);
+
+    let bytes = encode_in_mode(&f, &context(0, 51), Some(&trace), 0, 0.0, InterpolationMode::Sinc);
+
+    let points = u32_at(&bytes, 28) as usize;
+    assert_eq!(f32s(&bytes).len(), 2 * points);
 }
 
 #[test]

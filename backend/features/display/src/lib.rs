@@ -5,6 +5,7 @@ mod convert;
 mod messages;
 mod mode;
 mod module;
+mod roll;
 mod wire;
 
 pub use messages::{

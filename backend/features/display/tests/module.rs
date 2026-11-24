@@ -4,7 +4,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::*;
-use sweepscope_display::{DisplayDeps, DisplayFrameReady, DisplayModule, InterpolationMode, SetInterpolation};
+use sweepscope_display::{
+    DisplayChanged, DisplayDeps, DisplayFrameReady, DisplayModule, GetDisplay, InterpolationMode, Persistence,
+    SetInterpolation, SetPersistence,
+};
 use sweepscope_kernel::contracts::{FrameCaptured, TriggerOutcome};
 use sweepscope_kernel::Bus;
 
@@ -56,6 +59,38 @@ fn given_several_frames_when_encoded_then_the_sequence_increases_by_one() {
     let second = u32_at(&ready.recv_timeout(WAIT).unwrap().bytes, 4);
 
     assert_eq!(second, first.wrapping_add(1));
+}
+
+#[test]
+fn given_the_same_persistence_twice_when_set_then_one_change_is_published() {
+    let bus = Bus::new();
+    let changed = bus.subscribe::<DisplayChanged>();
+    let _module = start(&bus);
+    changed.drain();
+
+    bus.request(SetPersistence { value: Persistence::S2 }).unwrap();
+    bus.request(SetPersistence { value: Persistence::S2 }).unwrap();
+
+    let first = changed.recv_timeout(WAIT).expect("a change").0;
+    assert_eq!(first.persistence, Persistence::S2);
+    assert!(changed.recv_timeout(Duration::from_millis(100)).is_none());
+    assert_eq!(bus.request(GetDisplay).unwrap().persistence, Persistence::S2);
+}
+
+#[test]
+fn given_a_persistence_change_when_set_then_no_frame_is_published() {
+    let bus = Bus::new();
+    let ready = bus.subscribe::<DisplayFrameReady>();
+    let _module = start(&bus);
+    bus.publish(captured(128));
+    ready.recv_timeout(WAIT).expect("frame");
+
+    bus.request(SetPersistence {
+        value: Persistence::Infinite,
+    })
+    .unwrap();
+
+    assert!(ready.recv_timeout(Duration::from_millis(100)).is_none());
 }
 
 #[test]

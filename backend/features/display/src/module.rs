@@ -4,16 +4,18 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use sweepscope_kernel::contracts::FrameCaptured;
+use sweepscope_kernel::contracts::{FrameCaptured, RollCaptured};
 use sweepscope_kernel::{Bus, KernelError, Subscription};
 
 use crate::messages::{
-    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, Persistence, SetInterpolation,
+    DisplayChanged, DisplayFrameReady, DisplayRollItem, DisplayState, GetDisplay, InterpolationMode, Persistence,
+    SetInterpolation, SetPersistence,
 };
 use crate::mode::automatic_mode;
+use crate::roll::RollEncoder;
 use crate::wire::encode_in_mode;
 
-const POLL: Duration = Duration::from_millis(50);
+const POLL: Duration = Duration::from_millis(10);
 
 pub struct DisplayDeps {
     pub bus: Bus,
@@ -28,6 +30,7 @@ pub struct DisplayModule {
 impl DisplayModule {
     pub fn new(deps: DisplayDeps) -> Result<Self, KernelError> {
         let frames = deps.bus.subscribe_latest::<FrameCaptured>();
+        let rolls = deps.bus.subscribe::<RollCaptured>();
         let shared = Arc::new(Shared::new(deps));
         register_handlers(&shared)?;
         let stop = Arc::new(AtomicBool::new(false));
@@ -35,7 +38,7 @@ impl DisplayModule {
             .name("display".into())
             .spawn({
                 let stop = Arc::clone(&stop);
-                move || run(&shared, &frames, &stop)
+                move || run(&shared, &frames, &rolls, &stop)
             })
             .map_err(|e| KernelError::fatal(format!("cannot start the display thread: {e}")))?;
         Ok(Self {
@@ -62,13 +65,24 @@ fn register_handlers(shared: &Arc<Shared>) -> Result<(), KernelError> {
     bus.handle(move |request: SetInterpolation| {
         writer.choose(request.mode);
         Ok(())
+    })?;
+    let writer = Arc::clone(shared);
+    bus.handle(move |request: SetPersistence| {
+        writer.persist(request.value);
+        Ok(())
     })
 }
 
-fn run(shared: &Shared, frames: &Subscription<FrameCaptured>, stop: &AtomicBool) {
+fn run(shared: &Shared, frames: &Subscription<FrameCaptured>, rolls: &Subscription<RollCaptured>, stop: &AtomicBool) {
+    let mut encoder = RollEncoder::default();
     while !stop.load(Ordering::Acquire) {
-        if let Some(captured) = frames.recv_timeout(POLL) {
+        if let Some(captured) = frames.try_next() {
             shared.show(captured);
+        }
+        if let Some(first) = rolls.recv_timeout(POLL) {
+            for captured in std::iter::once(first).chain(rolls.drain()) {
+                shared.show_roll(&mut encoder, &captured);
+            }
         }
     }
 }
@@ -127,6 +141,26 @@ impl Shared {
         self.publish_last(&mut inner);
     }
 
+    /// Persistence changes no frame byte, so the last frame is not published again.
+    fn persist(&self, value: Persistence) {
+        let mut inner = self.inner();
+        if inner.state.persistence == value {
+            return;
+        }
+        inner.state = DisplayState {
+            revision: inner.state.revision + 1,
+            persistence: value,
+            ..inner.state
+        };
+        self.bus.publish(DisplayChanged(inner.state));
+    }
+
+    fn show_roll(&self, encoder: &mut RollEncoder, captured: &RollCaptured) {
+        for bytes in encoder.accept(captured) {
+            self.bus.publish(DisplayRollItem { bytes: Arc::new(bytes) });
+        }
+    }
+
     /// Recomputes the effective mode from the choice and the newest frame; publishes only a real change.
     fn refresh(&self, inner: &mut Inner) {
         let window_len = inner.last.as_ref().map_or(0, |last| last.context.window_len);
@@ -153,6 +187,7 @@ impl Shared {
         let bytes = encode_in_mode(
             &last.frame,
             &last.context,
+            last.derived.as_deref(),
             inner.sequence,
             (self.unix_time_us)(),
             inner.state.interpolation,
