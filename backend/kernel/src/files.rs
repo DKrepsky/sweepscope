@@ -1,11 +1,13 @@
 //! Files chosen by the user: the picker trait, atomic writes and bounded reads (ADR 0016 item 1).
 //! Error texts name the file, never the folder.
 use std::ffi::OsString;
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 
 use crate::KernelError;
+
+const STAGING_ATTEMPTS: u32 = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileFilter {
@@ -60,8 +62,8 @@ fn write_atomic_with(
     if path.is_dir() {
         return Err(fail(&io::Error::from(ErrorKind::IsADirectory)));
     }
-    let staged = staging_path(path);
-    let result = stage(&staged, bytes).and_then(|()| rename(&staged, path));
+    let (staged, file) = create_staging_file(path).map_err(|error| fail(&error))?;
+    let result = fill(file, bytes).and_then(|()| rename(&staged, path));
     if let Err(error) = result {
         let _ = fs::remove_file(&staged);
         return Err(fail(&error));
@@ -69,16 +71,28 @@ fn write_atomic_with(
     Ok(())
 }
 
-fn stage(staged: &Path, bytes: &[u8]) -> io::Result<()> {
-    let mut file = File::create(staged)?;
+fn fill(mut file: File, bytes: &[u8]) -> io::Result<()> {
     file.write_all(bytes)?;
     file.sync_all()
 }
 
-fn staging_path(target: &Path) -> PathBuf {
+/// `create_new` never follows a symlink or reuses a file that someone else planted under the temp name.
+fn create_staging_file(target: &Path) -> io::Result<(PathBuf, File)> {
+    for attempt in 0..STAGING_ATTEMPTS {
+        let staged = staging_path(target, attempt);
+        match OpenOptions::new().write(true).create_new(true).open(&staged) {
+            Ok(file) => return Ok((staged, file)),
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Err(io::Error::from(ErrorKind::AlreadyExists))
+}
+
+fn staging_path(target: &Path, attempt: u32) -> PathBuf {
     let mut name = OsString::from(".");
     name.push(target.file_name().unwrap_or_default());
-    name.push(format!(".{}.tmp", std::process::id()));
+    name.push(format!(".{}.{attempt}.tmp", std::process::id()));
     target.with_file_name(name)
 }
 
@@ -182,6 +196,42 @@ mod tests {
         );
         assert_eq!(fs::read(&path).unwrap(), b"old");
         assert_eq!(leftovers(dir.path()), ["out.csv"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn given_a_symlink_planted_at_the_temp_name_when_written_atomically_then_its_target_is_untouched_and_the_write_succeeds(
+    ) {
+        let dir = TempDir::new();
+        let path = dir.path().join("out.csv");
+        let victim = dir.path().join("victim.txt");
+        fs::write(&victim, b"precious").unwrap();
+        let planted = staging_path(&path, 0);
+        std::os::unix::fs::symlink(&victim, &planted).unwrap();
+
+        write_atomic(&path, b"new").unwrap();
+
+        assert_eq!(fs::read(&victim).unwrap(), b"precious");
+        assert_eq!(fs::read(&path).unwrap(), b"new");
+        assert!(
+            planted.symlink_metadata().is_ok(),
+            "the planted link is not ours to remove"
+        );
+    }
+
+    #[test]
+    fn given_every_temp_name_taken_when_written_atomically_then_it_fails_and_leaves_the_planted_files() {
+        let dir = TempDir::new();
+        let path = dir.path().join("out.csv");
+        for attempt in 0..STAGING_ATTEMPTS {
+            fs::write(staging_path(&path, attempt), b"other").unwrap();
+        }
+
+        let error = write_atomic(&path, b"new").unwrap_err();
+
+        assert!(error.message.starts_with("cannot write out.csv"), "{}", error.message);
+        assert!(!path.exists());
+        assert_eq!(fs::read(staging_path(&path, 0)).unwrap(), b"other");
     }
 
     #[test]
