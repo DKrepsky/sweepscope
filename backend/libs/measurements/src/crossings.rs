@@ -93,5 +93,31 @@ pub(crate) fn fitted_period(crossings: &[Crossing]) -> Option<f64> {
             variance += (x - mean_x) * (x - mean_x);
         }
     }
-    (variance > 0.0).then(|| covariance / variance)
+    let slope = covariance / variance;
+    (variance > 0.0 && slope > 0.0).then_some(slope)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn crossing(position: f64, rising: bool) -> Crossing {
+        Crossing {
+            index: position as usize,
+            position,
+            rising,
+        }
+    }
+
+    #[test]
+    fn given_crossings_whose_fitted_slope_is_not_positive_when_fitted_then_there_is_no_period() {
+        let backwards = [crossing(30.0, true), crossing(20.0, false), crossing(10.0, true)];
+
+        assert_eq!(fitted_period(&backwards), None);
+    }
+
+    #[test]
+    fn given_one_rising_crossing_when_fitted_then_there_is_no_period() {
+        assert_eq!(fitted_period(&[crossing(10.0, true), crossing(20.0, false)]), None);
+    }
 }
