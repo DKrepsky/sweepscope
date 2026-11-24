@@ -18,4 +18,8 @@ pub struct DeviceIdentity {
     pub fpga_version: Option<String>,
     pub calibration: CalibrationStatus,
     pub simulated: bool,
+    /// Stable per-unit id for the zero-offset file; internal, never sent to the frontend.
+    #[serde(skip)]
+    #[ts(skip)]
+    pub unit_id: Option<String>,
 }

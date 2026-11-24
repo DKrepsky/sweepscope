@@ -35,8 +35,8 @@ pub struct FrameContext {
     pub invert: [bool; 4],
     /// Probe factor per channel (1, 10 or 100), for the volts conversion in `measurement` and `export`.
     pub probe: [f64; 4],
-    /// False when the range is outside the verified 50 mV to 1 V per division.
-    pub range_verified: [bool; 4],
+    /// True when zero offsets of the connected unit were applied to the channel.
+    pub calibrated: [bool; 4],
     pub seconds_per_div: f64,
 }
 
@@ -137,3 +137,48 @@ pub struct ForceTrigger;
 impl Request for ForceTrigger {
     type Response = ();
 }
+
+/// Input-referred zero offsets of one unit: per channel, indexed by range index; an empty vector means none.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ZeroOffsets {
+    pub unit_id: String,
+    pub volts: [Vec<f64>; 4],
+}
+
+/// `calibration` to `acquisition`: stop capturing and refuse setup and run commands until released.
+/// Refused with a recoverable error while the instrument cannot be held.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HoldInstrument {
+    pub on: bool,
+    pub reason: String,
+}
+impl Request for HoldInstrument {
+    type Response = ();
+}
+
+/// Applies `setup`, drops `discard` frames, keeps the next `keep` and answers with `ProbeCaptured`; returns at once.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CaptureProbe {
+    pub id: u64,
+    pub setup: AcquisitionSetup,
+    pub discard: u8,
+    pub keep: u8,
+}
+impl Request for CaptureProbe {
+    type Response = ();
+}
+
+/// Empty `frames` means the probe failed or timed out. The frames never reach the display.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProbeCaptured {
+    pub id: u64,
+    pub frames: Vec<Arc<Frame>>,
+}
+impl Event for ProbeCaptured {}
+
+/// Published by `calibration`; `None` means no offsets exist for the connected unit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ZeroOffsetsChanged {
+    pub offsets: Option<ZeroOffsets>,
+}
+impl Event for ZeroOffsetsChanged {}

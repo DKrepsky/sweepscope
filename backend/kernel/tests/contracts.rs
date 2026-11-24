@@ -2,11 +2,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use sweepscope_kernel::contracts::{
-    AcquisitionSetup, ApplySetup, CaptureCompleted, CaptureOutcome, ChannelSetup, ConnectionChanged,
-    ConnectionSnapshot, ConnectionState, Coupling, ForceTrigger, Frame, FrameCaptured, FrameContext, SetCapturing,
-    Slope, Sweep, TriggerKind, TriggerOutcome, TriggerSetup,
+    AcquisitionSetup, ApplySetup, CaptureCompleted, CaptureOutcome, CaptureProbe, ChannelSetup, ConnectionChanged,
+    ConnectionSnapshot, ConnectionState, Coupling, ForceTrigger, Frame, FrameCaptured, FrameContext, HoldInstrument,
+    ProbeCaptured, SetCapturing, Slope, Sweep, TriggerKind, TriggerOutcome, TriggerSetup, ZeroOffsets,
+    ZeroOffsetsChanged,
 };
 use sweepscope_kernel::Bus;
+use sweepscope_kernel::KernelError;
 
 fn frame() -> Arc<Frame> {
     Arc::new(Frame {
@@ -24,7 +26,7 @@ fn context(setup_revision: u64) -> FrameContext {
         window_len: 2,
         invert: [false; 4],
         probe: [1.0; 4],
-        range_verified: [true; 4],
+        calibrated: [false; 4],
         seconds_per_div: 1e-3,
     }
 }
@@ -140,4 +142,77 @@ fn given_a_connection_subscriber_when_the_state_changes_then_it_receives_the_sna
     let change = changes.try_next().unwrap();
     assert_eq!(change.snapshot.state, ConnectionState::Disconnected);
     assert!(change.capabilities.is_none());
+}
+
+#[test]
+fn given_an_acquisition_handler_when_the_instrument_is_held_then_the_reason_arrives_and_a_refusal_is_recoverable() {
+    let bus = Bus::new();
+    bus.handle(|request: HoldInstrument| {
+        assert_eq!(request.reason, "zero calibration");
+        if request.on {
+            Err(KernelError::recoverable("auto-setup is running"))
+        } else {
+            Ok(())
+        }
+    })
+    .unwrap();
+
+    let hold = HoldInstrument {
+        on: true,
+        reason: "zero calibration".into(),
+    };
+    let release = HoldInstrument {
+        on: false,
+        reason: "zero calibration".into(),
+    };
+
+    assert_eq!(
+        bus.request(hold),
+        Err(KernelError::recoverable("auto-setup is running"))
+    );
+    assert_eq!(bus.request(release), Ok(()));
+}
+
+#[test]
+fn given_a_probe_request_when_it_is_sent_then_it_returns_unit_and_the_frames_arrive_as_an_event_with_the_id() {
+    let bus = Bus::new();
+    let captured = bus.subscribe::<ProbeCaptured>();
+    let responder = bus.clone();
+    bus.handle(move |probe: CaptureProbe| {
+        responder.publish(ProbeCaptured {
+            id: probe.id,
+            frames: vec![frame(); probe.keep as usize],
+        });
+        Ok(())
+    })
+    .unwrap();
+
+    let sent = bus.request(CaptureProbe {
+        id: 9,
+        setup: setup(),
+        discard: 1,
+        keep: 2,
+    });
+
+    assert_eq!(sent, Ok(()));
+    let event = captured.try_next().unwrap();
+    assert_eq!((event.id, event.frames.len()), (9, 2));
+}
+
+#[test]
+fn given_a_subscriber_when_offsets_change_then_it_sees_the_unit_and_none_for_an_unknown_unit() {
+    let bus = Bus::new();
+    let changes = bus.subscribe::<ZeroOffsetsChanged>();
+    let offsets = ZeroOffsets {
+        unit_id: "unit-1".into(),
+        volts: [vec![0.001; 12], vec![], vec![], vec![]],
+    };
+
+    bus.publish(ZeroOffsetsChanged {
+        offsets: Some(offsets.clone()),
+    });
+    bus.publish(ZeroOffsetsChanged { offsets: None });
+
+    assert_eq!(changes.try_next().unwrap().offsets, Some(offsets));
+    assert_eq!(changes.try_next().unwrap().offsets, None);
 }
