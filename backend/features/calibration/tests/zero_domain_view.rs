@@ -113,7 +113,7 @@ fn given_a_stored_channel_when_the_tooltip_is_built_then_each_range_shows_its_of
         ch1[0],
         ["+0.66 mV at 2 mV/div", "+6.6 mV at 20 mV/div", "+66 mV at 200 mV/div"]
     );
-    assert_eq!(ch1[1], ["0 mV at 5 mV/div", "0 mV at 50 mV/div", "0 mV at 500 mV/div"]);
+    assert_eq!(ch1[1], ["0 V at 5 mV/div", "0 V at 50 mV/div", "0 V at 500 mV/div"]);
     assert_eq!(
         ch1[11],
         ["+10 mV at 10 V/div", "+100 mV at 100 V/div", "+1000 mV at 1 kV/div"]
