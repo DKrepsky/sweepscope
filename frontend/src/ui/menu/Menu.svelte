@@ -16,6 +16,25 @@
   const { items, onselect, open, onclose, anchor, item }: Props = $props();
 
   let buttons: HTMLButtonElement[] = $state([]);
+  let menu: HTMLElement | undefined = $state();
+  let position = $state<{ x: number; y: number } | null>(null);
+
+  const fitted = (start: number, size: number, room: number) => Math.max(0, Math.min(start, room - size));
+
+  $effect(() => {
+    if (!open) {
+      position = null;
+      return;
+    }
+    if (!menu) return;
+    void items;
+
+    const { width, height } = menu.getBoundingClientRect();
+    position = {
+      x: fitted(anchor.x, width, window.innerWidth),
+      y: fitted(anchor.y, height, window.innerHeight),
+    };
+  });
 
   $effect(() => {
     if (!open) return;
@@ -51,12 +70,14 @@
   <button
     bind:this={buttons[index]}
     type="button"
-    role="menuitem"
+    role={entry.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
     class="entry"
+    aria-checked={entry.checked === undefined ? undefined : entry.checked}
     aria-disabled={entry.disabled ? 'true' : undefined}
     tabindex={index === 0 ? 0 : -1}
     onclick={() => activate(entry)}
   >
+    {#if entry.checked !== undefined}<span class="check" aria-hidden="true">{entry.checked ? '✓' : ''}</span>{/if}
     {#if item}{@render item({ id: entry.id })}{:else}<span class="label">{entry.label}</span>{/if}
     {#if entry.badge}<span class="badge">{entry.badge}</span>{/if}
   </button>
@@ -64,7 +85,15 @@
 
 {#if open}
   <div class="scrim" role="presentation" onpointerdown={onclose}></div>
-  <div class="menu" role="menu" tabindex="-1" style:left="{anchor.x}px" style:top="{anchor.y}px" {onkeydown}>
+  <div
+    bind:this={menu}
+    class="menu"
+    role="menu"
+    tabindex="-1"
+    style:left="{(position ?? anchor).x}px"
+    style:top="{(position ?? anchor).y}px"
+    {onkeydown}
+  >
     {#each items as entry, index (entry.id)}
       {#if entry.disabled && entry.disabledReason}
         <Tooltip text={entry.disabledReason}>{@render row(entry, index)}</Tooltip>
@@ -116,6 +145,10 @@
   .entry[aria-disabled='true'] {
     color: var(--ss-color-text-disabled);
     cursor: not-allowed;
+  }
+  .check {
+    inline-size: 1em;
+    margin-inline-end: calc(-1 * var(--ss-space-2));
   }
   .badge {
     font-size: var(--ss-font-size-2xs);

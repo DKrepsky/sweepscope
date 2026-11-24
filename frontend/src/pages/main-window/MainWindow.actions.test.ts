@@ -215,7 +215,7 @@ describe('horizontal actions', () => {
     expect(actions.stepTriggerPosition).toHaveBeenCalledExactlyOnceWith(1);
   });
 
-  it('given the horizontal group, when an interpolation is chosen, then setInterpolation is called and sinc stays unchosen', async () => {
+  it('given the horizontal group, when an interpolation is chosen, then setInterpolation is called with the mode', async () => {
     const { actions, user } = setup();
     await user.click(screen.getByRole('button', { name: 'Dots' }));
     expect(actions.setInterpolation).toHaveBeenCalledExactlyOnceWith('dots');

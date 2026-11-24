@@ -8,12 +8,14 @@ mod module;
 
 pub use domain::{
     geometry, next_status, record_percent, trigger_index_in_window, CaptureMeter, Change, Defaults, Geometry,
-    Instrument, Restore, StatusEvent,
+    Instrument, Restore, SetupFile, SetupReport, StatusEvent,
 };
 pub use messages::{
     AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FactsChanged, ForceTriggerNow,
-    FormattedValue, GetInstrument, HorizontalState, InstrumentChanged, InstrumentFacts, InstrumentSnapshot,
-    InstrumentState, Phase, ResetSetting, ScaleChoice, SetChannel, SetRunning, SetTrigger, SetTriggerLevel,
-    SetTriggerPosition, SettingTarget, StateSnapshot, StatusChanged, StepSetting, TriggerPatch, TriggerState,
+    GetInstrument, HorizontalState, InstrumentChanged, InstrumentFacts, InstrumentSnapshot, InstrumentState, LoadSetup,
+    Phase, ResetSetting, SaveSetup, ScaleChoice, SetChannel, SetRunning, SetTrigger, SetTriggerLevel,
+    SetTriggerPosition, SettingTarget, SetupLoaded, SetupNotice, StatusChanged, StepSetting, TriggerPatch,
+    TriggerState,
 };
 pub use module::{AcquisitionDeps, AcquisitionModule, COMMANDS};
+pub use sweepscope_kernel::contracts::FormattedValue;

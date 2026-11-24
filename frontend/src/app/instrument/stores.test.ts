@@ -2,7 +2,15 @@ import { get } from 'svelte/store';
 import { describe, expect, it } from 'vitest';
 import { createFakeClient } from '../../api';
 import { createInstrumentStores } from './stores';
-import { acquisitionStatus, connectionSnapshot, instrumentFacts, instrumentState, stateSnapshot } from './test-data';
+import {
+  acquisitionStatus,
+  connectionSnapshot,
+  displayState,
+  instrumentFacts,
+  instrumentState,
+  measurementsState,
+  stateSnapshot,
+} from './test-data';
 
 function setup(snapshot = stateSnapshot()) {
   const client = createFakeClient();
@@ -13,8 +21,15 @@ function setup(snapshot = stateSnapshot()) {
 describe('instrument stores', () => {
   it('given stores that have not started, when read, then every slice is undefined', () => {
     const { stores } = setup();
-    const slices = [get(stores.connection), get(stores.instrument), get(stores.status), get(stores.facts)];
-    expect(slices).toEqual([undefined, undefined, undefined, undefined]);
+    const slices = [
+      get(stores.connection),
+      get(stores.instrument),
+      get(stores.status),
+      get(stores.facts),
+      get(stores.display),
+      get(stores.measurements),
+    ];
+    expect(slices.every((slice) => slice === undefined)).toBe(true);
   });
 
   it('given a snapshot, when started, then every slice holds the snapshot value', async () => {
@@ -25,6 +40,8 @@ describe('instrument stores', () => {
     expect(get(stores.instrument)).toEqual(snapshot.instrument);
     expect(get(stores.status)).toEqual(snapshot.status);
     expect(get(stores.facts)).toEqual(snapshot.facts);
+    expect(get(stores.display)).toEqual(snapshot.display);
+    expect(get(stores.measurements)).toEqual(snapshot.measurements);
   });
 
   it('given a snapshot without an instrument, when started, then the instrument store stays undefined', async () => {
@@ -104,5 +121,45 @@ describe('instrument stores', () => {
     await stores.start();
     await stores.start();
     expect(client.calls.filter((call) => call.name === 'get_snapshot')).toHaveLength(1);
+  });
+
+  it('given an applied display revision, when an event with a lower revision arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ display: displayState({ revision: 4 }) }));
+    await stores.start();
+    client.emit('display_changed', displayState({ revision: 3, interpolation: 'dots' }));
+    expect(get(stores.display)?.interpolation).toBe('sinc');
+  });
+
+  it('given an applied display revision, when a newer event arrives, then the display store follows it', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+    client.emit('display_changed', displayState({ revision: 2, interpolation: 'linear', automatic: false }));
+    expect(get(stores.display)).toEqual(displayState({ revision: 2, interpolation: 'linear', automatic: false }));
+  });
+
+  it('given an applied measurements revision, when an event with a lower revision arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ measurements: measurementsState({ revision: 6 }) }));
+    await stores.start();
+    client.emit('measurements_changed', measurementsState({ revision: 5, accuracyNote: 'old' }));
+    expect(get(stores.measurements)?.accuracyNote).toBe('Approximate');
+  });
+
+  it('given an applied measurements revision, when a newer event arrives, then the store follows it', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+    client.emit('measurements_changed', measurementsState({ revision: 2, accuracyNote: 'new' }));
+    expect(get(stores.measurements)?.accuracyNote).toBe('new');
+  });
+
+  it('given start, when the snapshot is requested, then display and measurements events are already subscribed', async () => {
+    const { client, stores } = setup();
+    let early: unknown;
+    client.respond('get_snapshot', () => {
+      client.emit('measurements_changed', measurementsState({ revision: 9 }));
+      early = get(stores.measurements)?.revision;
+      return stateSnapshot();
+    });
+    await stores.start();
+    expect(early).toBe(9);
   });
 });

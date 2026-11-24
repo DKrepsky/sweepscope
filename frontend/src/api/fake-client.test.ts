@@ -11,6 +11,19 @@ describe('fake client', () => {
     expect(client.calls).toEqual([{ name: 'load_ui_state', args: { namespace: 'a' } }]);
   });
 
+  it('given a registered response, when bytes are sent, then the call is recorded with the bytes and the response resolves', async () => {
+    const client = createFakeClient();
+    const bytes = new Uint8Array([1, 2, 3]);
+    client.respond('save_screenshot', () => ({ fileName: 'a.png' }));
+    await expect(client.sendBytes('save_screenshot', bytes)).resolves.toEqual({ fileName: 'a.png' });
+    expect(client.calls).toEqual([{ name: 'save_screenshot', args: bytes }]);
+  });
+
+  it('given no registered response, when bytes are sent, then it rejects naming the command', async () => {
+    const client = createFakeClient();
+    await expect(client.sendBytes('save_screenshot', new Uint8Array())).rejects.toThrow('save_screenshot');
+  });
+
   it('given no registered response, when a command is sent, then it rejects naming the command', async () => {
     const client = createFakeClient();
     await expect(client.send('load_ui_state', { namespace: 'a' })).rejects.toThrow('load_ui_state');

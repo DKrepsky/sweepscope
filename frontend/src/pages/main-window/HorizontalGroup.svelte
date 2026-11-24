@@ -14,13 +14,22 @@
 
   const off = $derived(horizontal.availability?.enabled === false);
   const reason = $derived(horizontal.availability?.reason);
+  const automaticNote = 'Automatic: sin(x)/x below 250 samples per division, linear above, until you choose a mode.';
+  const tips = $derived({
+    sinc: `Smooth reconstruction computed in software. Rings at very sharp edges.${horizontal.automaticInterpolation ? ` ${automaticNote}` : ''}`,
+    linear: 'Straight lines between the received samples.',
+    dots: 'Real samples only, drawn as dots.',
+  });
   const interpolation = $derived([
-    { id: 'sinc', label: 'sin(x)/x', disabled: true, disabledReason: 'sin(x)/x interpolation is not available yet' },
+    { id: 'sinc', label: 'sin(x)/x', disabled: off, disabledReason: reason },
     { id: 'linear', label: 'Linear', disabled: off, disabledReason: reason },
     { id: 'dots', label: 'Dots', disabled: off, disabledReason: reason },
   ]);
 
-  const chooseInterpolation = (id: string) => actions.setInterpolation(id === 'dots' ? 'dots' : 'linear');
+  const modes = { sinc: 'sinc', linear: 'linear', dots: 'dots' } as const;
+  const chooseInterpolation = (id: string) => {
+    if (id in modes) actions.setInterpolation(modes[id as keyof typeof modes]);
+  };
 </script>
 
 <DockGroup title="Horizontal" region="horizontal">
@@ -61,8 +70,17 @@
       options={interpolation}
       onchange={chooseInterpolation}
       ariaLabel="Interpolation"
-    />
-    <Badge kind="software" tooltip="Interpolation is computed in software">SW</Badge>
+    >
+      {#snippet option({ id })}
+        <span title={tips[id as keyof typeof tips]}>{interpolation.find((item) => item.id === id)?.label}</span>
+      {/snippet}
+    </Segmented>
+    <Badge
+      kind="software"
+      tooltip={horizontal.automaticInterpolation ? automaticNote : 'Interpolation is computed in software'}
+    >
+      SW
+    </Badge>
   </div>
   <div class="note ss-num" title="Slot: effective sample rate. Value is illustrative.">{horizontal.rateNote}</div>
 </DockGroup>

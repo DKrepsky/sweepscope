@@ -222,10 +222,10 @@ describe('MainWindow behaviour', () => {
     expect(items).toEqual(['connection', 'sample-rate']);
   });
 
-  it('given the mock model, when rendered, then the illustrative-numbers note is visible', () => {
+  it('given the mock model, when rendered, then no placeholder note sits next to the numbers', () => {
     renderShell(tiers.w1);
 
-    expect(screen.getByText('Illustrative numbers (placeholders)')).toBeInTheDocument();
+    expect(screen.queryByText('Illustrative numbers (placeholders)')).toBeNull();
   });
 });
 

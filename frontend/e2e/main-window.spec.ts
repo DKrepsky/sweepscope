@@ -55,9 +55,9 @@ test.describe('main window shell', () => {
       .toEqual([{ command: 'set_running', args: { running: false } }]);
   });
 
-  test('given the shell, when checked, then the placeholder note is visible', async ({ page }) => {
+  test('given the shell, when checked, then no placeholder note is shown', async ({ page }) => {
     await openMain(page);
-    await expect(page.getByText('Illustrative numbers (placeholders)')).toBeVisible();
+    await expect(page.getByText('Illustrative numbers (placeholders)')).toHaveCount(0);
   });
 
   test('given the Video trigger option, when focused with the keyboard, then it is disabled and its reason shows', async ({
@@ -151,10 +151,10 @@ test.describe('main window shell', () => {
   }) => {
     await openMain(page);
     await page.getByRole('button', { name: /^Accuracy/ }).click();
-    await expect(page.getByText('Accuracy note slot.')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Accuracy note' }).getByText('Approximate')).toBeVisible();
     await page.getByRole('dialog', { name: 'Accuracy note' }).focus();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('Accuracy note slot.')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Accuracy note' })).toHaveCount(0);
   });
 
   test('given the shell, when loaded and exercised, then no console or page errors occur', async ({ page }) => {

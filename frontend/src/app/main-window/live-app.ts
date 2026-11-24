@@ -1,11 +1,16 @@
 import type { BackendClient } from '../../api';
-import { createInstrumentCommands, createInstrumentStores } from '../instrument';
+import { createCursorsStore } from '../cursors';
+import { createFileActions } from '../files';
+import { createInstrumentCommands, createInstrumentStores, type InstrumentStores } from '../instrument';
 import { createFrameFeed, type FrameBudgetProbe } from '../waveform';
 import { createLiveMainWindow, type LiveMainWindow } from './live-main-window';
+import { createPinnedMeasurements } from './pinned-measurements';
 
 interface Deps {
   client: BackendClient;
-  notify: (kind: 'error', text: string) => void;
+  notify: (kind: 'info' | 'warning' | 'error', text: string) => void;
+  /** PNG bytes of the window as it looks now. */
+  composeScreenshot: () => Promise<Uint8Array>;
   copyText: (text: string) => void;
   /** Milliseconds since the Unix epoch, the clock the frame stamps use. */
   now: () => number;
@@ -31,21 +36,52 @@ const probedFrames =
       void afterRender().then(() => probe.endFrame());
     });
 
+/** Shows each setup notice once: the id is the notice's identity, so repeats and reconnects stay silent. */
+function followSetupNotices({ instrument }: InstrumentStores, notify: Deps['notify']) {
+  let lastShownId: number | undefined;
+  return () =>
+    instrument.subscribe((state) => {
+      const notice = state?.setupNotice;
+      if (!notice || notice.id === lastShownId) return;
+      lastShownId = notice.id;
+      notify('warning', notice.text);
+    });
+}
+
 export function createLiveApp(deps: Deps): LiveApp {
-  const { client, notify, copyText, now } = deps;
+  const { client, notify, copyText, now, composeScreenshot } = deps;
   const stores = createInstrumentStores({ client });
   const commands = createInstrumentCommands({ client, notify });
   const feed = createFrameFeed({ client, requestFrame: probedFrames(deps), now });
-  const model = createLiveMainWindow({ stores, commands, frames: feed.frame, copyText, notify, renderer: 'Canvas 2D' });
+  const cursors = createCursorsStore();
+  const pinned = createPinnedMeasurements({ client });
+  const files = createFileActions({ client, notify, composeScreenshot });
+  const followNotices = followSetupNotices(stores, notify);
+  let stopNotices = () => {};
+  const model = createLiveMainWindow({
+    stores,
+    commands,
+    cursors,
+    pinned,
+    files,
+    frames: feed.frame,
+    copyText,
+    notify,
+    renderer: 'Canvas 2D',
+  });
 
   return {
     model,
     start: async () => {
       feed.start();
+      stopNotices();
+      stopNotices = followNotices();
+      void pinned.load();
       await stores.start();
     },
     stop: () => {
       feed.stop();
+      stopNotices();
       stores.stop();
     },
   };

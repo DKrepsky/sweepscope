@@ -1,7 +1,6 @@
 use crate::quantity::{Digits, PrefixRange, Quantity};
 
 const GROUP: i32 = 3;
-const SIGNIFICANT_DIGITS: i32 = 3;
 const EXACT_DECIMALS: usize = 6;
 const GROUP_TOLERANCE: f64 = 1e-12;
 const NEXT_GROUP_AT: f64 = 1000.0;
@@ -45,7 +44,8 @@ fn number(magnitude: f64, exponent: i32, quantity: Quantity) -> String {
     let scaled = magnitude / 10f64.powi(exponent);
     match quantity.digits() {
         Digits::Exact => exact(scaled),
-        Digits::ThreeSignificant => three_significant(scaled),
+        Digits::ThreeSignificant => significant(scaled, 3),
+        Digits::FourSignificant => significant(scaled, 4),
     }
 }
 
@@ -54,21 +54,21 @@ fn exact(scaled: f64) -> String {
     text.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
-fn three_significant(scaled: f64) -> String {
-    let first = format!("{scaled:.*}", decimals_for(scaled));
+fn significant(scaled: f64, digits: i32) -> String {
+    let first = format!("{scaled:.*}", decimals_for(scaled, digits));
     let rounded: f64 = first.parse().unwrap_or(scaled);
-    let decimals = decimals_for(rounded);
-    if decimals_for(scaled) == decimals {
+    let decimals = decimals_for(rounded, digits);
+    if decimals_for(scaled, digits) == decimals {
         return first;
     }
     format!("{rounded:.decimals$}")
 }
 
-fn decimals_for(magnitude: f64) -> usize {
+fn decimals_for(magnitude: f64, digits: i32) -> usize {
     if magnitude == 0.0 {
-        return (SIGNIFICANT_DIGITS - 1) as usize;
+        return (digits - 1) as usize;
     }
-    let mut decimals = SIGNIFICANT_DIGITS - 1;
+    let mut decimals = digits - 1;
     let mut probe = magnitude;
     while probe >= 10.0 && decimals > 0 {
         probe /= 10.0;

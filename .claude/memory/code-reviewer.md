@@ -25,3 +25,15 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Help commands shown in banners must work outside the repo root (relative paths).
 - Shell commands built from embedded text (printf '%s' '...'): check a test forbids a single quote in the embedded file.
 - Re-review: run `npm run check` (prettier) again; fix commits often break format:check.
+- ts-rs `export_to` resolves from `<crate>/bindings`: depth differs per crate (kernel needs 3 `..`, feature crates 4). Check `ls ../frontend` next to the repo and `.claude/worktrees/frontend` after cargo test; contract tests read the repo copy and pass vacuously.
+- File writers: check multi-file rollback does not delete pre-existing user data; staging files use create_new.
+- Hand-rendered TS (StateSnapshot.ts): ask for type-name checks, not only field names.
+- Cargo `[env]` config is found by cwd, not --manifest-path: test a crate from outside the repo and check for stray `<crate>/bindings` (untracked, not ignored).
+- Rollback code: `fs::read(..).ok()` conflates NotFound with other errors; check before restoring/deleting user files.
+- Popup placement with bind:this measurement: check stale position state on reopen.
+
+## CI parity (human rule, 2026-11-24)
+- The human requires: the reviewer guarantees every non-test CI check passes (fmt, clippy, cargo deny, cargo audit, frontend lint/format/typecheck/build/npm audit, architecture and tools checks). Security checks are never lowered, ignored or skipped.
+- M2 PR #48 went red on `cargo deny` (RUSTSEC-2026-0594, `cookie` via tauri) because cargo-deny/cargo-audit were not installed locally and nobody ran them. Install them (`cargo install --locked cargo-deny cargo-audit`) and run them on every review, including the last one before G4: advisories appear without code changes.
+- Read `.github/workflows/ci.yml` at the start of each review; the CI parity table in the review template is mandatory.
+- Installed CI tools live in ~/.cargo/bin (cargo-deny, cargo-audit); actionlint 1.7.12 pinned (sha in ci.yml) goes to the scratch folder. `gh pr checks` may show the run of an older head: compare `gh pr view --json headRefOid` with local HEAD (a lockfile fix not yet pushed explains a red job).

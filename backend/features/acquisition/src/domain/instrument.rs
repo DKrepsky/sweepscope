@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::time::Instant;
 
 use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, FrameContext};
@@ -6,13 +7,14 @@ use sweepscope_kernel::KernelError;
 use super::defaults::Defaults;
 use super::meter::CaptureMeter;
 use super::model::{nearest_index, Model, CHANNELS};
+use super::setup_file::{self, SetupFile};
 use super::view::{self, LAST_CHANNEL, NO_SCOPE};
-use crate::{ChannelPatch, InstrumentFacts, InstrumentState, SettingTarget, TriggerPatch};
+use crate::{ChannelPatch, InstrumentFacts, InstrumentState, SettingTarget, SetupNotice, TriggerPatch};
 
 const POSITION_STEP: f64 = 0.05;
 const LEVEL_STEP_DIVS: f64 = 0.2;
-const SCREEN_HALF_HEIGHT_DIVS: f64 = 4.0;
-const PROBES: [f64; 3] = [1.0, 10.0, 100.0];
+pub(super) const SCREEN_HALF_HEIGHT_DIVS: f64 = 4.0;
+pub(super) const PROBES: [f64; 3] = [1.0, 10.0, 100.0];
 
 /// What the module must send to the device after a connection became ready.
 #[derive(Debug, Clone, PartialEq)]
@@ -34,6 +36,15 @@ pub struct Instrument {
     model: Option<Model>,
     unavailable: Option<String>,
     was_running: bool,
+    /// The last setup, held until the first device is ready because the tables it must match are unknown before.
+    pending_setup: Option<SetupFile>,
+    notice: Option<SetupNotice>,
+}
+
+/// What a loaded setup could not do; each line names a value that kept its current setting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SetupReport {
+    pub warnings: Vec<String>,
 }
 
 type Edit<'a> = &'a dyn Fn(&Capabilities, &mut Model) -> Result<(), KernelError>;
@@ -46,7 +57,37 @@ impl Instrument {
             model: None,
             unavailable: Some(NO_SCOPE.to_owned()),
             was_running: false,
+            pending_setup: None,
+            notice: None,
         }
+    }
+
+    /// The setup to apply, like a load, when the first device becomes ready.
+    pub fn hold_setup(&mut self, file: SetupFile) {
+        self.pending_setup = Some(file);
+    }
+
+    /// Raises the one-time message of the instrument slice (ADR 0016 item 6).
+    pub fn set_notice(&mut self, text: String) {
+        let id = self.notice.as_ref().map_or(1, |n| n.id + 1);
+        self.notice = Some(SetupNotice { id, text });
+    }
+
+    pub fn to_setup_file(&self) -> Option<SetupFile> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        SetupFile::from_model(caps, model)
+    }
+
+    /// Needs a ready device. Values the device cannot do keep their setting and are named in the report.
+    pub fn apply_setup_file(&mut self, file: &SetupFile) -> Result<SetupReport, KernelError> {
+        let warnings = RefCell::new(Vec::new());
+        self.edit(&|caps, model| {
+            *warnings.borrow_mut() = setup_file::apply(file, caps, model);
+            Ok(())
+        })?;
+        Ok(SetupReport {
+            warnings: warnings.into_inner(),
+        })
     }
 
     pub fn on_ready(&mut self, caps: Capabilities) -> Restore {
@@ -57,6 +98,9 @@ impl Instrument {
             }
             None => Model::initial(&self.defaults, &caps),
         };
+        if let Some(file) = self.pending_setup.take() {
+            self.restore_last_setup(&file, &caps, &mut model);
+        }
         let resume = (self.was_running || model.running) && self.defaults.resume_after_reconnect;
         model.running = resume;
         self.was_running = false;
@@ -65,6 +109,14 @@ impl Instrument {
         self.model = Some(model);
         self.caps = Some(caps);
         Restore { setup, resume }
+    }
+
+    fn restore_last_setup(&mut self, file: &SetupFile, caps: &Capabilities, model: &mut Model) {
+        let warnings = setup_file::apply(file, caps, model);
+        if !warnings.is_empty() {
+            let text = format!("The last setup was restored with changes: {}", warnings.join("; "));
+            self.set_notice(text);
+        }
     }
 
     pub fn on_lost(&mut self) {
@@ -178,12 +230,9 @@ impl Instrument {
     /// `None` until the first device became ready; afterwards the last state, with controls unavailable while no device is ready.
     pub fn state(&self, revision: u64) -> Option<InstrumentState> {
         let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
-        Some(view::instrument_state(
-            caps,
-            model,
-            revision,
-            self.unavailable.as_deref(),
-        ))
+        let mut state = view::instrument_state(caps, model, revision, self.unavailable.as_deref());
+        state.setup_notice.clone_from(&self.notice);
+        Some(state)
     }
 
     pub fn facts(&self, revision: u64, meter: &CaptureMeter, now: Instant) -> Option<InstrumentFacts> {
@@ -192,19 +241,31 @@ impl Instrument {
     }
 
     pub fn frame_context(&self, setup_revision: u64) -> FrameContext {
-        let (window_start, window_len) = match self.caps.as_ref().zip(self.model.as_ref()) {
-            Some((caps, model)) => {
-                let g = model.geometry(caps);
-                (g.window_start, g.window_len)
-            }
-            None => (0, 0),
-        };
-        FrameContext {
+        let mut context = FrameContext {
             setup_revision,
-            window_start,
-            window_len,
-            invert: self.model.as_ref().map_or([false; CHANNELS], |m| m.invert),
+            window_start: 0,
+            window_len: 0,
+            invert: [false; CHANNELS],
+            probe: [1.0; CHANNELS],
+            range_verified: [true; CHANNELS],
+            seconds_per_div: 0.0,
+        };
+        let Some((caps, model)) = self.caps.as_ref().zip(self.model.as_ref()) else {
+            return context;
+        };
+        let g = model.geometry(caps);
+        context.window_start = g.window_start;
+        context.window_len = g.window_len;
+        context.invert = model.invert;
+        context.probe = model.probes;
+        context.seconds_per_div = caps
+            .time_bases
+            .get(usize::from(model.setup.time_base_index))
+            .map_or(0.0, |t| t.seconds_per_div);
+        for (number, verified) in context.range_verified.iter_mut().enumerate() {
+            *verified = model.range(caps, number).is_none_or(|r| r.verified);
         }
+        context
     }
 
     pub fn setup(&self) -> Option<&AcquisitionSetup> {

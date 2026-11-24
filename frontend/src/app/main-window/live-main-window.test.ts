@@ -1,7 +1,21 @@
 import { get, writable, type Writable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
-import type { AcquisitionStatus, ConnectionSnapshot, InstrumentFacts, InstrumentState } from '../../api';
-import { acquisitionStatus, connectionSnapshot, instrumentFacts, instrumentState } from '../instrument/test-data';
+import type {
+  AcquisitionStatus,
+  ConnectionSnapshot,
+  DisplayState,
+  InstrumentFacts,
+  InstrumentState,
+  MeasurementsState,
+} from '../../api';
+import { createCursorsStore } from '../cursors';
+import {
+  acquisitionStatus,
+  connectionSnapshot,
+  instrumentFacts,
+  instrumentState,
+  measurementsState,
+} from '../instrument/test-data';
 import type { InstrumentCommands } from '../instrument';
 import { decodeFrame, type DecodedFrame } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
@@ -26,18 +40,46 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     setTrigger: vi.fn(),
     useSimulator: vi.fn(),
     retryConnection: vi.fn(),
+    setInterpolation: vi.fn(),
+  };
+  const display: Writable<DisplayState | undefined> = writable(undefined);
+  const measurements: Writable<MeasurementsState | undefined> = writable(undefined);
+  const cursors = createCursorsStore();
+  const pinned = { ...writable<readonly string[]>([]), set: vi.fn(() => Promise.resolve()), load: vi.fn() };
+  const files = {
+    saveSetup: vi.fn(() => Promise.resolve()),
+    loadSetup: vi.fn(() => Promise.resolve()),
+    exportCsv: vi.fn(() => Promise.resolve()),
+    exportRaw: vi.fn(() => Promise.resolve()),
+    saveScreenshot: vi.fn(() => Promise.resolve()),
   };
   const copyText = vi.fn();
   const notify = vi.fn();
   const window = createLiveMainWindow({
-    stores: { connection, instrument, status, facts },
+    stores: { connection, instrument, status, facts, display, measurements },
     commands,
+    cursors,
+    pinned,
+    files,
     frames,
     copyText,
     notify,
     renderer: 'WebGL2',
   });
-  return { window, connection, instrument, status, facts, frames, commands, copyText, notify };
+  return {
+    window,
+    connection,
+    instrument,
+    status,
+    facts,
+    display,
+    measurements,
+    cursors,
+    frames,
+    commands,
+    copyText,
+    notify,
+  };
 }
 
 const model = (window: ReturnType<typeof setup>['window']) => get(window);
@@ -210,11 +252,78 @@ describe('live main window model: horizontal and trigger', () => {
     });
   });
 
-  it('given the default interpolation, when changed to dots, then the horizontal model shows dots', () => {
-    const { window } = setup();
+  it('given the backend display state, when it changes, then the horizontal model follows it', () => {
+    const { window, display } = setup();
     expect(model(window).horizontal.interpolation).toBe('linear');
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true });
+    expect(model(window).horizontal.interpolation).toBe('sinc');
+  });
+
+  it('given the backend display state, when automatic changes, then the horizontal model reports it', () => {
+    const { window, display } = setup();
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true });
+    expect(model(window).horizontal.automaticInterpolation).toBe(true);
+    display.set({ revision: 2, interpolation: 'dots', automatic: false });
+    expect(model(window).horizontal.automaticInterpolation).toBe(false);
+  });
+
+  it('given an interpolation choice, when made, then it goes to the backend and the model keeps the backend value', () => {
+    const { window, commands } = setup();
     window.setInterpolation('dots');
-    expect(model(window).horizontal.interpolation).toBe('dots');
+    expect(commands.setInterpolation).toHaveBeenCalledExactlyOnceWith('dots');
+    expect(model(window).horizontal.interpolation).toBe('linear');
+  });
+});
+
+describe('live main window model: cursors, files and statistics', () => {
+  it('given a waveform and no cursors, when toggled from the window, then the toolbar shows the cursors tool as on', () => {
+    const { window, frames } = setup();
+    frames.set(decodeFrame(buildFrame()));
+    window.toggleCursors();
+    expect(model(window).toolbar.tools.cursors).toBe(true);
+  });
+
+  it('given no waveform, when cursors are toggled from the window, then no cursor is added', () => {
+    const { window } = setup();
+    window.toggleCursors();
+    expect(model(window).cursors.lines).toEqual([]);
+  });
+
+  it('given no waveform, when read, then the toolbar cursors tool is unavailable with the reason', () => {
+    const { window } = setup();
+    expect(model(window).toolbar.cursorsAvailability).toEqual({ enabled: false, reason: 'No waveform' });
+  });
+
+  it('given no waveform yet, when read, then cursors are unavailable with the reason', () => {
+    const { window } = setup();
+    expect(model(window).cursors.available).toEqual({ enabled: false, reason: 'No waveform' });
+  });
+
+  it('given no waveform, when read, then exports and screenshot are disabled with the reason', () => {
+    const { window } = setup();
+    const { files } = model(window).toolbar;
+    expect([files.exportCsv, files.exportRaw, files.screenshot]).toEqual(
+      Array(3).fill({ enabled: false, reason: 'No waveform' }),
+    );
+  });
+
+  it('given a waveform, when read, then exports and screenshot are enabled', () => {
+    const { window, frames } = setup();
+    frames.set(decodeFrame(buildFrame({ sequence: 1 })));
+    const { files } = model(window).toolbar;
+    expect([files.exportCsv, files.exportRaw, files.screenshot]).toEqual(Array(3).fill({ enabled: true }));
+  });
+
+  it('given the backend disables setup files, when read, then both setup items carry its reason', () => {
+    const controls = { ...instrumentState().controls, files: { enabled: false, reason: 'No scope connected' } };
+    const { window } = setup({ instrument: instrumentState({ controls }) });
+    const { files } = model(window).toolbar;
+    expect([files.saveSetup, files.loadSetup]).toEqual(Array(2).fill({ enabled: false, reason: 'No scope connected' }));
+  });
+
+  it('given the live window, when read, then statistics are hidden', () => {
+    const { window } = setup();
+    expect(model(window).measurements.statistics).toBeUndefined();
   });
 });
 
@@ -367,5 +476,18 @@ describe('live main window model: banners', () => {
       }),
     );
     expect(model(window).banners[0]?.actions.map((a) => a.id)).toEqual(['retry', 'use-simulator']);
+  });
+});
+
+describe('live main window model: status accuracy note', () => {
+  it('given no measurements slice yet, when read, then the status accuracy says there is no measurement yet', () => {
+    const { window } = setup();
+    expect(model(window).status.accuracy).toBe('No measurement yet');
+  });
+
+  it('given a measurements slice, when read, then the status accuracy is the slice note', () => {
+    const { window, measurements } = setup();
+    measurements.set(measurementsState({ accuracyNote: 'Backend wording.' }));
+    expect(model(window).status.accuracy).toBe('Backend wording.');
   });
 });

@@ -1,5 +1,9 @@
 /** View model of the main window. Strings are already formatted (units, signs, precision); the backend will feed it. */
 
+import type { CursorId } from '../cursors';
+
+export type { CursorId };
+
 export type ChannelNumber = 1 | 2 | 3 | 4;
 
 export interface Quantity {
@@ -31,12 +35,23 @@ export interface ChipModel {
 
 export type ViewTab = 'yt' | 'xy' | 'fft';
 
+export interface FilesAvailability {
+  saveSetup: Availability;
+  loadSetup: Availability;
+  exportCsv: Availability;
+  exportRaw: Availability;
+  screenshot: Availability;
+}
+
 export interface ToolbarModel {
   running: boolean;
   chips: ChipModel[];
   persistence: string;
   view: ViewTab;
   tools: { cursors: boolean; math: boolean; reference: boolean };
+  /** The Cursors tool and the C key: they need a waveform unless cursors are already shown and can be cleared. */
+  cursorsAvailability: Availability;
+  files: FilesAvailability;
   /** Run and Stop. */
   availability?: Availability;
   force?: Availability;
@@ -51,6 +66,8 @@ export interface HorizontalModel {
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;
+  /** True until the user picks a mode; the backend then chooses by samples per division. */
+  automaticInterpolation?: boolean;
   availability?: Availability;
   /** Effective sample rate line of the Horizontal group. */
   rateNote: string;
@@ -73,6 +90,8 @@ export interface ChannelModel {
   groundPosition: number;
   enableReason?: string;
   availability?: Availability;
+  /** A sample of the newest record sits on a converter rail. */
+  clipped?: boolean;
 }
 
 export interface TriggerModel {
@@ -97,14 +116,25 @@ export interface CursorValue {
   emphasised?: boolean;
 }
 
+export interface CursorLineModel {
+  id: CursorId;
+  axis: 'x' | 'y';
+  /** Fraction of the screen: x from the left, y from the top. */
+  position: number;
+  tag: string;
+  /** Spoken readout. */
+  valueText: string;
+}
+
 export interface CursorsModel {
   enabled: boolean;
+  /** Why the cursors cannot be switched on (no waveform). */
+  available: Availability;
   source: ChannelNumber;
   values: CursorValue[];
   originNote: string;
-  /** Screen overlay, fractions of the screen: x from the left, y from the top. */
-  lines: { x: number[]; y: number[] };
-  tags: { text: string; x?: number; y?: number; anchor: 'bottom' | 'top' | 'left' }[];
+  lines: CursorLineModel[];
+  delta?: { tag: string; position: number };
 }
 
 export interface MeasurementCellModel {
@@ -115,13 +145,17 @@ export interface MeasurementCellModel {
   tooltip?: string;
 }
 
-/** Same shape as the props of the `MeasurementMatrix` component. */
+/** Columns, rows (pinned only), footnotes and frozen label have the shape of the `MeasurementMatrix` props. */
 export interface MeasurementsModel {
   columns: { id: string; label: string; color: string }[];
   rows: { id: string; label: string; cells: Record<string, MeasurementCellModel> }[];
   footnotes: { key: number; text: string }[];
   frozenLabel?: 'Frozen' | 'Offline';
-  statistics: { title: string; headers: string[]; values: string[] };
+  accuracyNote: string;
+  /** Every row the pin menu offers, with whether it is shown. */
+  pinnable: { id: string; label: string; pinned: boolean }[];
+  /** Hidden in the live window until the statistics story (D4). */
+  statistics?: { title: string; headers: string[]; values: string[] };
 }
 
 export interface StatusModel {

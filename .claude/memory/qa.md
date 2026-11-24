@@ -102,3 +102,20 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 
 ## No visual snapshots
 - Screenshot-comparison tests (`toHaveScreenshot`) were removed by decision of the human (cost over value). Do not add baselines or regenerate them; check looks with layout, bounding-box, token and pixel-scan assertions, and manual UI checks.
+
+## M2 Measure lessons (real window + e2e)
+- Xvfb recipe needs no sudo: `apt-get download` + `dpkg -x` into the scratchpad (xvfb, openbox, xdotool, libxdo3, libobrender32v5, libobt2v5, libstartup-notification0, libimlib2t64, x11-xkb-utils, xserver-common, libxfont2, libfontenc1, xkb-data); start `Xvfb :77 -xkbdir /usr/share/X11/xkb`. App via `unshare -rm run-app.sh` (tmpfs over USB dirs, `SWEEPSCOPE_NO_HARDWARE=1`, isolated HOME). `unshare -rm` root bypasses file permissions: test read-only errors against `/sys/...`, not a chmod 555 folder.
+- Native GTK dialogs: openbox does not focus them; `xdotool windowfocus <id>` (search `--name "Save File"`), then `ctrl+a`, type the absolute path, Return. Keys typed before focus go to the main window (shortcuts fire!). The File menu stays open behind the dialog.
+- Press `c` only after clicking an empty spot of the page; after devtools the webview has no focus. Real frequency numerics: devtools console loop over `invoke("get_snapshot")` reading `measurements.channels[0].measurements[0].value.value`.
+- The simulator default signal is a sine (the calibrator is not selectable from the app). Sine+noise gives frequency error of +-0.04 % (R2); calibrator shape sweep is in `backend/libs/measurements/tests/qa_calibrator_frequency.rs`.
+- e2e stub: `stubTauri(page, settings, { commands: { export_frame: { result|error } } })` scripts command replies; set_interpolation is acknowledged. Interpolation and tool buttons are `button[aria-pressed]`, not radios. Stub time base is not a real number (browser time cursors show odd units).
+- Spare ports: copy `playwright.config.ts` to an untracked `playwright.qa.config.ts` (ports 5273/4273, report dirs in /tmp) and run with `E2E_PREVIEW_PORT=4273`; delete it afterwards. Prettier: run from `frontend/` (`npx prettier --write`), not `npx --prefix`.
+- Check the tree after `cargo test --workspace`: at 6361535 it leaves `backend/frontend/` and rewrites generated TS imports (BUG-15). Restore with `rm -rf backend/frontend && git checkout -- frontend/src/api/generated`.
+- Other agents merge into the checked-out branch while QA runs: note `git log -1` at start and rerun suites at the end.
+
+## M2 retest lessons
+- Debug app on a spare dev port: `TAURI_CONFIG='{"build":{"devUrl":"http://localhost:5373"}}' cargo build -p sweepscope-app` and `npx vite --port 5373 --strictPort` (check with `strings -a target/debug/sweepscope-app | grep localhost:5`). Rebuild without the override afterwards if the default is needed.
+- Drive the backend from devtools: `invoke("step_setting",{target:{kind:"timeBase"},direction:1})` steps the time base; guard `v&&typeof v.value==="number"` (null value when invalid kills the loop silently). Measurements read as `get_snapshot().measurements.channels[0].measurements[0].value`.
+- Native dialogs: never send keys before the dialog exists. Use `xdotool search --onlyvisible --name "Save File"`, `windowfocus`, then type; stray keys reach the main window (shortcuts open more dialogs; cancel at (957,798)). Overwrite prompt: Replace at (696,464).
+- Simulator sine+noise frequency error in the real window stays above the calibrator bounds (200 us +-0.029 %, 500 us +-0.02 %, 1 ms +-0.013 %); use the library sweep (`cargo test -p measurements --test qa_calibrator_frequency`) for the AC.
+- Package name of the measurement lib is `measurements`. Clean-tree check: `cargo test --workspace` then `git status --short` (ignore `.claude/memory`).

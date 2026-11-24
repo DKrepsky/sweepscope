@@ -1,4 +1,4 @@
-import type { BackendClient, ChannelPatch, SettingTarget, TriggerPatch } from '../../api';
+import type { BackendClient, ChannelPatch, InterpolationMode, SettingTarget, TriggerPatch } from '../../api';
 import type { ChannelNumber } from '../main-window/types';
 
 export interface InstrumentCommands {
@@ -12,6 +12,7 @@ export interface InstrumentCommands {
   setTrigger(patch: TriggerPatch): void;
   useSimulator(enabled: boolean): void;
   retryConnection(): void;
+  setInterpolation(mode: InterpolationMode): void;
 }
 
 interface Deps {
@@ -44,5 +45,6 @@ export function createInstrumentCommands({ client, notify }: Deps): InstrumentCo
     setTrigger: (patch) => guard(() => send('set_trigger', { patch })),
     useSimulator: (enabled) => guard(() => send('use_simulator', { enabled })),
     retryConnection: () => guard(() => send('retry_connection', {})),
+    setInterpolation: (mode) => guard(() => send('set_interpolation', { mode })),
   };
 }

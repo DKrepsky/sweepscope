@@ -1,28 +1,39 @@
 <script lang="ts">
-  import type { CursorsModel } from '../../app/main-window';
+  import type { CursorId, CursorsModel } from '../../app/main-window';
+  import Cursor from '../../ui/cursor/Cursor.svelte';
 
   interface Props {
     cursors: CursorsModel;
+    onmove: (id: CursorId, position: number) => void;
+    onremove: (id: CursorId) => void;
   }
 
-  const { cursors }: Props = $props();
+  const { cursors, onmove, onremove }: Props = $props();
 
-  const percent = (fraction: number | undefined) => `${(fraction ?? 0) * 100}%`;
-  const tagStyle = (tag: CursorsModel['tags'][number]) =>
-    tag.anchor === 'left' ? `top: ${percent(tag.y)}` : `left: ${percent(tag.x)}`;
+  const percent = (fraction: number) => `${fraction * 100}%`;
 </script>
 
 {#if cursors.enabled}
-  <div class="overlay" aria-hidden="true">
-    {#each cursors.lines.x as x (x)}
-      <span class="line vertical" style:left={percent(x)}></span>
+  <div class="overlay">
+    {#each cursors.lines as line (line.id)}
+      <Cursor
+        axis={line.axis}
+        position={line.position}
+        label="Cursor {line.id.toUpperCase()}"
+        valueText={line.valueText}
+        disabled={!cursors.available.enabled}
+        disabledReason={cursors.available.reason}
+        onmove={(position) => onmove(line.id, position)}
+        onremove={() => onremove(line.id)}
+      >
+        {#snippet tag()}<span class="ss-num">{line.tag}</span>{/snippet}
+      </Cursor>
     {/each}
-    {#each cursors.lines.y as y (y)}
-      <span class="line horizontal" style:top={percent(y)}></span>
-    {/each}
-    {#each cursors.tags as tag (tag.text)}
-      <span class="tag ss-num {tag.anchor}" style={tagStyle(tag)}>{tag.text}</span>
-    {/each}
+    {#if cursors.delta}
+      <span class="delta ss-num" aria-hidden="true" style:left={percent(cursors.delta.position)}>
+        {cursors.delta.tag}
+      </span>
+    {/if}
   </div>
 {/if}
 
@@ -33,39 +44,16 @@
     pointer-events: none;
     color: var(--ss-color-cursor);
   }
-  .line {
+  .delta {
     position: absolute;
-    border: 0 dashed currentColor;
-  }
-  .vertical {
-    inset-block: 0;
-    border-inline-start-width: var(--ss-border-width);
-  }
-  .horizontal {
-    inset-inline: 0;
-    border-block-start-width: var(--ss-border-width);
-  }
-  .tag {
-    position: absolute;
+    inset-block-start: var(--ss-space-7);
     z-index: var(--ss-z-markers);
     padding: var(--ss-space-1) var(--ss-space-2);
     font-size: var(--ss-font-size-xs);
     line-height: 1;
-    background: var(--ss-color-bg-overlay);
-    border: var(--ss-border-width) solid currentColor;
-    border-radius: var(--ss-radius-sm);
-  }
-  .bottom {
-    inset-block-end: var(--ss-space-3);
-    transform: translateX(-50%);
-  }
-  .top {
-    inset-block-start: var(--ss-space-7);
-    transform: translateX(-50%);
     background: var(--ss-color-bg-scope);
-  }
-  .left {
-    inset-inline-start: var(--ss-space-3);
-    transform: translateY(-50%);
+    border: var(--ss-border-width) solid currentcolor;
+    border-radius: var(--ss-radius-sm);
+    transform: translateX(-50%);
   }
 </style>

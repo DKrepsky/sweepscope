@@ -1,11 +1,11 @@
 //! Test helpers shared by every crate's tests.
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::{Bus, Clock, Event, KernelError, Storage, Subscription};
+use crate::{Bus, Clock, Event, FileFilter, FilePicker, KernelError, Storage, Subscription};
 
 /// Clock that only moves when told to.
 #[derive(Clone)]
@@ -52,6 +52,48 @@ impl Storage for MemoryStorage {
         self.files.lock().unwrap().insert(key.to_owned(), bytes.to_vec());
         Ok(())
     }
+}
+
+/// Picker that answers from queues: one entry per dialog, `None` is a cancel. An unscripted dialog is a test bug and fails.
+#[derive(Default)]
+pub struct ScriptedPicker {
+    save: Mutex<VecDeque<Option<PathBuf>>>,
+    open: Mutex<VecDeque<Option<PathBuf>>>,
+    suggested: Mutex<Vec<String>>,
+}
+
+impl ScriptedPicker {
+    pub fn new(save: Vec<Option<PathBuf>>, open: Vec<Option<PathBuf>>) -> Self {
+        Self {
+            save: Mutex::new(save.into()),
+            open: Mutex::new(open.into()),
+            suggested: Mutex::default(),
+        }
+    }
+
+    /// Names offered to the save dialogs so far, oldest first.
+    pub fn suggested_names(&self) -> Vec<String> {
+        self.suggested.lock().unwrap().clone()
+    }
+}
+
+impl FilePicker for ScriptedPicker {
+    fn pick_save(&self, suggested_name: &str, _filter: &FileFilter) -> Result<Option<PathBuf>, KernelError> {
+        self.suggested.lock().unwrap().push(suggested_name.to_owned());
+        next_answer(&self.save, "save")
+    }
+
+    fn pick_open(&self, _filter: &FileFilter) -> Result<Option<PathBuf>, KernelError> {
+        next_answer(&self.open, "open")
+    }
+}
+
+fn next_answer(queue: &Mutex<VecDeque<Option<PathBuf>>>, kind: &str) -> Result<Option<PathBuf>, KernelError> {
+    queue
+        .lock()
+        .unwrap()
+        .pop_front()
+        .ok_or_else(|| KernelError::fatal(format!("no scripted answer for a {kind} dialog")))
 }
 
 /// Collects every event of one type published after it was created.

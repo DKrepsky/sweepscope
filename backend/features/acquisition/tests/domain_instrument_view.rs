@@ -291,6 +291,40 @@ fn given_the_default_setup_when_the_frame_context_is_read_then_it_carries_the_wi
 }
 
 #[test]
+fn given_a_probe_and_an_unverified_range_when_the_frame_context_is_read_then_it_carries_both_and_the_time_base() {
+    let mut instrument = ready_instrument();
+    instrument.set_channel(2, probe(10.0)).unwrap();
+    instrument.step(CH1, 1).unwrap();
+    instrument.step(CH1, 1).unwrap();
+    instrument.step(CH1, 1).unwrap();
+    instrument.step(CH1, 1).unwrap();
+
+    let context = instrument.frame_context(1);
+
+    assert_eq!(context.probe, [1.0, 10.0, 1.0, 1.0]);
+    assert_eq!(context.range_verified, [false, true, true, true]);
+    assert_close(context.seconds_per_div, 200e-6);
+}
+
+#[test]
+fn given_no_device_ever_ready_when_the_frame_context_is_read_then_the_new_fields_are_neutral() {
+    let context = Instrument::new(Defaults::default()).frame_context(1);
+
+    assert_eq!((context.probe, context.range_verified), ([1.0; 4], [true; 4]));
+    assert_eq!(context.seconds_per_div, 0.0);
+}
+
+#[test]
+fn given_a_ready_device_when_the_state_is_read_then_files_follow_the_connection_and_there_is_no_notice() {
+    let instrument = ready_instrument();
+
+    let state = state(&instrument);
+
+    assert!(state.controls.files.enabled);
+    assert_eq!(state.setup_notice, None);
+}
+
+#[test]
 fn given_the_default_setup_when_the_facts_are_read_then_they_show_rate_interval_and_record_points() {
     let instrument = ready_instrument();
     let clock = FakeClock::default();

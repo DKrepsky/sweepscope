@@ -2,9 +2,15 @@
 import type { AcquisitionStatus } from './AcquisitionStatus';
 import type { ChannelPatch } from './ChannelPatch';
 import type { ConnectionSnapshot } from './ConnectionSnapshot';
+import type { DisplayState } from './DisplayState';
+import type { ExportFormat } from './ExportFormat';
 import type { InstrumentFacts } from './InstrumentFacts';
 import type { InstrumentState } from './InstrumentState';
+import type { InterpolationMode } from './InterpolationMode';
+import type { MeasurementsState } from './MeasurementsState';
+import type { SavedFile } from './SavedFile';
 import type { SettingTarget } from './SettingTarget';
+import type { SetupLoaded } from './SetupLoaded';
 import type { StateSnapshot } from './StateSnapshot';
 import type { TriggerPatch } from './TriggerPatch';
 import type { UiStateEntry } from './UiStateEntry';
@@ -21,8 +27,13 @@ export const COMMANDS = [
   'set_trigger_position',
   'set_trigger_level',
   'set_trigger',
+  'save_setup',
+  'load_setup',
   'use_simulator',
   'retry_connection',
+  'set_interpolation',
+  'export_frame',
+  'save_screenshot',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -38,8 +49,13 @@ export type CommandArgs = {
   set_trigger_position: { fraction: number };
   set_trigger_level: { divisions: number };
   set_trigger: { patch: TriggerPatch };
+  save_setup: Record<string, never>;
+  load_setup: Record<string, never>;
   use_simulator: { enabled: boolean };
   retry_connection: Record<string, never>;
+  set_interpolation: { mode: InterpolationMode };
+  export_frame: { format: ExportFormat };
+  save_screenshot: Uint8Array;
 };
 
 export type CommandResult = {
@@ -54,11 +70,16 @@ export type CommandResult = {
   set_trigger_position: null;
   set_trigger_level: null;
   set_trigger: null;
+  save_setup: SavedFile | null;
+  load_setup: SetupLoaded | null;
   use_simulator: null;
   retry_connection: null;
+  set_interpolation: null;
+  export_frame: SavedFile | null;
+  save_screenshot: SavedFile | null;
 };
 
-export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed'] as const;
+export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed'] as const;
 export type EventName = (typeof EVENTS)[number];
 
 export type EventPayload = {
@@ -66,6 +87,8 @@ export type EventPayload = {
   instrument_changed: InstrumentState;
   status_changed: AcquisitionStatus;
   facts_changed: InstrumentFacts;
+  display_changed: DisplayState;
+  measurements_changed: MeasurementsState;
 };
 
 export const STREAMS = ['frames'] as const;

@@ -73,6 +73,18 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitem', { name: /Save/ })).toHaveTextContent('Exp');
   });
 
+  it('given checked and unchecked toggle items, when rendered, then they are menu checkboxes with matching state', () => {
+    setup({
+      items: [
+        { id: 'a', label: 'Alpha', checked: true },
+        { id: 'b', label: 'Beta', checked: false },
+      ],
+    });
+
+    expect(screen.getByRole('menuitemcheckbox', { name: /Alpha/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemcheckbox', { name: /Beta/ })).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('given Menu open, when the pointer is pressed outside, then onclose is called', async () => {
     const { onclose } = setup();
 
@@ -117,5 +129,64 @@ describe('nextIndex', () => {
 
     expect(opener).toHaveFocus();
     opener.remove();
+  });
+});
+
+describe('Menu placement', () => {
+  const stubSizes = (menuWidth: number, windowWidth: number) => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(windowWidth);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ width: menuWidth, height: 40 }) as DOMRect,
+    );
+  };
+
+  it('given an anchor near the right edge, when opened, then the menu is shifted to stay inside the window', () => {
+    stubSizes(200, 1000);
+    setup({ anchor: { x: 950, y: 20 } });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '800px', top: '20px' });
+  });
+
+  it('given an anchor with room to spare, when opened, then the menu opens at the anchor', () => {
+    stubSizes(200, 1000);
+    setup({ anchor: { x: 100, y: 20 } });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '20px' });
+  });
+
+  it('given a menu closed after being shifted, when reopened at a new anchor, then it is never laid out at the old position', async () => {
+    const leftAtMeasure: string[] = [];
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => {
+      leftAtMeasure.push(document.querySelector<HTMLElement>('[role=menu]')?.style.left ?? '');
+      return { width: 200, height: 40 } as DOMRect;
+    });
+    const onselect = vi.fn();
+    const onclose = vi.fn();
+    const view = render(Menu, { props: { items, onselect, onclose, open: true, anchor: { x: 950, y: 20 } } });
+    await view.rerender({ open: false });
+    leftAtMeasure.length = 0;
+
+    await view.rerender({ open: true, anchor: { x: 100, y: 20 } });
+
+    expect(leftAtMeasure[0]).toBe('100px');
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '100px' });
+  });
+
+  it('given an open menu, when its items change and the size grows, then it is fitted again', async () => {
+    let width = 100;
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ width, height: 40 }) as DOMRect,
+    );
+    const view = render(Menu, {
+      props: { items, onselect: vi.fn(), onclose: vi.fn(), open: true, anchor: { x: 950, y: 20 } },
+    });
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '900px' });
+
+    width = 300;
+    await view.rerender({ items: [...items, { id: 'more', label: 'More' }] });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '700px' });
   });
 });

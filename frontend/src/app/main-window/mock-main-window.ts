@@ -29,6 +29,14 @@ const toolbar = (): MainWindowModel['toolbar'] => ({
   persistence: 'Persist: Off',
   view: 'yt',
   tools: { cursors: true, math: false, reference: false },
+  cursorsAvailability: { enabled: true },
+  files: {
+    saveSetup: { enabled: true },
+    loadSetup: { enabled: true },
+    exportCsv: { enabled: true },
+    exportRaw: { enabled: true },
+    screenshot: { enabled: true },
+  },
 });
 
 const horizontal = (): MainWindowModel['horizontal'] => ({
@@ -60,6 +68,7 @@ const trigger = (): MainWindowModel['trigger'] => ({
 
 const cursors = (): MainWindowModel['cursors'] => ({
   enabled: true,
+  available: { enabled: true },
   source: 1,
   values: [
     { label: 'X1', value: '700 µs' },
@@ -71,14 +80,13 @@ const cursors = (): MainWindowModel['cursors'] => ({
     { label: '1/ΔX', value: '2.50 kHz' },
   ],
   originNote: 'X origin: left edge of the window. Accuracy note slot (wording TBD).',
-  lines: { x: [0.35, 0.55], y: [0.625, 0.375] },
-  tags: [
-    { text: 'X1 700 µs', x: 0.35, anchor: 'bottom' },
-    { text: 'X2 1.10 ms', x: 0.55, anchor: 'bottom' },
-    { text: 'ΔX 400 µs · 1/ΔX 2.50 kHz', x: 0.45, anchor: 'top' },
-    { text: 'Y1 0.50 V', y: 0.625, anchor: 'left' },
-    { text: 'Y2 1.50 V', y: 0.375, anchor: 'left' },
+  lines: [
+    { id: 'x1', axis: 'x', position: 0.35, tag: 'X1 700 µs', valueText: 'X1 700 microseconds' },
+    { id: 'x2', axis: 'x', position: 0.55, tag: 'X2 1.10 ms', valueText: 'X2 1.10 milliseconds' },
+    { id: 'y1', axis: 'y', position: 0.625, tag: 'Y1 0.50 V', valueText: 'Y1 0.50 volts' },
+    { id: 'y2', axis: 'y', position: 0.375, tag: 'Y2 1.50 V', valueText: 'Y2 1.50 volts' },
   ],
+  delta: { tag: 'ΔX 400 µs · 1/ΔX 2.50 kHz', position: 0.45 },
 });
 
 const status = (): MainWindowModel['status'] => ({
@@ -96,7 +104,8 @@ const status = (): MainWindowModel['status'] => ({
     tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
   },
   renderer: 'WebGL2',
-  accuracy: 'note slot',
+  accuracy:
+    'Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit.',
 });
 
 const initialModel = (): MainWindowModel => ({
@@ -138,10 +147,24 @@ const withSelected = (model: MainWindowModel, number: ChannelNumber): MainWindow
   graph: { ...model.graph, selected: number },
 });
 
+const nothing = () => {};
+
+const inertCursorAndFileActions = {
+  toggleCursors: nothing,
+  moveCursor: nothing,
+  removeCursor: nothing,
+  clearCursors: nothing,
+  setMeasurementPinned: nothing,
+  saveSetup: nothing,
+  loadSetup: nothing,
+  exportCsv: nothing,
+  exportRaw: nothing,
+  saveScreenshot: nothing,
+};
+
 export function createMockMainWindow(): MockMainWindow {
   const model = writable<MainWindowModel>(initialModel());
   const change = (update: (current: MainWindowModel) => MainWindowModel) => model.update(update);
-  const nothing = () => {};
   return {
     subscribe: model.subscribe,
     toggleRun: () => change((current) => withRunning(current, !current.toolbar.running)),
@@ -169,6 +192,7 @@ export function createMockMainWindow(): MockMainWindow {
     setTriggerSweep: (sweep) => change((current) => ({ ...current, trigger: { ...current.trigger, sweep } })),
     setInterpolation: (interpolation) =>
       change((current) => ({ ...current, horizontal: { ...current.horizontal, interpolation } })),
+    ...inertCursorAndFileActions,
     bannerAction: nothing,
     copyText: nothing,
   };

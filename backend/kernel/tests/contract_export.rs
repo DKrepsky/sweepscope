@@ -2,7 +2,8 @@ use std::path::Path;
 
 use sweepscope_kernel::contracts::{
     CalibrationStatus, Capabilities, ConnectionIssue, ConnectionIssueKind, ConnectionSnapshot, ConnectionState,
-    Coupling, DeviceIdentity, DeviceSource, PermissionHelp, Slope, Sweep, TimeBaseStep, VerticalRange,
+    Coupling, DeviceIdentity, DeviceSource, FormattedValue, PermissionHelp, SavedFile, Slope, Sweep, TimeBaseStep,
+    VerticalRange,
 };
 use sweepscope_kernel::KernelError;
 use ts_rs::{Config, TS};
@@ -63,6 +64,16 @@ fn given_the_connection_slice_when_exported_then_the_revision_is_a_number_and_op
     assert!(generated("ConnectionState.ts").contains("\"disconnected\" | \"connecting\" | \"ready\" | \"error\""));
     assert!(generated("ConnectionIssueKind.ts").contains("\"permissionDenied\""));
     assert!(generated("PermissionHelp.ts").contains("installCommand: string"));
+}
+
+#[test]
+fn given_the_shared_value_types_when_exported_then_the_fields_are_camel_case() {
+    let config = Config::from_env();
+    FormattedValue::export_all(&config).unwrap();
+    SavedFile::export_all(&config).unwrap();
+
+    assert!(generated("FormattedValue.ts").contains("unit: string"));
+    assert!(generated("SavedFile.ts").contains("fileName: string"));
 }
 
 #[test]

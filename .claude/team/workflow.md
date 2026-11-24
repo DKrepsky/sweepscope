@@ -35,13 +35,14 @@ The human approves at four gates. No agent skips a gate.
 | 6 | Staff Engineer | Clarifies with PM and Designer through the bus, reports problems, negotiates scope, writes ADRs when a decision is architectural, writes the implementation spec with work packages | Implementation spec, status `NEEDS_HUMAN_APPROVAL` (**G3**) |
 | 7 | Developers | One developer per work package, in parallel when files are disjoint; implement and test (BDD) | `handoff` to QA with what to verify |
 | 8 | QA | Test plan first, then automated e2e and manual and UI verification; QA report | Report to PM and Staff; `bug` messages to developers |
-| 9 | Code Reviewer | Reviews the diff against the architecture rules | `feedback` to developers or an approval report |
+| 9 | Code Reviewer | Reviews the diff against the architecture rules and guarantees every non-test CI check passes (lint, format, `cargo deny`, `cargo audit`, npm audit, architecture) | `feedback` to developers or an approval report with the CI parity table |
 | 10 | PM | Presents the finished feature against the acceptance criteria | Status `NEEDS_HUMAN_APPROVAL` (**G4**) |
 | 11 | PM | After G4 only: push, following section 6 | |
 
 Loops:
 
 - QA finds a bug → `bug` message to the developer → fix → QA retests the affected cases.
+- The Code Reviewer re-runs the CI parity gate on the final state before G4 (new security advisories appear without code changes); a red check is a blocker and never an exception.
 - Review finds issues → `feedback` to the developer → fix → review of the changed parts. If a fix changes behaviour, QA retests.
 - More than three rounds on the same problem → the PM stops and asks the Staff Engineer, then the human.
 - A change to the story or the design during planning goes back to the PM or Designer and through the gate again. Scope cuts that remove an acceptance criterion need the human's approval (G1 again).
@@ -102,4 +103,4 @@ Each agent keeps `.claude/memory/<agent>.md`: read it first, update it last. Kee
 
 ## 7. Definition of done
 
-A feature is done when: the acceptance criteria pass; unit, integration and e2e tests exist in given/when/then style and pass; formatting, lint and architecture checks pass; QA reported no open bugs; the review has no open findings; specs and ADRs are current; the human confirmed it at G4.
+A feature is done when: the acceptance criteria pass; unit, integration and e2e tests exist in given/when/then style and pass; formatting, lint, architecture and dependency security checks (`cargo deny`, `cargo audit`, `npm audit`) pass, as verified by the Code Reviewer on the final branch state (never lowered or ignored to get green); QA reported no open bugs; the review has no open findings; specs and ADRs are current; the human confirmed it at G4.

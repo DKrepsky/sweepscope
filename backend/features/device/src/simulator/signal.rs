@@ -9,8 +9,12 @@ use std::f64::consts::TAU;
 pub const FREQUENCY_HZ: f64 = 1_000.0;
 /// Peak amplitude of `Sine`, `Square` and `Triangle` (they swing symmetrically around 0 V).
 pub const AMPLITUDE_V: f64 = 1.0;
-/// The calibrator output: 0 V low, 5 V high.
-pub const CALIBRATOR_HIGH_V: f64 = 5.0;
+/// The calibrator output: 0 V low, 1.91 V high (driver measurements).
+pub const CALIBRATOR_HIGH_V: f64 = 1.91;
+/// 10 to 90 % rise and fall time of the calibrator edges (driver measurements).
+pub const CALIBRATOR_EDGE_S: f64 = 250e-9;
+/// Duration of the linear ramp whose 10 to 90 % part lasts `CALIBRATOR_EDGE_S`.
+const CALIBRATOR_RAMP_S: f64 = CALIBRATOR_EDGE_S / 0.8;
 pub const NOISE_AMPLITUDE_V: f64 = 0.002;
 const NOISE_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 
@@ -34,7 +38,7 @@ pub fn clean(kind: SignalKind, t: f64) -> f64 {
         SignalKind::Sine => AMPLITUDE_V * (TAU * phase).sin(),
         SignalKind::Square => AMPLITUDE_V * square_wave(phase),
         SignalKind::Triangle => AMPLITUDE_V * triangle_wave(phase),
-        SignalKind::Calibrator => CALIBRATOR_HIGH_V * (square_wave(phase) + 1.0) / 2.0,
+        SignalKind::Calibrator => CALIBRATOR_HIGH_V * calibrator_level(phase / FREQUENCY_HZ),
     }
 }
 
@@ -43,6 +47,23 @@ fn square_wave(phase: f64) -> f64 {
         1.0
     } else {
         -1.0
+    }
+}
+
+/// Trapezoid in 0..=1: rising ramp centred on `t = 0`, falling ramp centred on half a period.
+fn calibrator_level(t: f64) -> f64 {
+    let period = 1.0 / FREQUENCY_HZ;
+    let half_ramp = CALIBRATOR_RAMP_S / 2.0;
+    if t < half_ramp {
+        0.5 + t / CALIBRATOR_RAMP_S
+    } else if t < period / 2.0 - half_ramp {
+        1.0
+    } else if t < period / 2.0 + half_ramp {
+        0.5 - (t - period / 2.0) / CALIBRATOR_RAMP_S
+    } else if t < period - half_ramp {
+        0.0
+    } else {
+        0.5 - (period - t) / CALIBRATOR_RAMP_S
     }
 }
 
@@ -104,10 +125,40 @@ mod tests {
     }
 
     #[test]
-    fn given_the_calibrator_when_sampled_then_it_is_a_1_khz_square_between_0_and_5_volts() {
-        assert_eq!(clean(SignalKind::Calibrator, QUARTER), 5.0);
+    fn given_the_calibrator_when_sampled_then_it_is_a_1_khz_square_between_0_and_1_91_volts() {
+        assert_eq!(clean(SignalKind::Calibrator, QUARTER), 1.91);
         assert_eq!(clean(SignalKind::Calibrator, 3.0 * QUARTER), 0.0);
-        assert_eq!(clean(SignalKind::Calibrator, QUARTER + 1.0 / FREQUENCY_HZ), 5.0);
+        assert!(near(clean(SignalKind::Calibrator, QUARTER + 1.0 / FREQUENCY_HZ), 1.91));
+    }
+
+    #[test]
+    fn given_the_calibrator_when_sampled_at_1_ns_then_the_10_to_90_percent_rise_is_250_ns_within_1_percent() {
+        let level = |i: i64| clean(SignalKind::Calibrator, i as f64 * 1e-9);
+        let first_at = |fraction: f64| (-500..500).find(|i| level(*i) >= fraction * CALIBRATOR_HIGH_V).unwrap();
+
+        let rise_ns = (first_at(0.9) - first_at(0.1)) as f64;
+
+        assert!((rise_ns - 250.0).abs() < 2.5, "{rise_ns}");
+    }
+
+    #[test]
+    fn given_the_calibrator_when_sampled_at_1_ns_then_the_10_to_90_percent_fall_is_250_ns_within_1_percent() {
+        let half = 0.5 / FREQUENCY_HZ;
+        let level = |i: i64| clean(SignalKind::Calibrator, half + i as f64 * 1e-9);
+        let first_below = |fraction: f64| (-500..500).find(|i| level(*i) <= fraction * CALIBRATOR_HIGH_V).unwrap();
+
+        let fall_ns = (first_below(0.1) - first_below(0.9)) as f64;
+
+        assert!((fall_ns - 250.0).abs() < 2.5, "{fall_ns}");
+    }
+
+    #[test]
+    fn given_the_calibrator_when_sampled_at_each_edge_centre_then_it_is_at_half_level() {
+        assert!(near(clean(SignalKind::Calibrator, 0.0), CALIBRATOR_HIGH_V / 2.0));
+        assert!(near(
+            clean(SignalKind::Calibrator, 0.5 / FREQUENCY_HZ),
+            CALIBRATOR_HIGH_V / 2.0
+        ));
     }
 
     #[test]

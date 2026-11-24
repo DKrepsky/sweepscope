@@ -27,12 +27,17 @@ pub struct CaptureCompleted {
 impl Event for CaptureCompleted {}
 
 /// What `display` needs to turn a frame into the visible window: crop and invert come from the acquisition state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FrameContext {
     pub setup_revision: u64,
     pub window_start: usize,
     pub window_len: usize,
     pub invert: [bool; 4],
+    /// Probe factor per channel (1, 10 or 100), for the volts conversion in `measurement` and `export`.
+    pub probe: [f64; 4],
+    /// False when the range is outside the verified 50 mV to 1 V per division.
+    pub range_verified: [bool; 4],
+    pub seconds_per_div: f64,
 }
 
 /// Published by `acquisition` for every accepted frame; latest-wins subscribers only see the newest.

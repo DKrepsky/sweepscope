@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum CalibrationStatus {
     Valid,
     Invalid,
@@ -11,7 +11,7 @@ pub enum CalibrationStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct DeviceIdentity {
     pub model: String,
     pub firmware: Option<String>,

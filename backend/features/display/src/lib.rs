@@ -3,9 +3,12 @@
 
 mod convert;
 mod messages;
+mod mode;
 mod module;
 mod wire;
 
-pub use messages::DisplayFrameReady;
+pub use messages::{
+    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, SetInterpolation, COMMANDS,
+};
 pub use module::{DisplayDeps, DisplayModule};
-pub use wire::{encode, stamp_sent};
+pub use wire::{encode, encode_in_mode, stamp_sent};

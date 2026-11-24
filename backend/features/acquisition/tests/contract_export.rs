@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use sweepscope_acquisition::{
-    AcquisitionStatus, Availability, ChannelPatch, ChannelState, FormattedValue, InstrumentFacts, InstrumentState,
-    Phase, ScaleChoice, SettingTarget, StateSnapshot, TriggerPatch,
+    AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FormattedValue, InstrumentFacts,
+    InstrumentState, Phase, ScaleChoice, SettingTarget, SetupLoaded, SetupNotice, TriggerPatch,
 };
 use sweepscope_kernel::contracts::{Slope, Sweep};
 use ts_rs::{Config, TS};
@@ -20,13 +20,11 @@ fn given_the_state_slices_when_exported_then_revisions_are_numbers_and_fields_ar
     InstrumentState::export_all(&config).unwrap();
     AcquisitionStatus::export_all(&config).unwrap();
     InstrumentFacts::export_all(&config).unwrap();
-    StateSnapshot::export_all(&config).unwrap();
 
     assert!(generated("InstrumentState.ts").contains("revision: number"));
     assert!(generated("InstrumentState.ts").contains("channels: Array<ChannelState>"));
     assert!(generated("AcquisitionStatus.ts").contains("phase: Phase"));
     assert!(generated("InstrumentFacts.ts").contains("sampleRate: FormattedValue | null"));
-    assert!(generated("StateSnapshot.ts").contains("connection: ConnectionSnapshot"));
 }
 
 #[test]
@@ -53,6 +51,20 @@ fn given_the_channel_and_scale_types_when_exported_then_the_ui_fields_exist() {
     assert!(generated("FormattedValue.ts").contains("unit: string"));
     assert!(generated("Availability.ts").contains("reason: string | null"));
     assert!(generated("Phase.ts").contains("\"waitingForTrigger\""));
+}
+
+#[test]
+fn given_the_setup_types_when_exported_then_the_notice_and_the_load_report_have_the_documented_fields() {
+    let config = Config::from_env();
+    SetupNotice::export_all(&config).unwrap();
+    SetupLoaded::export_all(&config).unwrap();
+    InstrumentState::export_all(&config).unwrap();
+    ControlsAvailability::export_all(&config).unwrap();
+
+    assert!(generated("SetupNotice.ts").contains("id: number"));
+    assert!(generated("SetupLoaded.ts").contains("warnings: Array<string>"));
+    assert!(generated("InstrumentState.ts").contains("setupNotice: SetupNotice | null"));
+    assert!(generated("ControlsAvailability.ts").contains("files: Availability"));
 }
 
 #[test]

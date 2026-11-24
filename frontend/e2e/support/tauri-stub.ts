@@ -22,6 +22,8 @@ const readySnapshot = (unverifiedTimeBase: boolean) => {
 export interface StubOptions {
   /** The selected time base step is one the hardware has not been measured at. */
   unverifiedTimeBase?: boolean;
+  /** Per command: the value it returns, or an error message it rejects with (the M2 file commands and `set_interpolation`). */
+  commands?: Record<string, { result?: unknown; error?: string }>;
 }
 
 /**
@@ -35,7 +37,7 @@ export async function stubTauri(
   options: StubOptions = {},
 ): Promise<void> {
   await page.addInitScript(
-    ([initial, snapshot]) => {
+    ([initial, snapshot, scripted]) => {
       const KEY = '__ss_settings';
       const ACKNOWLEDGED = new Set([
         'plugin:event|unlisten',
@@ -51,7 +53,9 @@ export async function stubTauri(
         'set_trigger',
         'use_simulator',
         'retry_connection',
+        'set_interpolation',
       ]);
+      const commands = scripted as Record<string, { result?: unknown; error?: string }>;
       const log: { command: string; args: unknown }[] = [];
       (window as unknown as Record<string, unknown>).__ipcLog = log;
       // Live driving: callbacks registered by the Tauri API, event listeners by name, and the open frame channel id.
@@ -92,12 +96,15 @@ export async function stubTauri(
             return null;
           }
           if (command === 'get_snapshot') return snapshot;
+          const scriptedCommand = commands[command];
+          if (scriptedCommand?.error !== undefined) throw new Error(scriptedCommand.error);
+          if (scriptedCommand) return scriptedCommand.result ?? null;
           if (ACKNOWLEDGED.has(command)) return null;
           throw new Error(`Command ${command} not allowed by capability`);
         },
       };
     },
-    [initialSettings, readySnapshot(options.unverifiedTimeBase ?? false)] as const,
+    [initialSettings, readySnapshot(options.unverifiedTimeBase ?? false), options.commands ?? {}] as const,
   );
 }
 

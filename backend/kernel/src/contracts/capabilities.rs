@@ -3,7 +3,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct TimeBaseStep {
     pub seconds_per_div: f64,
     /// Roll mode: samples stream instead of being captured as a record.
@@ -13,7 +13,7 @@ pub struct TimeBaseStep {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct VerticalRange {
     pub volts_per_div: f64,
     pub verified: bool,
@@ -24,7 +24,7 @@ pub struct VerticalRange {
 /// What an instrument can do, as data, so the UI never hard-codes a scale table.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct Capabilities {
     pub channel_count: u8,
     pub record_len: u32,

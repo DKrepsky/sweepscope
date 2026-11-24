@@ -1,0 +1,16 @@
+[package]
+name = "sweepscope-measurement"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sweepscope-kernel = { path = "../../kernel" }
+serde = { version = "1", features = ["derive"] }
+ts-rs = "12"
+engineering-format = { path = "../../libs/engineering-format" }
+measurements = { path = "../../libs/measurements" }

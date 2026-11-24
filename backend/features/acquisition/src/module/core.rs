@@ -7,12 +7,15 @@ use sweepscope_kernel::contracts::{
 use sweepscope_kernel::KernelError;
 
 use super::effects::{Call, Effects, Output};
+use crate::domain::setup_file::SetupFile;
 use crate::{
     next_status, AcquisitionStatus, CaptureMeter, Change, Defaults, FormattedValue, Instrument, InstrumentFacts,
-    InstrumentSnapshot, Phase, StatusEvent,
+    InstrumentSnapshot, Phase, SetupReport, StatusEvent,
 };
 
 const FACTS_EVERY: Duration = Duration::from_millis(250);
+/// A change must stay this long before it is written, so a dragged control causes one write.
+const AUTOSAVE_AFTER: Duration = Duration::from_secs(1);
 const NO_SCOPE: &str = "No scope connected";
 const CONNECTING: &str = "Connecting";
 const UNKNOWN_ERROR: &str = "The scope reported an error";
@@ -29,6 +32,8 @@ pub struct Core {
     setup_revision: u64,
     session: Option<Session>,
     last_facts_at: Option<Instant>,
+    saved_setup: Option<SetupFile>,
+    unsaved_since: Option<Instant>,
 }
 
 impl Core {
@@ -52,7 +57,57 @@ impl Core {
             setup_revision: 0,
             session: None,
             last_facts_at: None,
+            saved_setup: None,
+            unsaved_since: None,
         }
+    }
+
+    pub fn hold_last_setup(&mut self, file: SetupFile) {
+        self.instrument.hold_setup(file);
+    }
+
+    pub fn note_setup(&mut self, text: String) {
+        self.instrument.set_notice(text);
+    }
+
+    /// The bytes `SaveSetup` writes; fails before the first device was ready.
+    pub fn setup_bytes(&self) -> Result<Vec<u8>, KernelError> {
+        let file = self.instrument.to_setup_file();
+        file.map(|f| f.to_bytes())
+            .ok_or_else(|| KernelError::recoverable(NO_SCOPE))
+    }
+
+    /// Loading needs a ready device; the reason is the one the controls show.
+    pub fn ensure_files_available(&self) -> Result<(), KernelError> {
+        let state = self
+            .instrument
+            .state(0)
+            .ok_or_else(|| KernelError::recoverable(NO_SCOPE))?;
+        let files = state.controls.files;
+        if files.enabled {
+            return Ok(());
+        }
+        Err(KernelError::recoverable(
+            files.reason.unwrap_or_else(|| NO_SCOPE.into()),
+        ))
+    }
+
+    pub fn load_setup(&mut self, file: &SetupFile, fx: &mut Effects, now: Instant) -> Result<SetupReport, KernelError> {
+        let before = (self.instrument.setup().cloned(), self.instrument.state(0));
+        let report = self.instrument.apply_setup_file(file)?;
+        let change = Change {
+            setup_changed: self.instrument.setup().cloned() != before.0,
+            state_changed: self.instrument.state(0) != before.1,
+        };
+        self.after_change(change, fx, now);
+        Ok(report)
+    }
+
+    /// The setup that still has to reach `last-setup.json`, for the final flush.
+    pub fn unsaved_setup(&self) -> Option<SetupFile> {
+        self.instrument
+            .to_setup_file()
+            .filter(|current| self.saved_setup.as_ref() != Some(current))
     }
 
     pub fn snapshot(&self) -> InstrumentSnapshot {
@@ -70,6 +125,11 @@ impl Core {
         change: impl FnOnce(&mut Instrument) -> Result<Change, KernelError>,
     ) -> Result<(), KernelError> {
         let change = change(&mut self.instrument)?;
+        self.after_change(change, fx, now);
+        Ok(())
+    }
+
+    fn after_change(&mut self, change: Change, fx: &mut Effects, now: Instant) {
         if change.setup_changed {
             self.send_setup(fx);
         }
@@ -77,7 +137,7 @@ impl Core {
             self.publish_instrument(fx);
             self.refresh_facts(fx, now, true);
         }
-        Ok(())
+        self.track_setup(fx, now);
     }
 
     pub fn set_running(&mut self, on: bool, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
@@ -126,6 +186,7 @@ impl Core {
             self.publish_instrument(fx);
             self.refresh_facts(fx, now, true);
         }
+        self.track_setup(fx, now);
     }
 
     pub fn capture(&mut self, completed: CaptureCompleted, fx: &mut Effects, now: Instant) {
@@ -141,6 +202,7 @@ impl Core {
                 let context = self.instrument.frame_context(self.setup_revision);
                 fx.outputs.push(Output::Frame(FrameCaptured { frame, context }));
                 self.refresh_facts(fx, now, false);
+                self.track_setup(fx, now);
             }
             CaptureOutcome::TimedOut => self.advance_phase(StatusEvent::TimedOut, fx),
         }
@@ -148,6 +210,7 @@ impl Core {
 
     pub fn tick(&mut self, fx: &mut Effects, now: Instant) {
         self.refresh_facts(fx, now, false);
+        self.track_setup(fx, now);
     }
 
     /// A repeated `Ready` of the same session (for example a changed simulator flag) restores nothing.
@@ -174,6 +237,22 @@ impl Core {
         self.session = None;
         self.meter.clear();
         self.advance_phase(StatusEvent::Lost, fx);
+    }
+
+    fn track_setup(&mut self, fx: &mut Effects, now: Instant) {
+        let Some(current) = self.instrument.to_setup_file() else {
+            return;
+        };
+        if self.saved_setup.as_ref() == Some(&current) {
+            self.unsaved_since = None;
+            return;
+        }
+        let since = *self.unsaved_since.get_or_insert(now);
+        if now.saturating_duration_since(since) >= AUTOSAVE_AFTER {
+            self.saved_setup = Some(current.clone());
+            self.unsaved_since = None;
+            fx.autosave = Some(current);
+        }
     }
 
     fn send_setup(&mut self, fx: &mut Effects) {

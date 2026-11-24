@@ -71,6 +71,12 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Graph and Marker have no `index.ts`: import `Graph.svelte` / `Marker.svelte` by path. Button `onclick` is `() => void` (no event): get element rects through a `bind:this` wrapper span.
 - Gallery tests stub `HTMLCanvasElement.prototype.getContext` with a Proxy no-op and `window.matchMedia`. Forced tooltip: dispatch `new FocusEvent('focusin', {bubbles:true})` on the child button. Menu is `position:fixed` with a scrim, so it opens from a button, never forced open.
 
+## Screenshot facts (WP16)
+- `drawTraces` resets the transform and clears the canvas: to paint the graph inside a window of a bigger canvas, wrap the ctx in a Proxy that adds an integer device-pixel offset to `setTransform` and no-ops `clearRect` (`ui/screenshot/draw-screenshot.ts`).
+- e2e can reach app modules without a UI path: `page.evaluate` with `import(/* @vite-ignore */ variablePath)` against the vite dev server (`/src/...ts`); decode PNG with `createImageBitmap(new Blob([bytes]))`.
+- Parallel Playwright runs: copy `playwright.config.ts` to a temp file with other ports and `npx vite --port N --strictPort`, delete it afterwards (also `test-results`, `playwright-report`; a leftover report dir makes eslint fail). A fresh worktree needs `npm ci` in `frontend/`.
+- `RecordingContext` lacks text; tests add `fillText` etc. with `Object.assign` on the ctx.
+
 ## Main window shell facts (WP9)
 - Real ui props differ from the spec's 3.4 sketch (Graph has `frame`/`summary`, no `size`; Marker has `label`/`name`/`color`; `fitScreen(Size)` clamps to a px constant). Read the component before using it.
 - `app` cannot import `ui` or `api` types: view-model types are structural copies (GraphModel, MeasurementsModel) assignable to the ui props. `pages` cannot import `api` even in tests: fake a client with `{ send: vi.fn() } as never`.
@@ -253,3 +259,44 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 
 ## Visual snapshots removed (developer-8)
 - All `toHaveScreenshot` tests, baselines, `snapshotPathTemplate` and `expect.toHaveScreenshot` config were dropped by human decision; do not reintroduce. CI had no snapshot-only steps.
+
+## M2 WP1 lessons (contracts)
+- ts-rs `export_to` is relative to the source file's directory depth: kernel `src/*.rs` uses 3 `../`, `src/contracts/*.rs` and `features/*/src/*.rs` use 4. A wrong count writes `backend/frontend/...` and bad import paths in other generated files.
+- Library crates are named without prefix (`interpolation`, `measurements`, `engineering-format`); features `sweepscope-<name>`. Rust 1.100 warns on unused dependencies: add a dependency only when code uses it.
+- Compound shell commands (heredoc plus python plus cat) get refused in worktrees; use Write/Edit tools and one simple command per call.
+- Root can bypass read-only folder permissions: tests of `PermissionDenied` probe writability first.
+
+## WP7 export (developer-5)
+- `ExportModule`: thread plus handlers share a `Newest` (subscribe_latest); handlers call `absorb()` first so a just-published frame is seen without sleeping in tests. Raw sidecar is `<stem>.format.txt` from the "## Layout" section of docs/formats/frame-raw-v1.md (include_str!). Golden file regenerates with `UPDATE_GENERATED=1 cargo test -p sweepscope-export`.
+- Clippy `too_many_lines` limit is 40: split decoders. Heredoc-with-cd shell commands are refused in worktrees; use Write and plain commands.
+## M2 WP5 display (developer-1)
+- Integer rule: factor = clamp(ceil(2500 / (len - 1)), 1, 512); automatic Sinc iff 1 <= len-1 < 2500. `encode_in_mode` is the mode-aware encoder, `encode` stays the Linear one. Module state (mode, last frame, sequence) sits behind one Mutex shared by the worker and the request handlers; handlers publish events synchronously, so tests need no sleeps.
+- A 200 ns window (20 ns/div) cannot hold a 250 ns edge: the rise-time test measures 20-80 % and scales by 0.8/0.6.
+- clippy `too_many_lines` limit is 40 per function.
+
+## measurement module (developer-3, WP6)
+- `features/measurement`: `channel.rs` (frame to cells), `slice.rs` (revision, text-only change test, 250 ms rate limit, pure and unit-tested with explicit `Instant`s), `module.rs` (thread, 20 ms poll, held-back change flushed when `Clock::now` passes the interval). Tests use synthetic calibrator waves (features cannot import `device`); put a rising edge inside a short record by offsetting the start by `period - lead`.
+- `FrameContext`/`Frame` channels are 1-based in slices (`index + 1`); lib crate is named `measurements`, formatter `engineering-format`.
+
+## WP15 files (developer-5)
+- New worktrees have no `node_modules`: run `npm ci --prefer-offline` in `frontend/`. `Toolbar` gets file actions via one `onfile(keyof FileActions)` prop; MainWindow forwards to `windowActions[action]()`.
+- Load with warnings gives one warning toast (no extra info toast); cancel (null reply) gives none. Commands reject with `{message}`: reuse the `messageOf` pattern.
+## WP13 facts (measurements UI)
+- A fresh worktree has no `node_modules`: run `npm ci --prefer-offline` in `frontend/` (4 s) before vitest/prettier/svelte-check.
+- `api/index.ts` only re-exports some generated types (no `Measurement`, `MeasurementId`); derive from `MeasurementsState['channels'][number]` instead of editing the api layer. `FormattedValue` has `value: number` too.
+- Shell commands mixing heredocs, python and several `cd`/npx calls get refused in worktrees ("too complex"): use Write/Edit tools and short Bash calls.
+- Pin menu keeps `Menu` open after each toggle (onselect does not close); `MenuItem.checked` renders `menuitemcheckbox`.
+## M2 WP12 cursors UI (developer-9)
+- Cursor X readouts span 10 divisions (`fraction * 10 * s/div`); the spec example (X1 0.35 -> 700 us at 2 ms/div) is off by 10, tests use 0.035. Y: `(divisions above centre - positionDivs) * V/div`; `ScaleChoice.label.value` is SI in the backend but `instrumentState()` test-data fills it from the text, so cursor tests build SI scales themselves.
+- `ui/cursor`: position is x from left / y from top; ArrowUp on y reduces it. Dash 6/4 uses a rem repeating-linear-gradient (px banned in ui). ScopeStage `interpolation` prop is optional (falls back to `dots`) because MainWindow.svelte is WP11: it should pass `interpolation={model.horizontal.interpolation}`.
+- A fresh worktree needs `npm ci` in frontend/; heredocs (`cat > f <<EOF`) are refused, use Write.
+## M2 shell (WP9, developer-6)
+- `tauri-plugin-dialog` 2.8 used from Rust only (`ipc/picker.rs`: architecture check allows `tauri::` only in main.rs and ipc/); `main.rs` registers `.plugin(tauri_plugin_dialog::init())`; blocking dialogs run via `tauri::async_runtime::spawn_blocking` in async commands.
+- ts-rs cannot export a type from `src-tauri` that imports feature types (relative `export_to` makes garbage import paths), so `StateSnapshot.ts` is rendered by `manifest::render_state_snapshot_ts`; regenerate both generated files with `UPDATE_GENERATED=1 cargo test -p sweepscope-app`.
+- Raw command body: `tauri::ipc::Request::body()` is `InvokeBody::Raw` for bytes; JSON bodies are refused. Heredocs with many shell steps get refused in this sandbox: use the Write tool and split commands.
+
+- ts-rs export_to is resolved against the cwd of the crate whose test runs the export, and kernel types are re-exported from dependant crates, so no per-type depth works; use TS_RS_EXPORT_DIR in .cargo/config.toml (relative=true) and no export_to. Verify with cargo test --workspace then git status and ls backend.
+## M2 fix lessons
+- Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
+- Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
+- Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
