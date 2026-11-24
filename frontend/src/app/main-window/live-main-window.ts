@@ -1,4 +1,5 @@
 import { derived, get, writable, type Readable } from 'svelte/store';
+import { selectCalibrationDialog, selectCalibrationTag, type CalibrationCommands } from '../calibration';
 import type { CursorsStore } from '../cursors';
 import type { FileActions } from '../files';
 import type { InstrumentCommands, InstrumentStores } from '../instrument';
@@ -14,6 +15,7 @@ import type { DecodedFrame } from '../waveform';
 import type { MainWindowActions } from './actions';
 import { createAnalyseActions } from './analyse-actions';
 import { createFailureDismissal } from '../recording';
+import { calibrationBlockedReason } from '../dialog-guard';
 import { createLiveActions } from './live-actions';
 import { selectBanners } from './select-banners';
 import type { PinnedMeasurements } from './pinned-measurements';
@@ -37,9 +39,13 @@ import type { ChannelNumber, MainWindowModel } from './types';
 export interface LiveMainWindow extends Readable<MainWindowModel>, MainWindowActions {}
 
 interface Deps {
-  stores: Pick<InstrumentStores, 'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements'>;
+  stores: Pick<
+    InstrumentStores,
+    'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements' | 'zeroCalibration'
+  >;
   analysis: AnalysisSources;
   commands: InstrumentCommands;
+  calibration: CalibrationCommands;
   analyseCommands: AnalyseCommands;
   cursors: CursorsStore;
   pinned: PinnedMeasurements;
@@ -49,6 +55,11 @@ interface Deps {
   notify: (kind: 'error', text: string) => void;
   renderer: string;
 }
+
+const selectCalibration = (i: ModelInputs): MainWindowModel['calibration'] => ({
+  tag: selectCalibrationTag(i.zeroCalibration, i.connection, i.recording),
+  dialog: selectCalibrationDialog(i.zeroCalibration),
+});
 
 function selectModel(i: ModelInputs): MainWindowModel {
   const { connection, instrument, selected } = i;
@@ -85,6 +96,7 @@ function selectModel(i: ModelInputs): MainWindowModel {
     recording: selectRecording(i),
     autoset: selectAutoset(i),
     math: selectMath(i),
+    calibration: selectCalibration(i),
   };
 }
 
@@ -100,7 +112,7 @@ interface Presentation {
 
 type BackendInputs = Pick<
   ModelInputs,
-  'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements' | 'frame'
+  'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements' | 'zeroCalibration' | 'frame'
 >;
 type AnalysisInputs = Pick<ModelInputs, 'spectrum' | 'spectrumFrame' | 'recording' | 'roll'>;
 type PresentationInputs = Pick<
@@ -109,16 +121,17 @@ type PresentationInputs = Pick<
 >;
 
 function backendInputs({ stores, frames }: Deps): Readable<BackendInputs> {
-  const { connection, instrument, status, facts, display, measurements } = stores;
+  const { connection, instrument, status, facts, display, measurements, zeroCalibration } = stores;
   return derived(
-    [connection, instrument, status, facts, display, measurements, frames],
-    ([connection, instrument, status, facts, display, measurements, frame]) => ({
+    [connection, instrument, status, facts, display, measurements, zeroCalibration, frames],
+    ([connection, instrument, status, facts, display, measurements, zeroCalibration, frame]) => ({
       connection,
       instrument,
       status,
       facts,
       display,
       measurements,
+      zeroCalibration,
       frame,
     }),
   );
@@ -180,7 +193,7 @@ const whenAvailable = (model: Readable<MainWindowModel>, run: () => void) => () 
  * state, never sent to the backend.
  */
 export function createLiveMainWindow(deps: Deps): LiveMainWindow {
-  const { stores, analysis, commands, analyseCommands, cursors, pinned, files, copyText, notify } = deps;
+  const { stores, analysis, commands, calibration, analyseCommands, cursors, pinned, files, copyText, notify } = deps;
   const shown = presentation(analyseCommands);
   const { selected, view, xyAxes: xy, peak, persistenceEpoch, dismissedRecordingFailure: failureDismissal } = shown;
   const { pulseWidthRejected } = shown;
@@ -188,6 +201,8 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
 
   const actions = createLiveActions({
     commands,
+    calibration,
+    calibrationBlocked: () => calibrationBlockedReason(get(model).calibration.tag),
     read: () => ({ instrument: get(stores.instrument), connection: get(stores.connection) }),
     copyText,
     notify,

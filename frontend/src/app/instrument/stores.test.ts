@@ -12,6 +12,7 @@ import {
   recordingState,
   spectrumState,
   stateSnapshot,
+  zeroCalibrationState,
 } from './test-data';
 
 function setup(snapshot = stateSnapshot()) {
@@ -195,5 +196,37 @@ describe('instrument stores', () => {
     await stores.start();
     client.emit('recording_changed', recordingState({ revision: 2, active: true, fileName: 'a.ssroll' }));
     expect(get(stores.recording)?.fileName).toBe('a.ssroll');
+  });
+});
+
+describe('instrument stores: zero calibration', () => {
+  it('given a snapshot, when started, then the zero calibration slice holds the snapshot member', async () => {
+    const snapshot = stateSnapshot({ zeroCalibration: zeroCalibrationState({ revision: 3 }) });
+    const { stores } = setup(snapshot);
+
+    await stores.start();
+
+    expect(get(stores.zeroCalibration)).toEqual(snapshot.zeroCalibration);
+  });
+
+  it('given an applied revision, when an older zero calibration event arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ zeroCalibration: zeroCalibrationState({ revision: 5 }) }));
+    await stores.start();
+
+    client.emit(
+      'zero_calibration_changed',
+      zeroCalibrationState({ revision: 4, availability: { enabled: false, reason: 'x' } }),
+    );
+
+    expect(get(stores.zeroCalibration)?.availability.enabled).toBe(true);
+  });
+
+  it('given the fake session, when the user opens it, then the store follows the published events', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+
+    await client.send('open_zero_calibration', {});
+
+    expect(get(stores.zeroCalibration)?.session?.step).toBe('intro');
   });
 });

@@ -389,3 +389,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - After `ConnectionChanged` says Ready, acquisition has not necessarily taken the device over: commands fail with "No scope connected". Wait for the first `InstrumentChanged` too. Stored offsets: publish `ZeroOffsetsChanged` yourself (the calibration module is a stub until WP10); acquisition drains offsets before captures.
 - `ReadOnlyStorage` swallows writes (acquisition writes last-setup.json, `OffsetFile::load` may write a .corrupt copy). The config-folder test reads `src-tauri/tauri.conf.json`: it fails until the identifier `io.github.dkrepsky.sweepscope` lands (WP7/WP11).
 - Tool sandbox refuses `cd && python3 - <<EOF` or `cat > file <<EOF` chains in a worktree; use Write/Edit, or a plain `python3 - <<EOF` alone.
+## WP15 lessons (frontend calibration app layer, developer-11)
+- Worktree bash tool refuses compound commands that `cd` plus heredocs; use the Write/Edit tools or python with absolute paths, and run `cd <worktree>/frontend && npx ...` as a separate simple call.
+- `max-lines-per-function` is 40 (blank lines count): extract class-based fakes (`api/fake-zero-calibration.ts`) and `selectX` helpers early.
+- Revision guard has one owner: the generic `createSlice` in `app/instrument/stores.ts`; new backend slices are a ninth slice there, not a second store. `ModelInputs` gains the slice; `MainWindowModel.calibration = { tag, dialog }`.
+- Fake client now emulates the zero calibration session (`client.zeroCalibration.leaveUnshorted/loseDevice/state`); the four commands are pre-registered.
+- Wire new use cases in `live-app.ts` (real composition) and assert the full path in `live-app.test.ts`, not only in unit tests with stubs.

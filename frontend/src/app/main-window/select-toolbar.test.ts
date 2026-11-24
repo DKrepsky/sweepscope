@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acquisitionStatus, instrumentState } from '../instrument/test-data';
+import { acquisitionStatus, instrumentState, zeroCalibrationState } from '../instrument/test-data';
 import { selectToolbar } from './select-toolbar';
 import { modelInputs } from './test-inputs';
 
@@ -129,5 +129,30 @@ describe('run controls', () => {
     const toolbar = selectToolbar(modelInputs({ instrument: undefined, connection: undefined }), extras);
 
     expect(toolbar.single?.availability).toEqual({ enabled: false, reason: 'Connecting' });
+  });
+});
+
+describe('paused for calibration', () => {
+  const paused = zeroCalibrationState({
+    session: {
+      step: 'intro',
+      channel: null,
+      doneChannels: [false, false, false, false],
+      progress: null,
+      notShorted: null,
+      failure: null,
+      table: null,
+    },
+  });
+
+  it('given a running scope and a calibration session, when selected, then the one state chip reads Paused (calibration)', () => {
+    const toolbar = selectToolbar(modelInputs({ zeroCalibration: paused }), extras);
+
+    expect(toolbar.chips).toEqual([{ id: 'state', kind: 'stop', text: 'Paused (calibration)' }]);
+    expect(toolbar.running).toBe(false);
+  });
+
+  it('given a running scope and no session, when selected, then the chip reads Run', () => {
+    expect(selectToolbar(modelInputs(), extras).chips[0]?.text).toBe('Run');
   });
 });

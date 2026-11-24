@@ -125,6 +125,7 @@ const initialModel = (): MainWindowModel => ({
   status: status(),
   graph: mockGraph(),
   banners: [],
+  calibration: { tag: { state: 'none', tooltip: { rows: [], notes: [] } }, dialog: undefined },
   ...mockAnalysis(),
 });
 
@@ -246,6 +247,10 @@ export function createMockMainWindow(): MockMainWindow {
       change((current) => ({ ...current, horizontal: { ...current.horizontal, interpolation } })),
     ...inertCursorAndFileActions,
     ...analysisActions(change),
+    openCalibration: nothing,
+    startCalibration: nothing,
+    calibrateChannel: nothing,
+    closeCalibration: nothing,
     bannerAction: nothing,
     copyText: nothing,
   };

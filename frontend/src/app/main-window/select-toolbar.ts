@@ -1,7 +1,8 @@
 import type { ConnectionSnapshot, InstrumentState } from '../../api';
+import { selectPausedForCalibration } from '../calibration';
 import { isAcquiring, statusChips } from '../instrument';
 import { toAvailability, unavailableReason, type ModelInputs } from './select-common';
-import type { Availability, FilesAvailability, ToolbarModel } from './types';
+import type { Availability, ChipModel, FilesAvailability, ToolbarModel } from './types';
 
 /** MOCK: no backend state for a reference waveform yet (out of scope for M3). */
 const REFERENCE_OFF = false;
@@ -47,12 +48,16 @@ function cursorsAvailability(inputs: ModelInputs, { hasWaveform, cursorsOn }: To
   return hasWaveform ? { enabled: true } : NO_WAVEFORM;
 }
 
+/** A calibration session holds acquisition: the state chip says why nothing runs. */
+const PAUSED_CHIP: ChipModel = { id: 'state', kind: 'stop', text: 'Paused (calibration)' };
+
 export function selectToolbar(inputs: ModelInputs, extras: ToolbarExtras): ToolbarModel {
   const { hasWaveform, cursorsOn } = extras;
+  const pausedForCalibration = selectPausedForCalibration(inputs.zeroCalibration);
   const { connection, instrument, status } = inputs;
   return {
-    running: isAcquiring(connection, instrument),
-    chips: statusChips(connection, instrument, status),
+    running: !pausedForCalibration && isAcquiring(connection, instrument),
+    chips: pausedForCalibration ? [PAUSED_CHIP] : statusChips(connection, instrument, status),
     single: { armed: singleArmed(inputs), availability: controlAvailability(inputs, (c) => c.single) },
     tools: { cursors: cursorsOn, math: instrument?.math.enabled ?? false, reference: REFERENCE_OFF },
     mathAvailability: controlAvailability(inputs, (c) => c.frameViews),
