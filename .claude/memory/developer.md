@@ -383,3 +383,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Crates without a `COMMANDS` const (calibration) get their descriptors in `manifest.rs` (`command_without_arguments`).
 - When a sibling WP's module is not merged, compile locally with an uncommitted stub in its crate and `git checkout` it before committing.
 - Plain `python3 - <<EOF` with many edits can be refused by the sandbox as too complex; write the script to the scratchpad and run it.
+- Shell integration tests: after Ready wait for the calibration slice availability.enabled too (module thread lags the snapshot). Shorted 2 mV/div frame mean wanders ~3 codes (noise 24 codes rms): use a 3-code tolerance.
