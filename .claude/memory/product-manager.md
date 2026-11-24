@@ -44,3 +44,12 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Never let agents delete outside the repo; ask the human first (stray folder at ../frontend was deleted with approval).
 - Accuracy AC changes (#15 AC2: 0.01 % at >=500 us/div, 0.02 % faster) were decided by the human after a staff engineer analysis; run an assessment before asking.
 - Human rule (2026-11-24): security checks in CI are never lowered or split off; the Code Reviewer guarantees all non-test CI checks pass (CI parity gate in its agent file, workflow step 9, review template). When a spawned reviewer reports, check the CI parity table is filled; a missing table means the review is incomplete.
+
+## M3 lessons (2026-11)
+- M3 = #22-#31 as one milestone (PRD section 9). Human accepted all defaults in bulk at G1/G2/G3 and again at G4 ("Confirm and push"); two AC readings (#22 AC1 range table, #26 8-bucket grading) were commented on the issues.
+- Wave plan from the staff engineer works: merge B1 contracts first, then waves in parallel in worktrees. Merge conflicts: `.claude/memory/developer.md` (keep both), Cargo.toml/Cargo.lock (keep both sides), and shared test-support files (take the superset, then run vitest).
+- Sandbox rule: the auto classifier refuses compound `cd` plus heredoc bus calls once; re-issue the exact call.
+- BUG-1 class repeated (BUG-M3-1: main.ts left analysis wiring out); unit tests with stubs cannot see composition gaps. Real-window QA (Xvfb, no hardware) caught it; fix was to remove optional deps and inert fallbacks.
+- Developer commit messages guess issue numbers (#17, #13): fix when preparing the PR. Developers' "tests that sleep" or wall-clock bounds are rejected (no-sleep rule).
+- Visible side effects to surface at G4: dock thresholds rise, brand text hidden below 100 rem toolbar width, trigger phase chip dropped in roll, binary units (KiB).
+- Usage limit can stop a subagent mid-run; resume it with SendMessage after reset instead of respawning.
