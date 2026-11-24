@@ -48,6 +48,8 @@ export interface ToolbarModel {
   chips: ChipModel[];
   persistence: string;
   view: ViewTab;
+  /** Arms one capture; `armed` while waiting, a second press cancels. */
+  single?: { armed: boolean; availability: Availability };
   tools: { cursors: boolean; math: boolean; reference: boolean };
   /** The Cursors tool and the C key: they need a waveform unless cursors are already shown and can be cleared. */
   cursorsAvailability: Availability;
@@ -92,10 +94,24 @@ export interface ChannelModel {
   availability?: Availability;
   /** A sample of the newest record sits on a converter rail. */
   clipped?: boolean;
+  /** Possible aliasing at the current sample rate: badge text and the one shared tooltip. */
+  alias?: { short: string; message: string };
+}
+
+export type PulseCondition = 'equal' | 'notEqual' | 'greater' | 'less';
+
+export interface PulseModel {
+  condition: PulseCondition;
+  width: Quantity;
+  /** False outside the verified region. */
+  verified: boolean;
+  /** Set when the last typed width was rejected; the applied width stays. */
+  error?: string;
 }
 
 export interface TriggerModel {
   type: 'edge' | 'pulse' | 'video';
+  pulse?: PulseModel;
   source: ChannelNumber;
   slope: 'rising' | 'falling';
   level: Quantity;
@@ -175,7 +191,124 @@ export interface GraphModel {
   summary: string;
 }
 
-export type BannerActionId = 'copy-command' | 'retry' | 'use-simulator';
+export type BannerActionId = 'copy-command' | 'retry' | 'use-simulator' | 'choose-new-file' | 'dismiss';
+
+export type PersistenceValue = 'off' | '500ms' | '1s' | '2s' | 'infinite';
+
+export type SpectrumWindowName = 'rectangular' | 'hann' | 'hamming' | 'blackman';
+export type SpectrumScaleName = 'dbv' | 'linear';
+export type PeakMode = 'off' | 'auto' | 'manual';
+export type MathOperationName = 'add' | 'subtract' | 'multiply' | 'invertA';
+
+export interface AxisOption {
+  channel: ChannelNumber;
+  availability: Availability;
+}
+
+/** Why XY cannot draw; the screen shows it as a note, `enable` names the channel its action turns on. */
+export interface ScreenProblem {
+  title: string;
+  text: string;
+  enable?: ChannelNumber;
+}
+
+export interface XyModel {
+  x: ChannelNumber;
+  y: ChannelNumber;
+  xOptions: AxisOption[];
+  yOptions: AxisOption[];
+  problem?: ScreenProblem;
+}
+
+export interface FftModel {
+  window: SpectrumWindowName;
+  scale: SpectrumScaleName;
+  /** Why the spectrum cannot be shown (roll mode, no channel); enabled when it can. */
+  available: Availability;
+  ticksX: { at: number; text: string }[];
+  ticksY: { at: number; text: string }[];
+  /** Backend texts of the Horizontal readout: span, bin spacing, top label. */
+  readout: { span: string; binSpacing: string; topLabel: string };
+  problem?: ScreenProblem;
+}
+
+export interface ViewsModel {
+  tab: ViewTab;
+  /** Whether the tab can be chosen; XY and FFT need a captured record. */
+  tabAvailability: Record<ViewTab, Availability>;
+  xy: XyModel;
+  fft: FftModel;
+}
+
+export interface PersistenceModel {
+  value: PersistenceValue;
+  options: { value: PersistenceValue; label: string }[];
+  tag: string;
+  available: Availability;
+  /** Changes when the user clears; the graph drops its ghosts on a new value. */
+  epoch: number;
+}
+
+export interface PeakModel {
+  mode: PeakMode;
+  channel: ChannelNumber;
+  bin: number;
+  /** Texts for the panel and the marker tag, one source. */
+  frequency: string;
+  level: string;
+  available: Availability;
+}
+
+export interface GapModel {
+  /** Fractions of the visible window, 0 (left) to 1 (right). */
+  from: number;
+  to: number;
+  label: string;
+}
+
+export interface RollModel {
+  active: boolean;
+  /** Readout text such as `WINDOW 10 s`. */
+  window: string;
+  gaps: GapModel[];
+  gapCount: number;
+}
+
+export interface RecordingModel {
+  active: boolean;
+  /** Text of the readout chip, such as `Rec 01:23:45 · 12.4 MB`. */
+  chip?: string;
+  available: Availability;
+  failure?: { text: string; fileName: string };
+}
+
+export interface AutosetModel {
+  busy: boolean;
+  noSignal: boolean;
+  available: Availability;
+}
+
+export interface MathRowModel {
+  enabled: boolean;
+  operation: MathOperationName;
+  sourceA: ChannelNumber;
+  sourceB?: ChannelNumber;
+  scale: Quantity;
+  position: Quantity;
+  /** The backend label, such as `A−B`. */
+  label: string;
+  status: 'ok' | 'mixed' | 'unavailable';
+  /** Tooltip of the status badge. */
+  statusDetail?: string;
+  availability: Availability;
+}
+
+export interface MathModel {
+  row: MathRowModel;
+  /** Scale strip chip text, empty while math is off. */
+  chip: string;
+  unavailableReason?: string;
+}
 
 export interface BannerAction {
   id: BannerActionId;
@@ -199,4 +332,11 @@ export interface MainWindowModel {
   status: StatusModel;
   graph: GraphModel;
   banners: BannerModel[];
+  views: ViewsModel;
+  persistence: PersistenceModel;
+  peak: PeakModel;
+  roll: RollModel;
+  recording: RecordingModel;
+  autoset: AutosetModel;
+  math: MathModel;
 }

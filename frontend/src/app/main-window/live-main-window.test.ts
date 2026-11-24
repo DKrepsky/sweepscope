@@ -17,6 +17,9 @@ import {
   measurementsState,
 } from '../instrument/test-data';
 import type { InstrumentCommands } from '../instrument';
+import type { AnalyseCommands, RollInput, SpectrumFrameInput } from '../views';
+import type { RecordingState } from '../../api/generated/RecordingState';
+import type { SpectrumState } from '../../api/generated/SpectrumState';
 import { decodeFrame, type DecodedFrame } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
 import { createLiveMainWindow } from './live-main-window';
@@ -53,10 +56,25 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     exportRaw: vi.fn(() => Promise.resolve()),
     saveScreenshot: vi.fn(() => Promise.resolve()),
   };
+  const analyseCommands: AnalyseCommands = {
+    armSingle: vi.fn(),
+    startAutoset: vi.fn(),
+    setMath: vi.fn(),
+    setPersistence: vi.fn(),
+    setSpectrum: vi.fn(),
+    startRecording: vi.fn(),
+    stopRecording: vi.fn(),
+  };
+  const spectrum: Writable<SpectrumState | undefined> = writable(undefined);
+  const spectrumFrame: Writable<SpectrumFrameInput | undefined> = writable(undefined);
+  const recording: Writable<RecordingState | undefined> = writable(undefined);
+  const roll: Writable<RollInput | undefined> = writable(undefined);
   const copyText = vi.fn();
   const notify = vi.fn();
   const window = createLiveMainWindow({
     stores: { connection, instrument, status, facts, display, measurements },
+    analysis: { spectrum, spectrumFrame, recording, roll },
+    analyseCommands,
     commands,
     cursors,
     pinned,
@@ -77,6 +95,8 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     cursors,
     frames,
     commands,
+    analyseCommands,
+    spectrumFrame,
     copyText,
     notify,
   };
@@ -255,15 +275,15 @@ describe('live main window model: horizontal and trigger', () => {
   it('given the backend display state, when it changes, then the horizontal model follows it', () => {
     const { window, display } = setup();
     expect(model(window).horizontal.interpolation).toBe('linear');
-    display.set({ revision: 1, interpolation: 'sinc', automatic: true });
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true, persistence: 'off' });
     expect(model(window).horizontal.interpolation).toBe('sinc');
   });
 
   it('given the backend display state, when automatic changes, then the horizontal model reports it', () => {
     const { window, display } = setup();
-    display.set({ revision: 1, interpolation: 'sinc', automatic: true });
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true, persistence: 'off' });
     expect(model(window).horizontal.automaticInterpolation).toBe(true);
-    display.set({ revision: 2, interpolation: 'dots', automatic: false });
+    display.set({ revision: 2, interpolation: 'dots', automatic: false, persistence: 'off' });
     expect(model(window).horizontal.automaticInterpolation).toBe(false);
   });
 
@@ -489,5 +509,178 @@ describe('live main window model: status accuracy note', () => {
     const { window, measurements } = setup();
     measurements.set(measurementsState({ accuracyNote: 'Backend wording.' }));
     expect(model(window).status.accuracy).toBe('Backend wording.');
+  });
+});
+
+describe('live main window model: analysis actions', () => {
+  it('given the Yt view, when FFT is chosen and then Yt again, then the backend is told active true and then false', () => {
+    const { window, analyseCommands } = setup();
+
+    window.setView('fft');
+    window.setView('yt');
+
+    expect(vi.mocked(analyseCommands.setSpectrum).mock.calls).toEqual([[{ active: true }], [{ active: false }]]);
+  });
+
+  it('given the Yt view, when XY and then FFT are chosen, then the model follows and the backend hears only FFT', () => {
+    const { window, analyseCommands } = setup();
+
+    window.setView('xy');
+    expect(model(window).views.tab).toBe('xy');
+    window.setView('fft');
+
+    expect(model(window).views.tab).toBe('fft');
+    expect(analyseCommands.setSpectrum).toHaveBeenCalledExactlyOnceWith({ active: true });
+  });
+
+  it('given channels 3 and 4 enabled, when XY is entered, then the axes are those two channels', () => {
+    const base = instrumentState();
+    const only = (numbers: number[]): InstrumentState => ({
+      ...base,
+      channels: base.channels.map((c) => ({ ...c, enabled: numbers.includes(c.number) })),
+    });
+    const { window } = setup({ instrument: only([3, 4]) });
+
+    window.setView('xy');
+
+    expect(model(window).views.xy).toMatchObject({ x: 3, y: 4 });
+  });
+
+  it('given X is CH1, when Y is set to CH1, then it is refused', () => {
+    const { window } = setup();
+
+    window.setXyAxis('y', 1);
+
+    expect(model(window).views.xy).toMatchObject({ x: 1, y: 2 });
+  });
+
+  it('given the persistence menu, when a value is chosen, then it goes to the backend and the model keeps the backend value', () => {
+    const { window, analyseCommands } = setup();
+
+    window.setPersistence('1s');
+
+    expect(analyseCommands.setPersistence).toHaveBeenCalledExactlyOnceWith('1s');
+    expect(model(window).persistence.value).toBe('off');
+  });
+
+  it('given a backend persistence value, when read, then the model shows it and its tag', () => {
+    const { window, display } = setup();
+
+    display.set({ revision: 1, interpolation: 'sinc', automatic: true, persistence: '500ms' });
+
+    expect(model(window).persistence).toMatchObject({ value: '500ms', tag: 'PERSIST 0.5 s' });
+  });
+
+  it('given persistence, when cleared, then the epoch changes and no command is sent', () => {
+    const { window, analyseCommands } = setup();
+    const before = model(window).persistence.epoch;
+
+    window.clearPersistence();
+
+    expect(model(window).persistence.epoch).toBe(before + 1);
+    expect(analyseCommands.setPersistence).not.toHaveBeenCalled();
+  });
+
+  it('given the XY view, when read, then persistence is unavailable with the Yt-only reason', () => {
+    const { window } = setup();
+
+    window.setView('xy');
+
+    expect(model(window).persistence.available).toEqual({
+      enabled: false,
+      reason: 'Persistence is available in Yt only',
+    });
+  });
+
+  it('given single, autoset and recording requests, when made, then each reaches its command', () => {
+    const { window, analyseCommands } = setup();
+
+    window.armSingle();
+    window.startAutoset();
+    window.startRecording();
+    window.stopRecording();
+
+    expect(analyseCommands.armSingle).toHaveBeenCalledOnce();
+    expect(analyseCommands.startAutoset).toHaveBeenCalledOnce();
+    expect(analyseCommands.startRecording).toHaveBeenCalledOnce();
+    expect(analyseCommands.stopRecording).toHaveBeenCalledOnce();
+  });
+
+  it('given math and spectrum choices, when made, then each is one patch with only that field', () => {
+    const { window, analyseCommands } = setup();
+
+    window.setMathEnabled(true);
+    window.setMathOperation('add');
+    window.setMathSource('a', 3);
+    window.setMathSource('b', 4);
+    window.setMathPosition(1.5);
+    window.setSpectrumWindow('blackman');
+    window.setSpectrumScale('linear');
+
+    expect(vi.mocked(analyseCommands.setMath).mock.calls).toEqual([
+      [{ enabled: true }],
+      [{ operation: 'add' }],
+      [{ sourceA: 3 }],
+      [{ sourceB: 4 }],
+      [{ positionDivs: 1.5 }],
+    ]);
+    expect(vi.mocked(analyseCommands.setSpectrum).mock.calls).toEqual([
+      [{ window: 'blackman' }],
+      [{ scale: 'linear' }],
+    ]);
+  });
+
+  it('given math scale and position, when stepped and reset, then the instrument targets are used', () => {
+    const { window, commands } = setup();
+
+    window.stepMathScale(-1);
+    window.resetMathScale();
+    window.resetMathPosition();
+
+    expect(commands.step).toHaveBeenCalledExactlyOnceWith({ kind: 'mathScale' }, -1);
+    expect(vi.mocked(commands.reset).mock.calls).toEqual([[{ kind: 'mathScale' }], [{ kind: 'mathPosition' }]]);
+  });
+
+  it('given the trigger, when kind, condition and width are chosen, then each is a trigger patch', () => {
+    const { window, commands } = setup();
+
+    window.setTriggerKind('pulse');
+    window.setPulseCondition('greater');
+    window.commitPulseWidth('500 us');
+
+    expect(vi.mocked(commands.setTrigger).mock.calls).toEqual([
+      [{ kind: 'pulse' }],
+      [{ condition: 'greater' }],
+      [{ widthText: '500 us' }],
+    ]);
+  });
+
+  it('given a spectrum with 100 bins, when the peak marker is placed and moved past the end, then it stays on the last bin in manual mode', () => {
+    const { window, spectrumFrame } = setup();
+    spectrumFrame.set({ bins: 100, binHz: 12.21, channels: [] });
+
+    window.placePeakMarker(97);
+    window.movePeakMarker(10);
+
+    expect(model(window).peak).toMatchObject({ mode: 'manual', bin: 99 });
+  });
+
+  it('given a channel is selected, when read, then the peak marker follows it', () => {
+    const { window } = setup();
+
+    window.selectChannel(3);
+
+    expect(model(window).peak.channel).toBe(3);
+  });
+
+  it('given no analysis feeds, when read, then roll, recording, math and peak are disabled or empty', () => {
+    const { window } = setup();
+
+    expect(model(window)).toMatchObject({
+      roll: { active: false, gaps: [], gapCount: 0 },
+      recording: { active: false },
+      math: { row: { enabled: false }, chip: '' },
+      autoset: { busy: false, noSignal: false },
+    });
   });
 });

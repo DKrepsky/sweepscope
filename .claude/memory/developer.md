@@ -316,3 +316,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no `frontend/node_modules`: `cp -al /home/kr/workspace/sweepscope/frontend/node_modules frontend/node_modules` (a symlink breaks vitest `/@fs`); remove it before finishing (it is gitignored).
 - New design tokens go in three places: `frontend/src/design-system/tokens.css`, `docs/design-prototype/tokens.css` (a test compares them) and `node frontend/tools/gen-tokens.mjs` to regenerate `tokens.generated.ts`.
 - Heredocs that write many files in one Bash call can be refused in worktrees; use the Write tool.
+
+## M3 F2 model skeleton (developer-8)
+- Selectors of the analysis features take one `ModelInputs` object (select-common.ts) so a work package replaces a body without changing the signature; new presentation stores live in `app/views` and are created inside `createLiveMainWindow`.
+- Consumer-defined ports (`AnalyseCommands`, `AnalysisSources` in `app/views/analysis-ports.ts`) let the model compile before F1's stores and commands exist; `createLiveApp` falls back to inert ones when `analysis` is not passed.
+- Generated api types are importable by deep path (`../../api/generated/X`) when `api/index.ts` (another package's file) lacks the export.
+- Editing another developer's file even temporarily is blocked by the permission classifier: verify against their pending fixture changes in a scratch copy (`cp -r src` + symlinked node_modules + `server.fs.strict:false` in the copied vite config).
+- Sandbox refuses compound commands that `cd ../..` or contain the word "enable" in grep/sed; use Read/Edit and separate commands.

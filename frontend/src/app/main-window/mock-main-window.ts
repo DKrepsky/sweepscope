@@ -1,7 +1,15 @@
 import { writable, type Readable } from 'svelte/store';
 import type { MainWindowActions } from './actions';
-import { mockChannels, mockGraph, mockMeasurements, scale } from './mock-model';
-import type { ChannelModel, ChannelNumber, ChipModel, MainWindowModel } from './types';
+import { mockAnalysis, mockChannels, mockGraph, mockMeasurements, scale } from './mock-model';
+import type {
+  ChannelModel,
+  ChannelNumber,
+  ChipModel,
+  MainWindowModel,
+  PeakMode,
+  PersistenceValue,
+  ViewTab,
+} from './types';
 
 /**
  * MOCK ONLY: stands in for the backend-fed view model in the gallery and tests. Toggles and choices change local state so the
@@ -118,6 +126,7 @@ const initialModel = (): MainWindowModel => ({
   status: status(),
   graph: mockGraph(),
   banners: [],
+  ...mockAnalysis(),
 });
 
 function withRunning(model: MainWindowModel, running: boolean): MainWindowModel {
@@ -162,6 +171,50 @@ const inertCursorAndFileActions = {
   saveScreenshot: nothing,
 };
 
+const inertAnalysisActions = {
+  setTriggerKind: nothing,
+  setPulseCondition: nothing,
+  commitPulseWidth: nothing,
+  setSpectrumWindow: nothing,
+  setSpectrumScale: nothing,
+  movePeakMarker: nothing,
+  placePeakMarker: nothing,
+  armSingle: nothing,
+  startAutoset: nothing,
+  setMathOperation: nothing,
+  setMathSource: nothing,
+  setMathPosition: nothing,
+  stepMathScale: nothing,
+  resetMathScale: nothing,
+  resetMathPosition: nothing,
+  startRecording: nothing,
+  stopRecording: nothing,
+};
+
+function analysisActions(change: (update: (current: MainWindowModel) => MainWindowModel) => void) {
+  return {
+    ...inertAnalysisActions,
+    setView: (tab: ViewTab) =>
+      change((current) => ({
+        ...current,
+        views: { ...current.views, tab },
+        toolbar: { ...current.toolbar, view: tab },
+      })),
+    setXyAxis: (axis: 'x' | 'y', channel: ChannelNumber) =>
+      change((current) => ({ ...current, views: { ...current.views, xy: { ...current.views.xy, [axis]: channel } } })),
+    setPeakMode: (mode: PeakMode) => change((current) => ({ ...current, peak: { ...current.peak, mode } })),
+    setPersistence: (value: PersistenceValue) =>
+      change((current) => ({ ...current, persistence: { ...current.persistence, value } })),
+    clearPersistence: () =>
+      change((current) => ({
+        ...current,
+        persistence: { ...current.persistence, epoch: current.persistence.epoch + 1 },
+      })),
+    setMathEnabled: (enabled: boolean) =>
+      change((current) => ({ ...current, math: { ...current.math, row: { ...current.math.row, enabled } } })),
+  };
+}
+
 export function createMockMainWindow(): MockMainWindow {
   const model = writable<MainWindowModel>(initialModel());
   const change = (update: (current: MainWindowModel) => MainWindowModel) => model.update(update);
@@ -193,6 +246,7 @@ export function createMockMainWindow(): MockMainWindow {
     setInterpolation: (interpolation) =>
       change((current) => ({ ...current, horizontal: { ...current.horizontal, interpolation } })),
     ...inertCursorAndFileActions,
+    ...analysisActions(change),
     bannerAction: nothing,
     copyText: nothing,
   };

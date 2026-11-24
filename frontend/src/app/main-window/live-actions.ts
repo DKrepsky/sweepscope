@@ -3,6 +3,7 @@ import type { CursorsStore } from '../cursors';
 import type { FileActions } from '../files';
 import type { InstrumentCommands } from '../instrument';
 import type { MainWindowActions } from './actions';
+import type { AnalyseActions } from './analyse-actions';
 import type { BannerActionId, ChannelNumber } from './types';
 
 type ChannelState = InstrumentState['channels'][number];
@@ -111,7 +112,8 @@ function fileActions({ files, notify }: Deps) {
   };
 }
 
-export function createLiveActions(deps: Deps): MainWindowActions {
+/** The analysis actions need the presentation stores; the window composes them in. */
+export function createLiveActions(deps: Deps): Omit<MainWindowActions, keyof AnalyseActions> {
   const { commands, read, copyText } = deps;
   return {
     toggleRun: () => {

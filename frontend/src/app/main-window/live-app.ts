@@ -2,6 +2,7 @@ import type { BackendClient } from '../../api';
 import { createCursorsStore } from '../cursors';
 import { createFileActions } from '../files';
 import { createInstrumentCommands, createInstrumentStores, type InstrumentStores } from '../instrument';
+import { inertAnalysisSources, type AnalyseCommands, type AnalysisSources } from '../views';
 import { createFrameFeed, type FrameBudgetProbe } from '../waveform';
 import { createLiveMainWindow, type LiveMainWindow } from './live-main-window';
 import { createPinnedMeasurements } from './pinned-measurements';
@@ -18,7 +19,19 @@ interface Deps {
   /** Resolves once the UI has applied what the last store change caused (Svelte's `tick`). */
   afterRender: () => Promise<void>;
   probe: FrameBudgetProbe;
+  /** Feeds and commands of the analysis features; without them every analysis control stays unavailable. */
+  analysis?: { sources: AnalysisSources; commands: AnalyseCommands };
 }
+
+const inertAnalyseCommands: AnalyseCommands = {
+  armSingle: () => {},
+  startAutoset: () => {},
+  setMath: () => {},
+  setPersistence: () => {},
+  setSpectrum: () => {},
+  startRecording: () => {},
+  stopRecording: () => {},
+};
 
 export interface LiveApp {
   model: LiveMainWindow;
@@ -60,7 +73,9 @@ export function createLiveApp(deps: Deps): LiveApp {
   let stopNotices = () => {};
   const model = createLiveMainWindow({
     stores,
+    analysis: deps.analysis?.sources ?? inertAnalysisSources(),
     commands,
+    analyseCommands: deps.analysis?.commands ?? inertAnalyseCommands,
     cursors,
     pinned,
     files,
