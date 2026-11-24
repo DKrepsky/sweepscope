@@ -9,6 +9,8 @@ import {
   instrumentFacts,
   instrumentState,
   measurementsState,
+  recordingState,
+  spectrumState,
   stateSnapshot,
 } from './test-data';
 
@@ -28,6 +30,8 @@ describe('instrument stores', () => {
       get(stores.facts),
       get(stores.display),
       get(stores.measurements),
+      get(stores.spectrum),
+      get(stores.recording),
     ];
     expect(slices.every((slice) => slice === undefined)).toBe(true);
   });
@@ -42,6 +46,8 @@ describe('instrument stores', () => {
     expect(get(stores.facts)).toEqual(snapshot.facts);
     expect(get(stores.display)).toEqual(snapshot.display);
     expect(get(stores.measurements)).toEqual(snapshot.measurements);
+    expect(get(stores.spectrum)).toEqual(snapshot.spectrum);
+    expect(get(stores.recording)).toEqual(snapshot.recording);
   });
 
   it('given a snapshot without an instrument, when started, then the instrument store stays undefined', async () => {
@@ -161,5 +167,33 @@ describe('instrument stores', () => {
     });
     await stores.start();
     expect(early).toBe(9);
+  });
+
+  it('given an applied spectrum revision, when an event with a lower revision arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ spectrum: spectrumState({ revision: 4, active: true }) }));
+    await stores.start();
+    client.emit('spectrum_changed', spectrumState({ revision: 3, active: false }));
+    expect(get(stores.spectrum)?.active).toBe(true);
+  });
+
+  it('given an applied spectrum revision, when a newer event arrives, then the store follows it', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+    client.emit('spectrum_changed', spectrumState({ revision: 2, scale: 'linear' }));
+    expect(get(stores.spectrum)?.scale).toBe('linear');
+  });
+
+  it('given an applied recording revision, when an event with a lower revision arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ recording: recordingState({ revision: 4, active: true }) }));
+    await stores.start();
+    client.emit('recording_changed', recordingState({ revision: 3, active: false }));
+    expect(get(stores.recording)?.active).toBe(true);
+  });
+
+  it('given an applied recording revision, when a newer event arrives, then the store follows it', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+    client.emit('recording_changed', recordingState({ revision: 2, active: true, fileName: 'a.ssroll' }));
+    expect(get(stores.recording)?.fileName).toBe('a.ssroll');
   });
 });

@@ -1,3 +1,12 @@
+export type { TraceChannel } from './trace-channel';
+export { decodeRollItem } from './decode-roll';
+export type { RollItem, RollCloseReason } from './decode-roll';
+export { decodeSpectrum } from './decode-spectrum';
+export type { DecodedSpectrum } from './decode-spectrum';
+export { createRollWindow, ROLL_WINDOW_SAMPLES } from './roll-window';
+export type { RollGap, RollView, RollWindow } from './roll-window';
+export { createRollFeed, createSpectrumFeed } from './stream-feeds';
+export type { Feed, FeedStats } from './stream-feeds';
 export { decodeFrame } from './decode-frame';
 export type { DecodedFrame } from './decode-frame';
 export { createFrameFeed } from './frame-feed';

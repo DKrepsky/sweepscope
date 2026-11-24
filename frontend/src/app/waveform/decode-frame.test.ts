@@ -17,6 +17,14 @@ describe('decodeFrame', () => {
     ]);
   });
 
+  it('given CH1 and the math trace, when decoded, then the math trace is channel 5 after CH1', () => {
+    const { channels } = decodeFrame(buildFrame({ channels: [1, 5], samplesPerChannel: 2 }));
+    expect(channels.map(({ channel, samples }) => [channel, Array.from(samples)])).toEqual([
+      [1, [1, 1]],
+      [5, [5, 5]],
+    ]);
+  });
+
   it('given a trigger index of minus one, when decoded, then the trigger index is undefined', () => {
     expect(decodeFrame(buildFrame({ triggerIndex: -1 })).triggerIndex).toBeUndefined();
   });
