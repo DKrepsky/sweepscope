@@ -9,7 +9,13 @@ import type {
   MeasurementsState,
 } from '../../api';
 import { createCursorsStore } from '../cursors';
-import { acquisitionStatus, connectionSnapshot, instrumentFacts, instrumentState } from '../instrument/test-data';
+import {
+  acquisitionStatus,
+  connectionSnapshot,
+  instrumentFacts,
+  instrumentState,
+  measurementsState,
+} from '../instrument/test-data';
 import type { InstrumentCommands } from '../instrument';
 import { decodeFrame, type DecodedFrame } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
@@ -60,7 +66,20 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     notify,
     renderer: 'WebGL2',
   });
-  return { window, connection, instrument, status, facts, display, cursors, frames, commands, copyText, notify };
+  return {
+    window,
+    connection,
+    instrument,
+    status,
+    facts,
+    display,
+    measurements,
+    cursors,
+    frames,
+    commands,
+    copyText,
+    notify,
+  };
 }
 
 const model = (window: ReturnType<typeof setup>['window']) => get(window);
@@ -457,5 +476,18 @@ describe('live main window model: banners', () => {
       }),
     );
     expect(model(window).banners[0]?.actions.map((a) => a.id)).toEqual(['retry', 'use-simulator']);
+  });
+});
+
+describe('live main window model: status accuracy note', () => {
+  it('given no measurements slice yet, when read, then the status accuracy says there is no measurement yet', () => {
+    const { window } = setup();
+    expect(model(window).status.accuracy).toBe('No measurement yet');
+  });
+
+  it('given a measurements slice, when read, then the status accuracy is the slice note', () => {
+    const { window, measurements } = setup();
+    measurements.set(measurementsState({ accuracyNote: 'Backend wording.' }));
+    expect(model(window).status.accuracy).toBe('Backend wording.');
   });
 });

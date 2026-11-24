@@ -104,7 +104,8 @@ const status = (): MainWindowModel['status'] => ({
     tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
   },
   renderer: 'WebGL2',
-  accuracy: 'note slot',
+  accuracy:
+    'Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit.',
 });
 
 const initialModel = (): MainWindowModel => ({

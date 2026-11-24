@@ -151,10 +151,10 @@ test.describe('main window shell', () => {
   }) => {
     await openMain(page);
     await page.getByRole('button', { name: /^Accuracy/ }).click();
-    await expect(page.getByText('Accuracy note slot.')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Accuracy note' }).getByText('Approximate')).toBeVisible();
     await page.getByRole('dialog', { name: 'Accuracy note' }).focus();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('Accuracy note slot.')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Accuracy note' })).toHaveCount(0);
   });
 
   test('given the shell, when loaded and exercised, then no console or page errors occur', async ({ page }) => {

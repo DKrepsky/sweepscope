@@ -1,4 +1,4 @@
-import type { ConnectionSnapshot, InstrumentFacts, InstrumentState } from '../../api';
+import type { ConnectionSnapshot, InstrumentFacts, InstrumentState, MeasurementsState } from '../../api';
 import { connectionChip } from '../instrument';
 import { NOT_MEASURED } from './select-common';
 import type { StatusModel } from './types';
@@ -11,14 +11,15 @@ const factText = (fact: Fact | undefined): string => (fact ? `${fact.text} ${fac
 const recordSpan = (instrument: InstrumentState | undefined): string =>
   /\bof (.+)$/.exec(instrument?.horizontal.windowText ?? '')?.[1] ?? NOT_MEASURED;
 
-/** MOCK: no backend statement yet (question Q-E4). */
-const ACCURACY_SLOT = 'note slot';
+/** Shown when no measurements slice exists yet; the wording itself is backend-owned. */
+const NO_ACCURACY_NOTE = 'No measurement yet';
 
 export function selectStatus(
   connection: ConnectionSnapshot | undefined,
   instrument: InstrumentState | undefined,
   facts: InstrumentFacts | undefined,
   renderer: string,
+  measurements: MeasurementsState | undefined,
 ): StatusModel {
   const dead = facts?.deadTime;
   return {
@@ -34,6 +35,6 @@ export function selectStatus(
       tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
     },
     renderer,
-    accuracy: ACCURACY_SLOT,
+    accuracy: measurements?.accuracyNote || NO_ACCURACY_NOTE,
   };
 }
