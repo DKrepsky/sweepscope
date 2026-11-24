@@ -2,15 +2,18 @@
   import type { MeasurementsModel } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
+  import Menu from '../../ui/menu/Menu.svelte';
+  import { menuTriggerAttributes } from '../../ui/menu';
   import MeasurementMatrix from '../../ui/measurement-matrix/MeasurementMatrix.svelte';
   import Panel from '../../ui/panel/Panel.svelte';
   import Segmented from '../../ui/segmented/Segmented.svelte';
 
   interface Props {
     measurements: MeasurementsModel;
+    onpin: (id: string, pinned: boolean) => void;
   }
 
-  const { measurements }: Props = $props();
+  const { measurements, onpin }: Props = $props();
 
   const noop = () => {};
   const modes = [
@@ -18,6 +21,21 @@
     { id: 'stats', label: 'Stats' },
   ];
   let collapsed = $state(false);
+  let pinAnchor = $state<{ x: number; y: number } | null>(null);
+  let pinHost: HTMLElement;
+
+  const pinItems = $derived(measurements.pinnable.map(({ id, label, pinned }) => ({ id, label, checked: pinned })));
+  const noData = 'Appears when a channel is on and a waveform is shown';
+
+  function openPinMenu() {
+    const box = pinHost.getBoundingClientRect();
+    pinAnchor = { x: box.left, y: box.bottom };
+  }
+
+  function togglePin(id: string) {
+    const entry = measurements.pinnable.find((other) => other.id === id);
+    if (entry) onpin(id, !entry.pinned);
+  }
 </script>
 
 <Panel {collapsed} ontoggle={() => (collapsed = !collapsed)}>
@@ -26,9 +44,19 @@
     {#if measurements.statistics}
       <Segmented value="now" options={modes} onchange={noop} ariaLabel="Measurement mode" />
     {/if}
-    <Button size="sm" title="Pin or unpin measurements" ariaLabel="Edit measurements">
-      {#snippet left()}<Icon name="plus" />{/snippet}
-    </Button>
+    <span bind:this={pinHost}>
+      <Button
+        size="sm"
+        title="Pin or unpin measurements"
+        ariaLabel="Edit measurements"
+        disabled={measurements.pinnable.length === 0}
+        disabledReason={noData}
+        onclick={openPinMenu}
+        {...menuTriggerAttributes(pinAnchor !== null)}
+      >
+        {#snippet left()}<Icon name="plus" />{/snippet}
+      </Button>
+    </span>
   {/snippet}
   {#snippet body()}
     <MeasurementMatrix
@@ -49,6 +77,10 @@
     {/if}
   {/snippet}
 </Panel>
+
+{#if pinAnchor}
+  <Menu items={pinItems} open={true} anchor={pinAnchor} onselect={togglePin} onclose={() => (pinAnchor = null)} />
+{/if}
 
 <style>
   .footnote {

@@ -68,7 +68,7 @@ function selectModel(i: Inputs): MainWindowModel {
       i.display?.interpolation ?? 'linear',
       i.display?.automatic ?? false,
     ),
-    channels: selectChannels(connection, instrument, selected),
+    channels: selectChannels(connection, instrument, selected, i.measurements),
     trigger: selectTrigger(connection, instrument),
     cursors: selectCursors(i.cursors, instrument, graph.state, selected),
     measurements: selectMeasurements(i.measurements, i.pinned, graph.state),

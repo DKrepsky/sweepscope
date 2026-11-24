@@ -1,4 +1,4 @@
-import type { ConnectionSnapshot, InstrumentState } from '../../api';
+import type { ConnectionSnapshot, InstrumentState, MeasurementsState } from '../../api';
 import {
   channelNumber,
   fractionFromCentre,
@@ -16,7 +16,12 @@ const toScale = (range: ChannelState['range']): ScaleQuantity => ({
   step: { faster: toAvailability(range.faster), slower: toAvailability(range.slower) },
 });
 
-function toChannel(state: ChannelState, vertical: ChannelModel['availability'], selected: ChannelNumber): ChannelModel {
+function toChannel(
+  state: ChannelState,
+  vertical: ChannelModel['availability'],
+  selected: ChannelNumber,
+  clipped: boolean,
+): ChannelModel {
   const number = channelNumber(state.number);
   return {
     number,
@@ -29,6 +34,7 @@ function toChannel(state: ChannelState, vertical: ChannelModel['availability'], 
     probe: state.probeText.replace('x', '×'),
     inverted: state.invert,
     ...(state.unverified && { unverified: state.unverified }),
+    ...(clipped && { clipped }),
     groundPosition: fractionFromCentre(state.positionDivs),
     ...(!state.enable.enabled && state.enable.reason && { enableReason: state.enable.reason }),
     availability: vertical,
@@ -58,10 +64,13 @@ export function selectChannels(
   connection: ConnectionSnapshot | undefined,
   instrument: InstrumentState | undefined,
   selected: ChannelNumber,
+  measurements?: MeasurementsState,
 ): ChannelModel[] {
   if (instrument) {
     const vertical = toAvailability(instrument.controls.vertical);
-    return instrument.channels.map((state) => toChannel(state, vertical, selected));
+    const isClipped = (number: number) =>
+      measurements?.channels.some((m) => m.channel === number && m.clipped) ?? false;
+    return instrument.channels.map((state) => toChannel(state, vertical, selected, isClipped(state.number)));
   }
   const reason = unavailableReason(connection);
   return ([1, 2, 3, 4] as const).map((number) => placeholderChannel(number, selected, reason));

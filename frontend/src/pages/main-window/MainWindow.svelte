@@ -135,6 +135,7 @@
                 cursors={model.cursors}
                 measurements={model.measurements}
                 onclearcursors={windowActions.clearCursors}
+                onpin={windowActions.setMeasurementPinned}
               />
             </div>
           {:else if drawerOpen}
@@ -149,6 +150,7 @@
                 cursors={model.cursors}
                 measurements={model.measurements}
                 onclearcursors={windowActions.clearCursors}
+                onpin={windowActions.setMeasurementPinned}
               />
             </div>
           {/if}
