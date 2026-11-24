@@ -21,6 +21,7 @@ const designSet = [
   'warning',
   'info',
   'close',
+  'ok',
   'disconnected',
   'record',
   'pulse-positive',

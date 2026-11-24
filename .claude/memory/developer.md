@@ -402,3 +402,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Playwright ports are fixed (vite `strictPort` 5173); for a spare port use an untracked temp config running `npx vite --port N --strictPort` (delete it afterwards).
 - `StatusBarItem.end` puts an item last in the first row without divider; priority <= 1 never wraps and survives `essentialOnly`.
 - No check icon in the icon set (test-locked list); the calibrated tag inlines the prototype check path.
+
+## Calibration dialog (WP17, developer-12)
+- Dialog (`ui/dialog`) gained `meta`, `strip`, `describedby`, `wide`, backdrop token `color-scrim`, and `margin: auto` (base.css resets dialog margins, so it sat top-left). Focus to the step heading is done by the caller: a parent `$effect` runs after Dialog's showModal effect and focuses `[data-step-focus]` (re-run per step key). Opener focus is restored in a cleanup via `queueMicrotask` (after the DOM is removed, else the inert dialog refuses focus).
+- Window-level shortcuts (`a`, `c`) bubble from a native modal: MainWindow ignores keys while `model.calibration.dialog` exists (composition test mutation-checked).
+- Real-stack vitest: `src/calibration-dialog.composition.test.ts` composes `createLiveApp` + fake client (`client.zeroCalibration`) + `MainWindow`; other tables on the page make `findByRole('table')` ambiguous (scope by region name).
+- Shell tooling in this sandbox refuses compound commands that mix `cd`, heredocs and git; use Write for files and separate Bash calls. Svelte: `a11y_no_noninteractive_tabindex` needs a svelte-ignore (reason in a separate comment); every `.svelte` without script needs a `<script lang="ts">` block for svelte-check.
+- Icon count test in `ui/icon/Icon.test.ts` and the design set in `design-system/icons/icons.test.ts` both change when an icon is added (`ok` added here).
