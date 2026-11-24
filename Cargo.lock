@@ -3354,6 +3354,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sweepscope-calibration"
+version = "0.1.0"
+dependencies = [
+ "engineering-format",
+ "serde",
+ "serde_json",
+ "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
 name = "sweepscope-device"
 version = "0.1.0"
 dependencies = [
