@@ -1,7 +1,7 @@
 //! The published slice: revisioned, changes only with shown text, announced at most four times a second.
 use std::time::{Duration, Instant};
 
-use crate::messages::{ChannelMeasurements, MeasurementsState};
+use crate::messages::{ChannelMeasurements, MeasurementsState, Warning};
 use crate::texts;
 
 const MIN_PUBLISH_INTERVAL: Duration = Duration::from_millis(250);
@@ -31,10 +31,17 @@ impl Slice {
     }
 
     /// Returns the state to announce now, if the text changed and the rate limit allows it.
-    pub fn update(&mut self, channels: Vec<ChannelMeasurements>, now: Instant) -> Option<MeasurementsState> {
-        if shown_text(&channels) != shown_text(&self.state.channels) {
+    pub fn update(
+        &mut self,
+        channels: Vec<ChannelMeasurements>,
+        warnings: Vec<Warning>,
+        now: Instant,
+    ) -> Option<MeasurementsState> {
+        let changed = shown_text(&channels) != shown_text(&self.state.channels) || warnings != self.state.warnings;
+        if changed {
             self.state.revision += 1;
             self.state.channels = channels;
+            self.state.warnings = warnings;
             self.unannounced = true;
         }
         self.announce_if_due(now)
@@ -104,7 +111,7 @@ mod tests {
     fn given_a_first_change_when_updated_then_it_is_announced_at_once_with_revision_one() {
         let mut slice = Slice::new();
 
-        let announced = slice.update(channel("1.91", 1.91), Instant::now()).unwrap();
+        let announced = slice.update(channel("1.91", 1.91), Vec::new(), Instant::now()).unwrap();
 
         assert_eq!(announced.revision, 1);
     }
@@ -113,9 +120,9 @@ mod tests {
     fn given_the_same_text_with_a_different_number_when_updated_then_nothing_is_announced() {
         let mut slice = Slice::new();
         let start = Instant::now();
-        slice.update(channel("1.91", 1.911), start);
+        slice.update(channel("1.91", 1.911), Vec::new(), start);
 
-        let announced = slice.update(channel("1.91", 1.912), start + Duration::from_secs(1));
+        let announced = slice.update(channel("1.91", 1.912), Vec::new(), start + Duration::from_secs(1));
 
         assert_eq!(announced, None);
         assert_eq!(slice.state().revision, 1);
@@ -125,9 +132,9 @@ mod tests {
     fn given_a_change_inside_the_interval_when_it_elapses_then_the_change_is_announced_once() {
         let mut slice = Slice::new();
         let start = Instant::now();
-        slice.update(channel("1.91", 1.91), start);
+        slice.update(channel("1.91", 1.91), Vec::new(), start);
 
-        let early = slice.update(channel("1.92", 1.92), start + Duration::from_millis(100));
+        let early = slice.update(channel("1.92", 1.92), Vec::new(), start + Duration::from_millis(100));
         let late = slice.announce_if_due(start + Duration::from_millis(250));
         let again = slice.announce_if_due(start + Duration::from_millis(600));
 
@@ -144,7 +151,7 @@ mod tests {
         let announced = (0..60)
             .filter_map(|i| {
                 let now = start + Duration::from_millis(i * 1000 / 60);
-                slice.update(channel(&format!("{i}"), i as f64), now)
+                slice.update(channel(&format!("{i}"), i as f64), Vec::new(), now)
             })
             .count();
 
