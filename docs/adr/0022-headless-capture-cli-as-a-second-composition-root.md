@@ -9,7 +9,7 @@ Issue: #38
 
 ## Decision
 1. New crate `cli` (binary `sweepscope-cli`), classed as a shell crate by the architecture check, with one new rule: it never depends on `tauri*`.
-2. Its own small composition: bus, `acquisition`, `device` (hardware, or simulator with a flag), `calibration` (to apply stored offsets). No display, measurement, spectrum or recording.
+2. Its own small composition: bus, `acquisition`, `device` (hardware, or simulator with a flag), no `calibration` module (no session is needed): it reads the offsets file through calibration's `OffsetFile` and publishes `ZeroOffsetsChanged` itself before running, so stored offsets apply without a thread. No display, measurement, spectrum or recording.
 3. Reuse through existing ports: a `FilePicker` returning the path given on the command line for `LoadSetup`; frames from an ordered `FrameCaptured` subscription encoded by a new pure `export` function (so every frame is written).
 4. Storage is a read-only view of the app config folder: stored offsets apply, `last-setup` and settings are never overwritten.
 5. One subcommand `capture` with `--setup`, `--count`, `--out`, `--format`, `--timeout`, `--device-wait`, `--simulator`; no overwrite of existing files; arguments parsed by hand (no `clap`).

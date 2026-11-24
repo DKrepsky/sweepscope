@@ -150,3 +150,10 @@ test('given code after a line comment on the same line, when the shell sources a
 
   assert.equal(checkShellSources(files).length, 1);
 });
+
+test('given the shell depends on the cli, when check-architecture runs, then it fails with rule depends-on-cli', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel']);
+  const app = crate('sweepscope-app', 'src-tauri', ['sweepscope-cli']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(kernel, cli, app))), ['depends-on-cli']);
+});

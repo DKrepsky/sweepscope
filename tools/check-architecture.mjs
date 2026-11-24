@@ -48,6 +48,10 @@ export const DEPENDENCY_RULES = [
     id: 'cli-without-tauri',
     broken: (from, to) => from.location.startsWith(CLI_LOCATION) && /^tauri(-|$)/.test(to.name),
   },
+  {
+    id: 'depends-on-cli',
+    broken: (from, to) => to.workspace && to.location.startsWith(CLI_LOCATION) && !from.location.startsWith(CLI_LOCATION),
+  },
 ];
 
 export const TAURI_ALLOWED_SOURCES = [/^main\.rs$/, /^ipc\//];
@@ -78,7 +82,7 @@ export function checkMetadata(metadata) {
     }
     for (const dependency of new Set(crate.dependencies)) {
       const target = ours.get(dependency);
-      const to = { name: dependency, kind: target?.kind, workspace: Boolean(target) };
+      const to = { name: dependency, kind: target?.kind, location: target?.location, workspace: Boolean(target) };
       for (const rule of DEPENDENCY_RULES.filter((r) => r.broken(crate, to))) {
         violations.push({ rule: rule.id, message: `crate ${crate.name} depends on ${dependency}` });
       }

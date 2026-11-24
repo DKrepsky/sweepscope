@@ -70,6 +70,7 @@ sweepscope/
 ├── tools/                        # repository checks, no dependencies
 │   ├── check-architecture.mjs    # crate rules from `cargo metadata` (+ tests, node --test)
 │   └── check-test-names.mjs      # given_when_then naming
+├── cli/                          # headless capture CLI, second composition root, no Tauri (ADR 0022)
 ├── src-tauri/                    # Tauri shell: composition root, window and IPC wiring only
 │   ├── tauri.conf.json  build.rs  capabilities/
 │   └── src/
@@ -77,8 +78,6 @@ sweepscope/
 │       ├── composition.rs        # builds modules, injects dependencies
 │       └── ipc/                  # commands and channels, thin adapters onto the bus
 ├── backend/
-│   ├── cli/                      # headless capture CLI, second composition root, no Tauri (ADR 0022)
-│   ├── cli/                      # headless capture CLI, second composition root, no Tauri (ADR 0022)
 │   ├── kernel/                   # shared kernel (crate `sweepscope-kernel`): bus, Clock, Storage, errors
 │   ├── libs/                     # feature-free crates, created by the first story that needs one
 │   │   ├── engineering-format/ measurements/ interpolation/   # created by M1 and M2
@@ -566,7 +565,7 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | Math as derived trace in `acquisition`, XY in the frontend | Decided (ADR 0019) |
 | Auto-setup as `libs/autoset` driven by `acquisition` | Decided (ADR 0020) |
 | Zero calibration as its own feature `calibration`; four new kernel messages (thirteen in total, ADR 0010 list) | Decided (ADR 0021) |
-| Headless capture CLI as a second composition root in `backend/cli` | Decided (ADR 0022) |
+| Headless capture CLI as a second composition root in the top-level `cli/` crate | Decided (ADR 0022) |
 | Verification markers removed from the product; facts stay in documentation and an internal hint | Decided (ADR 0023) |
 | Linux packaging with the Tauri bundler, udev rule in the .deb, identifier `io.github.dkrepsky.sweepscope` | Decided (ADR 0024) |
 | Items not yet defined | See section 10 |
