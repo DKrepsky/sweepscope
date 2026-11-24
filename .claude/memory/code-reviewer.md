@@ -43,3 +43,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Check `git status` for untracked QA scratch files (playwright.qa.config.ts) at the end of every review.
 - Hand-maintained e2e stub command lists: check a test compares them with src-tauri/capabilities/main.json.
 - Worker session counters (bumped on state change) are the accepted fix for Stop-then-Run races; check a test restarts inside one poll.
+- Held-state republish patterns (rederive on edit while stopped): check a revision guard that bumps synchronously, equality guard for idempotence, and that no consumer feeds back; downstream consumers are latest-wins and idempotent.

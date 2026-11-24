@@ -138,3 +138,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Markers: measure `getBoundingClientRect` centres of `Channel n ground`, `Trigger level`, `Trigger position` against the canvas centre; found 8 px offset (BUG-M3-9). M row badge overlap and math-while-stopped stale data are easy to miss without zoomed crops.
 - Settings popover text scale (100/125/150/200 %) is clickable in the real window; at 150 % the dock becomes tabs and the content scrolls.
 - Full Playwright run 4.2 min on default ports; the 33 ms frame budget probe can fail under load in chromium, passes alone.
+
+## M3 round 3 notes
+- Real-window recipe in the scratchpad `qa/` worked unchanged (Xvfb :77 1440x900, vite 5373, `unshare -rm run-app.sh`); `source env.sh` before `xdotool`/`import`. Never click by a prefix like "A" in a loop (it hit Autoset and re-acquired, leaving a stale error Toast); click by exact label and use aria-label for the math operation menu (`includes("math operation")`).
+- Roll quickly: Run, then 12x `step_setting timeBase +1` gives 5 s/div roll; Record button is icon-only at 1024 (aria-label "Record", stop by clicking it again).
+- Final full run: cargo 1000, vitest 1263, Playwright 598 pass; the webkit Toast timing test is the usual flake (passes alone).

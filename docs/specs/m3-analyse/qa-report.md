@@ -208,3 +208,37 @@ BUG-M3-1 (blocker) and BUG-M3-2, 3 (except one residual), 4, 5, 6, 7 are fixed o
 
 ## Still not tested
 Hardware items H-01 to H-10 (human); the 1 h soaks; disk-full; `No signal` tag live; autoset on other frequencies (lib tests only); M while in FFT; real pointer hover on tooltips; Home/End on the peak marker (unspecified). The earlier SHIM results are now all repeated on the real wiring.
+
+---
+
+# Final retest (round 3): commit 2f7c931
+
+Date: 2026-11-24. Real window under Xvfb + Mesa, `SWEEPSCOPE_NO_HARDWARE=1`, USB masked (`unshare -rm`), isolated HOME, no shim. The 6254BC was never opened. Evidence in `.claude/tmp/m3-final2/` (not committed).
+
+## Final verdict: PASS
+
+No open bug. BUG-M3-8, 9 and 10 are fixed on the real wiring. Hardware items H-01 to H-10 remain with the human.
+
+## Results
+| Item | Result |
+|---|---|
+| BUG-M3-8 M row badge (CH2 off, M on, Yt, 1440) | Pass: `UNAVAILABLE` badge sits on its own line below the controls; no overlap with the A/B selectors or the SW badge (bounding-box scan: 0 overlaps). |
+| BUG-M3-8 roll chip at 1024x720 | Pass: the `M A×B unavailable: XY, FFT, persistence, ...` chip is truncated with an ellipsis inside the window. |
+| BUG-M3-9 markers (Yt) | Pass: Channel ground, Trigger level and Trigger position hit boxes centre on the line (cy 370 vs canvas 370, cx 548 vs 548); zoomed crops show the glyphs centred on their lines (before: 8 px off). |
+| BUG-M3-9 XY ground-X marker | Pass: centre x 548 = canvas centre; glyph centred on the vertical line. |
+| BUG-M3-10a math op changed while stopped | Pass: stopped, A+B 3.98 V, A×B 991 mV² (unit V², scale `0.5 V²/div`, trace redrawn), A-B 0.00 V, Invert A 1.99 V, back to A×B 991 mV²; values are stable across 1.5 s (held frame) and match the channel Vpp (1.99 V, 0.995² = 0.99). With the first held frame (Vpp 2.04 V) A×B read 1.04 V²; the "about 1.01" in the brief depends on the noise of the held frame. Unit and data agree in every case. |
+| BUG-M3-10b roll toolbar 1024x720 | Pass: scrollWidth 1024 = clientWidth, nothing clipped, no overlap, 16 buttons (Single, Force, Autoset, Cursors, Math, Ref, Record, File, Screenshot, Measurements drawer, Settings all inside); also while recording (`REC 00:00:06 · 2.94 KIB` chip fits). Yt at 1440 fits. |
+| Trigger phase chip dropped in roll | No harm: the toolbar shows RUN and ROLL only; the trigger is unavailable in roll, the chip would be meaningless. The status line still shows `Trigger CH1 edge rising 0.00 V`. |
+| Record stop | Pass: the file ends with `end: stopped`; no capability error in the vite or app logs ("not allowed": 0). |
+| Reviewer-minor: display drop test, capability.spec | Pass in the suites below. |
+
+## Automated suites (run once, alone, after the manual work)
+- `cargo test --workspace`: 1000 passed, 0 failed; tree clean afterwards.
+- `vitest run`: 100 files, 1263 passed. `npm run typecheck`: 0 errors.
+- Playwright chromium + webkit: 598 passed, 1 skipped, 1 failed: the real-time Toast timing test (webkit, feedback.spec.ts:22, load sensitive, known flake). Rerun alone with one worker: feedback.spec.ts 12 passed.
+
+## Observations (not bugs of this change)
+- An error Toast `Auto-setup is running` stayed on screen for minutes. I caused it by clicking Autoset repeatedly through the test bridge; whether error Toasts should auto-dismiss is a question for the designer, not filed.
+
+## Still not tested
+Hardware H-01 to H-10, 1 h soaks, disk-full, `No signal` tag live, autoset on other frequencies, M in FFT, real pointer hover.
