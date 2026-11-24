@@ -42,3 +42,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Dialog focus goes to the step heading, never the primary button. Avoid prototype.css class names like `.ok` (collides with status bar colour); use unique names.
 - Icon: yellow ch1 true sinusoid (Béziers from sin(), handle y = A*pi/6) on dark scope screen, `icon-small.svg` <=48 px. Old green sine rejected (green = Run).
 - Prototype generator in scratchpad; main-window.html = index.html with markers stripped by regex.
+- Rev 5 (hardware feedback): programmatic-focus targets (tabindex=-1: step heading, Note, drawer, popover) show no ring; rings only on operable elements. Not-shorted step: Cancel, Continue, Try again (primary); accepted channels get a quiet muted line on Done, no tag. Tag tooltip = one row per enabled channel `CH1 +0.66 mV at 2 mV/div`; no gain/extreme/resolution notes. Worktree: .claude/worktrees/designer-feedback.

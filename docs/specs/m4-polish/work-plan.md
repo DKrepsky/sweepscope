@@ -102,3 +102,40 @@ Done after approval: staff engineer updated `docs/architecture.md` (tree: `calib
 
 ## 8. PRD amendments still open for the PM
 Already amended by the PM: goal 3, 5.2 volts row, VER-3, US-14, M4 roadmap row. Left: APP-5, the risk table, DEV-4, TRG-3, "5 % of a division" becomes "about 0.1 division", and the README quote of the old accuracy sentence.
+
+## 9. Hardware feedback round (human run on a 6254BC; see [addendum-hardware-feedback.md](addendum-hardware-feedback.md))
+
+### 9.1 Rules and constants (`calibration/src/domain/rules.rs`, `sweep.rs`)
+- New `OTHER_MIN_LEVEL_VOLTS = 2.5e-3`. `judge_other` level limit in codes = `max(OTHER_MAX_LEVEL_CODES, OTHER_MIN_LEVEL_VOLTS / range * counts_per_div)` (at 2 mV/div about 30.2 codes). The rejection line prints that limit in volts (`Level 1.45 mV from zero at 2 mV/div, limit 2.50 mV.`). Gate rules unchanged. Constants stay in one file.
+- `Rejection` gains `continuable: bool` (false for the clipped gate case and for any clipped reading, true otherwise).
+- `ZeroSweep` keeps the rejected reading: new state `pending: Option<(usize, Reading)>`, `forced: bool`. `next(Some(reading))` on a rejection stores `pending` and returns `NotShorted` (the sweep object is kept, `order`, `cursor` and accepted offsets untouched). New `ZeroSweep::accept_rejected(&mut self) -> Result<Step, NothingPending>`: stores the offset of `pending` (same formula as an accepted reading), sets `forced`, advances the cursor and returns the next `Measure` or `Done`. While `forced`, `judge` returns only the clipped rejection (`continuable = false`); all other checks are skipped. `progress()` unchanged.
+
+### 9.2 Session and module (`domain/session.rs`, `domain/view.rs`, `module/core.rs`, `module/mod.rs`, `messages.rs`)
+- `SessionMachine::resume()`: `NotShorted` to `Measuring`, progress kept, `not_shorted` cleared, channel marked overridden; wrong step gives `WrongStep`. `ZeroSession` gains `can_continue: bool` (true only at `NotShorted` when the rejection is continuable) and `overridden: [bool; 4]`.
+- `Core::apply(Step::NotShorted)` no longer drops the sweep: new `Active::pause_measuring()` clears `probe` and `channel_deadline` but keeps `sweep`. `Core::continue_channel()`: require `NotShorted` and a sweep with a pending reading, call `accept_rejected`, `machine.resume()`, set a fresh `CHANNEL_TIMEOUT` deadline, then `apply(step, channel)` (so `Done` goes through `accept_channel` and the commit). `Core::measure()` (Try again) drops the sweep as before.
+- Request `ContinueZeroChannel` (`Request<Response = ()>`), registered next to the other four; returns at once; wrong step gives the existing `WRONG_STEP` recoverable error.
+- Developer: developer-2 (owner of the crate). Files: `backend/features/calibration/src/**`, `tests/zero_domain_sweep.rs`, `zero_domain_session.rs`, `zero_module_session.rs`, `zero_module_support/**`.
+
+### 9.3 Tooltip texts (`domain/texts.rs`, `domain/view.rs`, `messages.rs`)
+- Types (ts-rs): `TooltipText { heading: String, channels: [ChannelTooltip; 4] }`, `ChannelTooltip { cells: Vec<[String; 3]> }`; `TooltipRow` removed. Cell k, probe slot p (factors 1, 10, 100): `"{sign}{mV} at {range x factor}"` for calibrated, with the offset multiplied by the factor and formatted with the existing `offset_text`; `-` when the stored vector has no entry. Not calibrated: sensitive ranges (A.3 constants, volts multiplied by the factor) as `+0.66 mV at 2 mV/div`; ranges from 50 mV/div: `up to {2 counts in volts} at {range}` with `2 x range / 24.15`, formatted with `engineering-format`. Both need the capability ranges: `unit_calibration(stored, ranges)` already takes them; the typical table is now a function of `ranges`.
+- Heading: not calibrated `Typical zero error of one measured unit:`, calibrated `Zero error removed per channel and range, measured with the input shorted (about 12 000 samples averaged).` The three other notes and their constants are deleted. The stored date line stays (`stored_at_utc`).
+- Golden test over all twelve ranges and three probes, both states.
+
+### 9.4 Shell (developer-10, `src-tauri/src/**`, `permissions/**`, `capabilities/**`, generated `commands.ts`)
+Command `continue_zero_calibration` (args `{}`, result `null`) with manifest entry, permission file, capability and integration test; `commands.ts` regenerated here only.
+
+### 9.5 Frontend
+- developer-11 (api and app): client method `continueZeroCalibration` in `api/{backend-client,tauri-client,fake-client,fake-zero-calibration}.ts` (fake emulates a rejection with `canContinue`, resume and `overridden`), `app/calibration/commands.ts` use case `continueChannel`, `selectors.ts`: `selectCalibrationTag(zero, connection, recording, instrument)` builds the tooltip lines: for every enabled channel, `channels[n].cells[range.index][probeSlot(channel.probe)]` (slot -1 hides the line), prefixed `CHn `; no enabled channel gives the heading only. `selectCalibrationDialog` exposes `canContinue` and `overridden`. Tests: given channels 1 at index 0 and 2 at index 11, when calibrated or not, then two lines with those ranges; a range knob turn changes the line without a backend event; probe 10x shows the x10 text; disabled channel hidden.
+- developer-12 (view; after the Designer's revision): `NotShortedStep.svelte` gets the `Continue` button (behaviour per the Designer), `DoneStep.svelte` states overridden channels, `CalibrationTag.svelte` and its tests render heading plus per-channel lines (no table of ranges, no notes), `CalibrationDialog.svelte` wiring. e2e: QA extends `frontend/e2e/m4-polish.spec.ts` and `tauri-stub.ts`.
+
+### 9.6 Tests (given / when / then)
+- Given a shorted CH4 at 1.45 mV at 2 mV/div (simulator `set_zero_error_volts`), when measured, then accepted and stored. Given 3.0 mV at 2 mV/div, then `NotShorted` with limit 2.50 mV and `canContinue`. Given 6 mV at 5 mV/div, then rejected (12 codes). Given a 20 mV DC at the gate (level 8 codes = 33 mV not exceeded) then rejected at 2 mV/div, not at the gate.
+- Given a rejection at 2 mV/div after the gate, when `ContinueZeroChannel`, then no probe is repeated for the gate, the 2 mV/div reading is stored, the remaining ranges are measured, the channel is accepted and `overridden[ch]` is true; given four channels, a single atomic write.
+- Given a clipped gate reading, then `canContinue` is false and the request fails with `WRONG_STEP`. Given a clipped later range while forced, then rejected, not continuable. Given `Try again` after a rejection, then the sweep restarts at the gate. Given Cancel after `Continue`, then nothing is stored. Given the channel timeout, then the deadline restarts at `Continue`.
+- Request outside `NotShorted`: recoverable error, state unchanged.
+
+### 9.7 Order
+developer-2 (9.1 to 9.3, backend) and developer-11 (9.5 app, against the fake client and the new generated types: types first from 9.3, ts-rs files committed by developer-2) in parallel; developer-10 (9.4) after 9.2 compiles; developer-12 after the Designer's revision and developer-11. QA retests items 1 and 2 on hardware (`hardware-checklist.md`: add CH1 to CH4 shorted at 2 mV/div, and tooltip at mixed ranges).
+
+### 9.8 Risks
+At position 0 the zero code at 2 mV/div is about 31 to 39 with noise s.d. around 20 codes, so low samples clip and bias the mean by about 0.6 code (0.05 mV); acceptable, verify on hardware. If a unit shows more than 2.5 mV, change the constant only.
