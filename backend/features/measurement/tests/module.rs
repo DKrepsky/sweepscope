@@ -86,7 +86,7 @@ fn context(seconds_per_div: f64) -> FrameContext {
         window_len: RECORD,
         invert: [false; 4],
         probe: [1.0; 4],
-        range_verified: [true; 4],
+        calibrated: [true; 4],
         seconds_per_div,
     }
 }
@@ -211,20 +211,16 @@ fn given_a_record_with_a_rail_code_when_measured_then_amplitudes_are_clipped_and
 }
 
 #[test]
-fn given_an_unverified_range_when_measured_then_the_marker_is_set_and_values_stay() {
+fn given_an_uncalibrated_context_when_measured_then_the_values_are_unchanged() {
     let bus = Bus::new();
     let changes = bus.subscribe::<MeasurementsChanged>();
     let (_module, _clock) = start(&bus);
     let mut captured = captured(&calibrator_at(200e-6), 200e-6, 0.1e-3);
-    captured.context.range_verified = [false; 4];
+    captured.context.calibrated = [false; 4];
 
     bus.publish(captured);
 
     let channel = first_channel(&bus, &changes);
-    assert_eq!(
-        channel.unverified.as_deref(),
-        Some("Unverified range, accuracy up to about 5 % of a division.")
-    );
     assert_eq!(cell(&channel, MeasurementId::Vpp).0.as_deref(), Some("1.91 V"));
 }
 
@@ -267,14 +263,13 @@ fn given_a_disabled_channel_when_measured_then_it_is_absent_and_enabled_ones_asc
 }
 
 #[test]
-fn given_no_frame_yet_when_measurements_are_requested_then_the_slice_is_empty_with_the_accuracy_note() {
+fn given_no_frame_yet_when_measurements_are_requested_then_the_slice_is_empty() {
     let bus = Bus::new();
     let (_module, _clock) = start(&bus);
 
     let state = bus.request(GetMeasurements).unwrap();
 
     assert_eq!((state.revision, state.channels.len()), (0, 0));
-    assert!(state.accuracy_note.contains("unverified"));
 }
 
 #[test]

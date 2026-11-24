@@ -2,9 +2,6 @@ use measurements::Invalid as LibInvalid;
 
 use crate::messages::{Invalid, InvalidReason, MeasurementId};
 
-pub const ACCURACY_NOTE: &str = "Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit.";
-pub const UNVERIFIED: &str = "Unverified range, accuracy up to about 5 % of a division.";
-
 pub fn label(id: MeasurementId) -> &'static str {
     match id {
         MeasurementId::Frequency => "Frequency",

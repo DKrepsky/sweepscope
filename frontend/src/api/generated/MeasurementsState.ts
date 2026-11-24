@@ -5,7 +5,7 @@ import type { Warning } from "./Warning";
 /**
  * Measurements slice: the enabled channels of the newest frame, ascending.
  */
-export type MeasurementsState = { revision: number, channels: Array<ChannelMeasurements>, accuracyNote: string, 
+export type MeasurementsState = { revision: number, channels: Array<ChannelMeasurements>, 
 /**
  * Alias warnings per channel, raised and cleared with hysteresis.
  */
