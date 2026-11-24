@@ -1,18 +1,21 @@
 use sweepscope_acquisition::{
-    ChannelPatch, ForceTriggerNow, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
-    SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, StepSetting, TriggerPatch,
+    ArmSingle, ChannelPatch, ForceTriggerNow, LoadSetup, MathPatch, ResetSetting, SaveSetup, SetChannel, SetMath,
+    SetRunning, SetTrigger, SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, StartAutoset, StepSetting,
+    TriggerPatch,
 };
 use sweepscope_device::{RetryConnection, UseSimulator};
-use sweepscope_display::{InterpolationMode, SetInterpolation};
+use sweepscope_display::{InterpolationMode, Persistence, SetInterpolation, SetPersistence};
 use sweepscope_export::{ExportFormat, ExportFrame, SaveScreenshot};
 use sweepscope_kernel::contracts::SavedFile;
 use sweepscope_kernel::{Bus, KernelError, Request};
+use sweepscope_recording::{StartRecording, StopRecording};
 use sweepscope_settings::{LoadUiState, SaveUiState, UiStateEntry};
+use sweepscope_spectrum::{SetSpectrum, SpectrumPatch};
 use tauri::ipc::{Channel, InvokeBody, InvokeResponseBody};
 use tauri::State;
 
-use super::frames::FrameStreams;
 use super::snapshot::{snapshot_with, StateSnapshot};
+use super::streams::{FrameStreams, RollStreams, SpectrumStreams};
 use crate::composition::{unix_time_us, Backend};
 
 /// Every command passed to `handler`; compared in tests with the manifest, `build.rs` and the capability.
@@ -38,6 +41,17 @@ pub const REGISTERED_COMMANDS: &[&str] = &[
     "retry_connection",
     "open_frame_stream",
     "close_frame_stream",
+    "arm_single",
+    "start_autoset",
+    "set_math",
+    "set_persistence",
+    "set_spectrum",
+    "start_recording",
+    "stop_recording",
+    "open_roll_stream",
+    "close_roll_stream",
+    "open_spectrum_stream",
+    "close_spectrum_stream",
 ];
 
 pub fn load_ui_state_with(bus: &Bus, namespace: String) -> Result<Option<UiStateEntry>, KernelError> {
@@ -152,6 +166,41 @@ fn set_trigger(backend: State<'_, Backend>, patch: TriggerPatch) -> Result<(), K
 }
 
 #[tauri::command]
+fn arm_single(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(ArmSingle)
+}
+
+#[tauri::command]
+fn start_autoset(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(StartAutoset)
+}
+
+#[tauri::command]
+fn set_math(backend: State<'_, Backend>, patch: MathPatch) -> Result<(), KernelError> {
+    backend.bus.request(SetMath { patch })
+}
+
+#[tauri::command]
+fn set_persistence(backend: State<'_, Backend>, value: Persistence) -> Result<(), KernelError> {
+    backend.bus.request(SetPersistence { value })
+}
+
+#[tauri::command]
+fn set_spectrum(backend: State<'_, Backend>, patch: SpectrumPatch) -> Result<(), KernelError> {
+    backend.bus.request(SetSpectrum { patch })
+}
+
+#[tauri::command]
+async fn start_recording(backend: State<'_, Backend>) -> Result<Option<SavedFile>, KernelError> {
+    blocking_request(backend.bus.clone(), StartRecording).await
+}
+
+#[tauri::command]
+fn stop_recording(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(StopRecording)
+}
+
+#[tauri::command]
 fn use_simulator(backend: State<'_, Backend>, enabled: bool) -> Result<(), KernelError> {
     backend.bus.request(UseSimulator { enabled })
 }
@@ -172,6 +221,34 @@ fn open_frame_stream(
 
 #[tauri::command]
 fn close_frame_stream(streams: State<'_, FrameStreams>) {
+    streams.close();
+}
+
+#[tauri::command]
+fn open_roll_stream(
+    backend: State<'_, Backend>,
+    streams: State<'_, RollStreams>,
+    on_frame: Channel<InvokeResponseBody>,
+) -> Result<(), KernelError> {
+    streams.open(&backend.bus, on_frame, unix_time_us)
+}
+
+#[tauri::command]
+fn close_roll_stream(streams: State<'_, RollStreams>) {
+    streams.close();
+}
+
+#[tauri::command]
+fn open_spectrum_stream(
+    backend: State<'_, Backend>,
+    streams: State<'_, SpectrumStreams>,
+    on_frame: Channel<InvokeResponseBody>,
+) -> Result<(), KernelError> {
+    streams.open(&backend.bus, on_frame, unix_time_us)
+}
+
+#[tauri::command]
+fn close_spectrum_stream(streams: State<'_, SpectrumStreams>) {
     streams.close();
 }
 
@@ -197,6 +274,17 @@ pub fn install(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry
         retry_connection,
         open_frame_stream,
         close_frame_stream,
+        arm_single,
+        start_autoset,
+        set_math,
+        set_persistence,
+        set_spectrum,
+        start_recording,
+        stop_recording,
+        open_roll_stream,
+        close_roll_stream,
+        open_spectrum_stream,
+        close_spectrum_stream,
     ])
 }
 

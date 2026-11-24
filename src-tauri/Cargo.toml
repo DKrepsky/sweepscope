@@ -19,7 +19,9 @@ sweepscope-display = { path = "../backend/features/display" }
 sweepscope-export = { path = "../backend/features/export" }
 sweepscope-kernel = { path = "../backend/kernel" }
 sweepscope-measurement = { path = "../backend/features/measurement" }
+sweepscope-recording = { path = "../backend/features/recording" }
 sweepscope-settings = { path = "../backend/features/settings" }
+sweepscope-spectrum = { path = "../backend/features/spectrum" }
 env_logger = "0.11"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }

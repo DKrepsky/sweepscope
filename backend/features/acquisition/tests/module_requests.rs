@@ -263,6 +263,9 @@ fn given_the_module_when_its_commands_are_listed_then_they_are_the_acquisition_c
             "set_trigger",
             "save_setup",
             "load_setup",
+            "arm_single",
+            "start_autoset",
+            "set_math",
         ]
     );
 }

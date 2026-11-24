@@ -84,9 +84,17 @@ pub struct DisplayRollItem {
 }
 impl Event for DisplayRollItem {}
 
-pub const COMMANDS: &[CommandDescriptor] = &[CommandDescriptor {
-    name: "set_interpolation",
-    args: "{ mode: InterpolationMode }",
-    result: "null",
-    types: &["InterpolationMode"],
-}];
+pub const COMMANDS: &[CommandDescriptor] = &[
+    CommandDescriptor {
+        name: "set_interpolation",
+        args: "{ mode: InterpolationMode }",
+        result: "null",
+        types: &["InterpolationMode"],
+    },
+    CommandDescriptor {
+        name: "set_persistence",
+        args: "{ value: Persistence }",
+        result: "null",
+        types: &["Persistence"],
+    },
+];

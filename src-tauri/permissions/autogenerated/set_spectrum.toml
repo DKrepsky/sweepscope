@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-spectrum"
+description = "Enables the set_spectrum command without any pre-configured scope."
+commands.allow = ["set_spectrum"]
+
+[[permission]]
+identifier = "deny-set-spectrum"
+description = "Denies the set_spectrum command without any pre-configured scope."
+commands.deny = ["set_spectrum"]

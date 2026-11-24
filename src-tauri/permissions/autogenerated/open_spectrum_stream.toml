@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-spectrum-stream"
+description = "Enables the open_spectrum_stream command without any pre-configured scope."
+commands.allow = ["open_spectrum_stream"]
+
+[[permission]]
+identifier = "deny-open-spectrum-stream"
+description = "Denies the open_spectrum_stream command without any pre-configured scope."
+commands.deny = ["open_spectrum_stream"]

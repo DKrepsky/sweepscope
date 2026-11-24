@@ -62,4 +62,22 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         result: "SetupLoaded | null",
         types: &["SetupLoaded"],
     },
+    CommandDescriptor {
+        name: "arm_single",
+        args: "{}",
+        result: "null",
+        types: &[],
+    },
+    CommandDescriptor {
+        name: "start_autoset",
+        args: "{}",
+        result: "null",
+        types: &[],
+    },
+    CommandDescriptor {
+        name: "set_math",
+        args: "{ patch: MathPatch }",
+        result: "null",
+        types: &["MathPatch"],
+    },
 ];

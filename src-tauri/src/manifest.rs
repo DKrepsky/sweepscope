@@ -1,7 +1,8 @@
 use sweepscope_kernel::CommandDescriptor;
 
 use crate::ipc::events::{
-    CONNECTION_CHANGED, DISPLAY_CHANGED, FACTS_CHANGED, INSTRUMENT_CHANGED, MEASUREMENTS_CHANGED, STATUS_CHANGED,
+    CONNECTION_CHANGED, DISPLAY_CHANGED, FACTS_CHANGED, INSTRUMENT_CHANGED, MEASUREMENTS_CHANGED, RECORDING_CHANGED,
+    SPECTRUM_CHANGED, STATUS_CHANGED,
 };
 
 /// A slice event the shell forwards; `payload` is a TypeScript type expression.
@@ -50,13 +51,35 @@ pub const EVENTS: &[EventDescriptor] = &[
         payload: "MeasurementsState",
         types: &["MeasurementsState"],
     },
+    EventDescriptor {
+        name: SPECTRUM_CHANGED,
+        payload: "SpectrumState",
+        types: &["SpectrumState"],
+    },
+    EventDescriptor {
+        name: RECORDING_CHANGED,
+        payload: "RecordingState",
+        types: &["RecordingState"],
+    },
 ];
 
-pub const STREAMS: &[StreamDescriptor] = &[StreamDescriptor {
-    kind: "frames",
-    open: "open_frame_stream",
-    close: "close_frame_stream",
-}];
+pub const STREAMS: &[StreamDescriptor] = &[
+    StreamDescriptor {
+        kind: "frames",
+        open: "open_frame_stream",
+        close: "close_frame_stream",
+    },
+    StreamDescriptor {
+        kind: "roll",
+        open: "open_roll_stream",
+        close: "close_roll_stream",
+    },
+    StreamDescriptor {
+        kind: "spectrum",
+        open: "open_spectrum_stream",
+        close: "close_spectrum_stream",
+    },
+];
 
 const GET_SNAPSHOT: CommandDescriptor = CommandDescriptor {
     name: "get_snapshot",
@@ -74,6 +97,8 @@ pub fn all_commands() -> Vec<CommandDescriptor> {
         sweepscope_device::COMMANDS,
         sweepscope_display::COMMANDS,
         sweepscope_export::COMMANDS,
+        sweepscope_spectrum::COMMANDS,
+        sweepscope_recording::COMMANDS,
     ]
     .concat()
 }
@@ -86,6 +111,8 @@ pub const SNAPSHOT_FIELDS: &[(&str, &str, &str)] = &[
     ("facts", "InstrumentFacts", "InstrumentFacts"),
     ("display", "DisplayState", "DisplayState"),
     ("measurements", "MeasurementsState", "MeasurementsState"),
+    ("spectrum", "SpectrumState", "SpectrumState"),
+    ("recording", "RecordingState", "RecordingState"),
 ];
 
 /// Renders `frontend/src/api/generated/StateSnapshot.ts` in the layout ts-rs uses for the other files.
@@ -298,6 +325,8 @@ mod tests {
             events::FACTS_CHANGED,
             events::DISPLAY_CHANGED,
             events::MEASUREMENTS_CHANGED,
+            events::SPECTRUM_CHANGED,
+            events::RECORDING_CHANGED,
         ]
         .map(str::to_owned)
         .to_vec();
