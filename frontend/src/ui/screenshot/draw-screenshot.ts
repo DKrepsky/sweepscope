@@ -2,7 +2,17 @@ import { tokens, type TokenName } from '../../design-system';
 import { crisp, deviceExtent, drawGraticule } from '../graph/graticule';
 import type { GraphFrame } from '../graph/graph-frame';
 import { drawTraces } from '../graph/traces';
-import { graphPixelSize, screenshotLayout, HEADER_LINE, NOTE_LINE, TABLE_ROW, type Rect } from './screenshot-layout';
+import {
+  graphPixelSize,
+  noteLineCount,
+  screenshotLayout,
+  screenshotNotes,
+  HEADER_LINE,
+  NOTE_LINE,
+  NOTE_SIZE,
+  TABLE_ROW,
+  type Rect,
+} from './screenshot-layout';
 
 export interface ScreenshotMarker {
   axis: 'x' | 'y';
@@ -41,7 +51,6 @@ const MONO = tokens['font-mono'];
 const CURSOR_DASH = [6, 4];
 const TAG_PADDING = 4;
 const TEXT_SIZE = 12;
-const NOTE_SIZE = 11;
 const BOLD = 650;
 
 function resolveColour(reference: string): string {
@@ -93,6 +102,19 @@ function inWindow(ctx: CanvasRenderingContext2D, dx: number, dy: number): Canvas
   });
 }
 
+const TAG_CLEARANCE = TAG_PADDING + 2;
+
+/** Vertical centre of a label for a horizontal marker: above the line, or below it when that would sit on the centre axis. */
+export function horizontalTagY(lineY: number, graphHeight: number): number {
+  const axis = graphHeight / 2;
+  const half = TEXT_SIZE / 2;
+  const above = lineY - TAG_CLEARANCE - half;
+  const below = lineY + TAG_CLEARANCE + half;
+  const touchesAxis = (centre: number) => Math.abs(centre - axis) < half + 1;
+  if (!touchesAxis(above) && above - half >= 0) return above;
+  return touchesAxis(below) ? above : below;
+}
+
 function drawMarker(ctx: CanvasRenderingContext2D, marker: ScreenshotMarker, colour: string, ratio: number) {
   const { width, height } = graphPixelSize(ratio);
   const vertical = marker.axis === 'x';
@@ -107,7 +129,7 @@ function drawMarker(ctx: CanvasRenderingContext2D, marker: ScreenshotMarker, col
   ctx.stroke();
   ctx.setLineDash([]);
   const x = vertical ? at + TAG_PADDING : TAG_PADDING;
-  const y = vertical ? TAG_PADDING + TEXT_SIZE / 2 : at - TAG_PADDING - TEXT_SIZE / 2;
+  const y = vertical ? TAG_PADDING + TEXT_SIZE / 2 : horizontalTagY(at, height);
   text(ctx, marker.tag, x, y, { colour, font: MONO, weight: BOLD });
 }
 
@@ -154,20 +176,28 @@ function drawTable(ctx: CanvasRenderingContext2D, table: ScreenshotTable, area: 
 }
 
 function drawNotes(ctx: CanvasRenderingContext2D, spec: ScreenshotSpec, area: Rect) {
-  const lines = [...spec.footnotes, spec.accuracyNote];
+  const { footnotes, accuracy } = screenshotNotes(spec.footnotes, spec.accuracyNote);
+  const lines = [...footnotes, ...accuracy];
   lines.forEach((line, index) => {
-    const colour = tokens[index === lines.length - 1 ? 'color-text-muted' : 'color-text-secondary'];
+    const colour = tokens[index >= footnotes.length ? 'color-text-muted' : 'color-text-secondary'];
     text(ctx, line, area.x, area.y + index * NOTE_LINE + NOTE_LINE / 2, { colour, size: NOTE_SIZE });
   });
 }
 
-/** Paints the whole picture into a canvas context of css size (`screenshotSize`) times `ratio`. */
-export function drawScreenshot(ctx: CanvasRenderingContext2D, spec: ScreenshotSpec, ratio: number): void {
-  const layout = screenshotLayout({
+function layoutOf(spec: ScreenshotSpec) {
+  return screenshotLayout({
     header: spec.header,
     tableRows: spec.table.rows.length,
-    footnotes: spec.footnotes.length,
+    noteLines: noteLineCount(screenshotNotes(spec.footnotes, spec.accuracyNote)),
   });
+}
+
+/** Css size of the picture for this spec; the canvas is this times the ratio. */
+export const specSize = (spec: ScreenshotSpec): { width: number; height: number } => layoutOf(spec).size;
+
+/** Paints the whole picture into a canvas context of css size (`specSize`) times `ratio`. */
+export function drawScreenshot(ctx: CanvasRenderingContext2D, spec: ScreenshotSpec, ratio: number): void {
+  const layout = layoutOf(spec);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.fillStyle = tokens['color-bg-app'];
   ctx.fillRect(0, 0, layout.size.width, layout.size.height);

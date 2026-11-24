@@ -11,7 +11,8 @@ const LABEL_COLUMN = 160;
 export interface ScreenshotContent {
   header: readonly string[];
   tableRows: number;
-  footnotes: number;
+  /** Lines after wrapping, see `screenshotNotes`. */
+  noteLines: number;
 }
 
 export interface Rect {
@@ -38,7 +39,7 @@ export function screenshotLayout(content: ScreenshotContent): ScreenshotLayout {
   const tableHeight = content.tableRows > 0 ? (content.tableRows + 1) * TABLE_ROW : 0;
   const table = { x: MARGIN, y: graph.y + graph.height + GAP, width: GRAPH_SIZE.width, height: tableHeight };
   const notesY = table.y + tableHeight + (tableHeight > 0 ? GAP : 0);
-  const notes = { x: MARGIN, y: notesY, width: GRAPH_SIZE.width, height: (content.footnotes + 1) * NOTE_LINE };
+  const notes = { x: MARGIN, y: notesY, width: GRAPH_SIZE.width, height: content.noteLines * NOTE_LINE };
   return {
     size: { width, height: notes.y + notes.height + MARGIN },
     header,
@@ -51,5 +52,38 @@ export function screenshotLayout(content: ScreenshotContent): ScreenshotLayout {
 
 export const screenshotSize = (content: ScreenshotContent): { width: number; height: number } =>
   screenshotLayout(content).size;
+
+export const NOTE_SIZE = 11;
+// Wide estimate of an average glyph, so a wrapped line always fits without measuring the font.
+const NOTE_GLYPH_WIDTH = NOTE_SIZE * 0.62;
+const NOTE_MAX_CHARS = Math.floor(GRAPH_SIZE.width / NOTE_GLYPH_WIDTH);
+
+function wrap(note: string): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of note.split(/\s+/).filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > NOTE_MAX_CHARS && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  return line ? [...lines, line] : lines;
+}
+
+export interface ScreenshotNotes {
+  footnotes: string[];
+  accuracy: string[];
+}
+
+/** Notes wrapped to the picture width so no line runs past the right edge. */
+export const screenshotNotes = (footnotes: readonly string[], accuracyNote: string): ScreenshotNotes => ({
+  footnotes: footnotes.flatMap(wrap),
+  accuracy: wrap(accuracyNote),
+});
+
+export const noteLineCount = (notes: ScreenshotNotes): number => notes.footnotes.length + notes.accuracy.length;
 
 export const graphPixelSize = (ratio: number): PixelSize => ({ ...GRAPH_SIZE, ratio });
