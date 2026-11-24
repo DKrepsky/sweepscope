@@ -162,7 +162,6 @@ test.describe('#22 auto-setup states', () => {
   test('given no signal, when the backend reports it, then the No signal tag shows until the backend clears it', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-26: the model computes autoset.noSignal but no component renders the No signal tag');
     await openMain(page);
     const outcome = { id: 2, kind: 'noSignal' as const, text: 'Auto-setup: no signal on any enabled channel.' };
     await emit(
@@ -358,24 +357,30 @@ test.describe('#27 roll mode availability', () => {
   test('given a roll setup with a frame on screen, when the toolbar is read, then Cursors is disabled', async ({
     page,
   }) => {
-    // BUG-22 (found with the roll feed wired by a QA shim): Cursors stays enabled in roll mode once roll data is on
-    // screen. Without the feed (BUG-M3-1) this passes; it turns red if the fix of BUG-M3-1 leaves the defect.
     await openMain(page);
     await sendFrame(page, wireFrame({ mask: 1, count: 2501, value: sine }));
     await emit(page, 'instrument_changed', rollState());
     await expect(button(page, 'Cursors')).toHaveAttribute('aria-disabled', 'true');
   });
 
-  test('given a roll setup, when the toolbar is measured at 1440 px, then it does not overflow its width', async ({
-    page,
-  }) => {
-    test.fail(true, 'BUG-23: the toolbar content is wider than the window in roll mode');
-    await openMain(page);
-    await emit(page, 'instrument_changed', rollState());
-    await emit(page, 'status_changed', acquisitionStatus({ revision: 80, phase: 'auto' }));
-    const overflow = await toolbar(page).evaluate((el) => el.scrollWidth - el.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
-  });
+  for (const width of [1024, 1280, 1440]) {
+    for (const mode of ['roll', 'yt'] as const) {
+      test(`given ${mode} mode at ${width} px, when the toolbar is measured, then it does not overflow and keeps File and Screenshot visible`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await openMain(page);
+        if (mode === 'roll') await emit(page, 'instrument_changed', rollState());
+        await emit(page, 'status_changed', acquisitionStatus({ revision: 80, phase: 'auto' }));
+        const overflow = await toolbar(page).evaluate((el) => el.scrollWidth - el.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        for (const name of [/^File/, 'Screenshot', 'Settings']) {
+          const box = await button(page, name).boundingBox();
+          expect(box && box.x + box.width).toBeLessThanOrEqual(width);
+        }
+      });
+    }
+  }
 });
 
 test.describe('#31 XY view', () => {
@@ -586,7 +591,6 @@ test.describe('accessibility of the new screens', () => {
 
   for (const view of ['XY', 'FFT'] as const) {
     test(`given the ${view} view, when axe runs, then there are no violations`, async ({ page }) => {
-      test.fail(view === 'FFT', 'BUG-25: the SW badge in the selected FFT segment has a contrast of 3.93 (needs 4.5)');
       await openMain(page);
       await sendFrame(page, wireFrame({ mask: 0b0011, count: 2501, value: sine }));
       await button(page, view === 'FFT' ? /FFT/ : 'XY').click();

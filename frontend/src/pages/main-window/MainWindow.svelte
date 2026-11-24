@@ -141,6 +141,7 @@
               channels={model.channels}
               cursorSource={model.cursors.source}
               math={model.math}
+              persistenceNote={model.graph.persistence !== undefined}
               triggerSummary={collapse.groupTabs ? triggerSummary : undefined}
             />
             <FrontPanelDock

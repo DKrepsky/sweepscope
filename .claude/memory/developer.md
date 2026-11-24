@@ -357,3 +357,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `ipc/streams.rs`: `Streams<E: StreamEvent>` (ordered = `subscribe`, latest-wins = `subscribe_latest`, per-event stamp); Channel arg is `on_frame` (webview `onFrame`).
 - Clippy `too_many_lines` (40) bites `compose`; group consumers in a struct helper.
 - Bash tool refuses long `python3 - <<EOF` + chained commands in a worktree; write the script with Write into the scratchpad and run `python3 -I file`.
+## M3 fix round (developer-10)
+- Toolbar fit: roll adds a Roll chip (75 px); the brand is hidden by a container query below 100 rem toolbar width. e2e measures overflow at 1024/1280/1440 in Yt and roll. Frontend formatBytes is binary (KiB) like the backend readout.
+- Playwright from a scratchpad config needs `E2E_PREVIEW_PORT` for csp.spec (hardcoded 4173 otherwise).

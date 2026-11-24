@@ -40,7 +40,15 @@ function controlAvailability(
     : { enabled: false, reason: unavailableReason(connection) };
 }
 
-export function selectToolbar(inputs: ModelInputs, { hasWaveform, cursorsOn }: ToolbarExtras): ToolbarModel {
+/** Cursors need a captured record: never in roll mode, whatever is drawn; an open set can always be closed. */
+function cursorsAvailability(inputs: ModelInputs, { hasWaveform, cursorsOn }: ToolbarExtras): Availability {
+  if (cursorsOn) return { enabled: true };
+  if (inputs.instrument?.horizontal.roll) return controlAvailability(inputs, (c) => c.frameViews);
+  return hasWaveform ? { enabled: true } : NO_WAVEFORM;
+}
+
+export function selectToolbar(inputs: ModelInputs, extras: ToolbarExtras): ToolbarModel {
+  const { hasWaveform, cursorsOn } = extras;
   const { connection, instrument, status } = inputs;
   return {
     running: isAcquiring(connection, instrument),
@@ -48,7 +56,7 @@ export function selectToolbar(inputs: ModelInputs, { hasWaveform, cursorsOn }: T
     single: { armed: singleArmed(inputs), availability: controlAvailability(inputs, (c) => c.single) },
     tools: { cursors: cursorsOn, math: instrument?.math.enabled ?? false, reference: REFERENCE_OFF },
     mathAvailability: controlAvailability(inputs, (c) => c.frameViews),
-    cursorsAvailability: hasWaveform || cursorsOn ? { enabled: true } : NO_WAVEFORM,
+    cursorsAvailability: cursorsAvailability(inputs, extras),
     files: selectFiles(connection, instrument, hasWaveform),
     availability: controlAvailability(inputs, (c) => c.run),
     force: controlAvailability(inputs, (c) => c.force),

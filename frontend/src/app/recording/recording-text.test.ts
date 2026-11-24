@@ -20,9 +20,9 @@ describe('formatBytes', () => {
   it.each([
     [0, '0 B'],
     [999, '999 B'],
-    [12_400_000, '12.4 MB'],
-    [1_200_000_000, '1.20 GB'],
-    [120_000, '120 kB'],
+    [12_400_000, '11.8 MiB'],
+    [1_200_000_000, '1.12 GiB'],
+    [120_000, '117 KiB'],
   ])('given %s bytes, when formatted, then it reads %s', (bytes, text) => {
     expect(formatBytes(bytes)).toBe(text);
   });
@@ -33,10 +33,10 @@ describe('recordingChip', () => {
     const state = recordingState({
       active: true,
       duration: { value: 3, text: '3', unit: 's' },
-      bytesWritten: { value: 12000, text: '12', unit: 'kB' },
+      bytesWritten: { value: 12288, text: '12.0', unit: 'KiB' },
     });
 
-    expect(recordingChip(state)).toBe('Rec 00:00:03 · 12 kB');
+    expect(recordingChip(state)).toBe('Rec 00:00:03 · 12.0 KiB');
   });
 
   it('given no recording, when the chip is built, then there is none', () => {
@@ -55,7 +55,7 @@ describe('failureText', () => {
     });
 
     expect(text).toBe(
-      'Recording stopped: the disk is full. 1.20 GB written to roll-2026-11-24.ssroll. The display is still running.',
+      'Recording stopped: the disk is full. 1.12 GiB written to roll-2026-11-24.ssroll. The display is still running.',
     );
   });
 });

@@ -120,6 +120,11 @@
     cursor: not-allowed;
   }
 
+  /* Muted text on the selected fill is 3.93:1; the secondary colour passes 4.5:1. */
+  .active .badge {
+    color: var(--ss-color-text-secondary);
+  }
+
   .badge {
     font-size: var(--ss-font-size-2xs);
     color: var(--ss-color-text-muted);

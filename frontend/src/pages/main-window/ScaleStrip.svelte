@@ -9,11 +9,14 @@
     /** Shown while the dock hides the Trigger group (h4), so the trigger state stays at a glance. */
     triggerSummary?: string;
     math?: MathModel;
+    /** Persistence is drawing: say where its update rate is. */
+    persistenceNote?: boolean;
   }
 
   const CLIP_TIP =
     'The signal reaches the converter limits; amplitude measurements are not valid. Increase volts per division.';
-  const { channels, cursorSource, triggerSummary, math }: Props = $props();
+  const PERSISTENCE_NOTE = 'Persistence builds from successive frames; the update rate is in the status bar.';
+  const { channels, cursorSource, triggerSummary, math, persistenceNote }: Props = $props();
 
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
@@ -63,6 +66,7 @@
     </span>
   {/if}
   <span class="grow"></span>
+  {#if persistenceNote}<span class="note" data-persistence-note>{PERSISTENCE_NOTE}</span>{/if}
   {#if triggerSummary}<span class="note" data-trigger-summary>{triggerSummary}</span>{/if}
   <span class="note">
     Cursor values follow <b class="ss-num" style={channelStyle(cursorSource)}>CH{cursorSource}</b>

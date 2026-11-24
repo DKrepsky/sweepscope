@@ -89,6 +89,31 @@ describe('math tool', () => {
   });
 });
 
+describe('cursors tool', () => {
+  const rollWithReason = () => {
+    const base = instrumentState();
+    const reason = 'cursors need a captured record; not available in roll mode.';
+    const controls = { ...base.controls, frameViews: { enabled: false, reason } };
+    return { reason, instrument: { ...base, horizontal: { ...base.horizontal, roll: true }, controls } };
+  };
+
+  it('given roll mode with a waveform drawn, when selected, then Cursors is disabled with the backend reason', () => {
+    const { reason, instrument } = rollWithReason();
+
+    const toolbar = selectToolbar(modelInputs({ instrument }), extras);
+
+    expect(toolbar.cursorsAvailability).toEqual({ enabled: false, reason });
+  });
+
+  it('given roll mode with cursors already on, when selected, then Cursors stays enabled to close them', () => {
+    const { instrument } = rollWithReason();
+
+    const toolbar = selectToolbar(modelInputs({ instrument }), { hasWaveform: true, cursorsOn: true });
+
+    expect(toolbar.cursorsAvailability).toEqual({ enabled: true });
+  });
+});
+
 describe('run controls', () => {
   it('given auto-setup is running, when selected, then Run and Force carry the backend reason', () => {
     const base = instrumentState();
