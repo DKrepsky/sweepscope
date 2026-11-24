@@ -180,6 +180,13 @@ test.describe('calibration dialog', () => {
     await expect(dialog(page)).toContainText('Step 1 of 6');
   });
 
+  test('given step 1, when opened, then the focused heading shows no outline', async ({ page }) => {
+    await openMain(page);
+    await tag(page).click();
+    await expect(heading(page)).toBeFocused();
+    await expect(heading(page)).toHaveCSS('outline-style', 'none');
+  });
+
   test('given step 1, when Start, then channel 1 shows three instructions, the open-input note, chips, and Calibrate not focused', async ({
     page,
   }) => {

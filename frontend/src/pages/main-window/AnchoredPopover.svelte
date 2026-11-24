@@ -47,6 +47,10 @@
     box-shadow: var(--ss-shadow-popover);
     border-radius: var(--ss-radius-sm);
   }
+  .popover:focus,
+  .popover:focus-visible {
+    outline: none;
+  }
   .below-end {
     inset-block-start: 100%;
   }

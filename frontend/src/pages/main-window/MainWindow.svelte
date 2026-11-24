@@ -302,4 +302,8 @@
     z-index: var(--ss-z-overlay);
     box-shadow: var(--ss-shadow-popover);
   }
+  .drawer:focus,
+  .drawer:focus-visible {
+    outline: none;
+  }
 </style>

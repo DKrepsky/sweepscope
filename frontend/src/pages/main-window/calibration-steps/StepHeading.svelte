@@ -12,4 +12,8 @@
     font-size: var(--ss-font-size-lg);
     color: var(--ss-color-text-primary);
   }
+  h3:focus,
+  h3:focus-visible {
+    outline: none;
+  }
 </style>
