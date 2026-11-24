@@ -1,5 +1,5 @@
 //! Sample scaling and window crop: raw codes to divisions from the top edge (ADR 0011 item 2).
-use sweepscope_kernel::contracts::{ChannelData, TriggerOutcome};
+use sweepscope_kernel::contracts::{ChannelData, DerivedTrace, TriggerOutcome};
 
 /// Code of the screen centre; a channel's ground sits at `zero_code`, which already holds its position.
 const SCREEN_CENTRE_CODE: f64 = 128.0;
@@ -31,6 +31,15 @@ impl Window {
             _ => -1,
         }
     }
+}
+
+/// The math trace (ADR 0019): ground at `position_divs`, never inverted, one value per record sample.
+pub(crate) fn scale_derived(trace: &DerivedTrace) -> Vec<f32> {
+    trace
+        .volts
+        .iter()
+        .map(|volts| (SCREEN_CENTRE_DIVS - (trace.position_divs + volts / trace.volts_per_div)) as f32)
+        .collect()
 }
 
 /// Divisions from the top edge; not clamped, the graph marks off-screen samples.
