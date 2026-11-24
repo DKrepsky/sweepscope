@@ -22,8 +22,7 @@ fn given_the_measurement_slice_when_exported_then_the_revision_is_a_number_and_f
 
     let state = generated("MeasurementsState.ts");
     assert!(state.contains("revision: number"), "{state}");
-    assert!(state.contains("accuracyNote: string"), "{state}");
-    assert!(generated("ChannelMeasurements.ts").contains("unverified: string | null"));
+    assert!(!generated("ChannelMeasurements.ts").contains("unverified"));
     let measurement = generated("Measurement.ts");
     assert!(measurement.contains("value: FormattedValue | null"), "{measurement}");
     assert!(measurement.contains("invalid: Invalid | null"), "{measurement}");

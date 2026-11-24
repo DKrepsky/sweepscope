@@ -2,7 +2,6 @@
 use std::time::{Duration, Instant};
 
 use crate::messages::{ChannelMeasurements, MeasurementsState, Warning};
-use crate::texts;
 
 const MIN_PUBLISH_INTERVAL: Duration = Duration::from_millis(250);
 
@@ -18,7 +17,6 @@ impl Slice {
             state: MeasurementsState {
                 revision: 0,
                 channels: Vec::new(),
-                accuracy_note: texts::ACCURACY_NOTE.to_owned(),
                 warnings: Vec::new(),
             },
             published_at: None,
@@ -61,7 +59,7 @@ impl Slice {
     }
 }
 
-type Shown<'a> = Vec<(u8, bool, Option<&'a str>, Vec<(&'a str, &'a str, &'a str)>)>;
+type Shown<'a> = Vec<(u8, bool, Vec<(&'a str, &'a str, &'a str)>)>;
 
 /// What the user can read: the numbers' text and unit, the invalid reason text, the flags.
 fn shown_text(channels: &[ChannelMeasurements]) -> Shown<'_> {
@@ -77,7 +75,7 @@ fn shown_text(channels: &[ChannelMeasurements]) -> Shown<'_> {
                     (None, None) => (m.label.as_str(), "", ""),
                 })
                 .collect();
-            (channel.channel, channel.clipped, channel.unverified.as_deref(), cells)
+            (channel.channel, channel.clipped, cells)
         })
         .collect()
 }
@@ -93,7 +91,6 @@ mod tests {
         vec![ChannelMeasurements {
             channel: 1,
             clipped: false,
-            unverified: None,
             measurements: vec![Measurement {
                 id: MeasurementId::Vpp,
                 label: "Vpp".into(),

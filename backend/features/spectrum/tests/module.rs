@@ -62,7 +62,7 @@ fn captured(ch1: Vec<u8>, derived: Option<DerivedTrace>) -> FrameCaptured {
             window_len: RECORD,
             invert: [false; 4],
             probe: [1.0; 4],
-            range_verified: [true; 4],
+            calibrated: [true; 4],
             seconds_per_div: SECONDS_PER_DIV,
         },
         derived: derived.map(Arc::new),

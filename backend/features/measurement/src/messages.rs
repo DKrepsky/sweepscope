@@ -62,8 +62,6 @@ pub struct ChannelMeasurements {
     pub channel: u8,
     /// Any sample of the record sits on a converter rail.
     pub clipped: bool,
-    /// Reason text when the range is outside the verified 50 mV to 1 V per division.
-    pub unverified: Option<String>,
     /// Always twelve, in the order of `MeasurementId`.
     pub measurements: Vec<Measurement>,
 }
@@ -76,7 +74,6 @@ pub struct MeasurementsState {
     #[ts(type = "number")]
     pub revision: u64,
     pub channels: Vec<ChannelMeasurements>,
-    pub accuracy_note: String,
     /// Alias warnings per channel, raised and cleared with hysteresis.
     pub warnings: Vec<Warning>,
 }

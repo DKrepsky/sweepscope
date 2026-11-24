@@ -41,7 +41,6 @@ fn measure_derived(frame: &Frame, derived: &DerivedTrace) -> ChannelMeasurements
     ChannelMeasurements {
         channel: MATH_CHANNEL,
         clipped: false,
-        unverified: None,
         measurements: cells(&measured, false),
     }
 }
@@ -58,7 +57,6 @@ fn measure_channel(frame: &Frame, context: &FrameContext, index: usize, data: &C
     ChannelMeasurements {
         channel: index as u8 + 1,
         clipped,
-        unverified: (!context.range_verified[index]).then(|| texts::UNVERIFIED.to_owned()),
         measurements: cells(&measured, clipped),
     }
 }
