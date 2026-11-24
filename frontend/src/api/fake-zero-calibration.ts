@@ -10,7 +10,7 @@ type Channels = ZeroSession['doneChannels'];
 export const DEVICE_LOST_TEXT = 'Device disconnected. Calibration cancelled. Nothing was stored.';
 const EMPTY_TOOLTIP: TooltipText = {
   heading: '',
-  channels: [0, 1, 2, 3].map(() => ({ cells: [] })) as TooltipText['channels'],
+  channels: [{ cells: [] }, { cells: [] }, { cells: [] }, { cells: [] }],
 };
 const NOT_SHORTED_LINE = 'Peak to peak 49.7 mV at 100 mV/div, limit 24.8 mV.';
 const RANGES = ['2 mV', '5 mV', '10 mV', '20 mV', '50 mV', '100 mV', '200 mV', '500 mV', '1 V', '2 V', '5 V', '10 V'];

@@ -8,7 +8,6 @@ import type {
   RecordingState,
   SpectrumState,
   StateSnapshot,
-  TooltipText,
   ZeroCalibrationState,
 } from '../../api';
 
@@ -171,7 +170,7 @@ export const zeroCalibrationState = (patch: Partial<ZeroCalibrationState> = {}):
   unit: {
     calibrated: false,
     storedAtUtc: null,
-    tooltip: { heading: '', channels: [0, 1, 2, 3].map(() => ({ cells: [] })) as TooltipText['channels'] },
+    tooltip: { heading: '', channels: [{ cells: [] }, { cells: [] }, { cells: [] }, { cells: [] }] },
   },
   session: null,
   ...patch,
