@@ -9,6 +9,8 @@ use crossings::Crossing;
 
 const MIN_SWING_COUNTS: f64 = 10.0;
 const HYSTERESIS_FRACTION: f64 = 0.1;
+/// A mean below this fraction of one count step is rounding residue, not signal.
+const ZERO_MEAN_COUNT_FRACTION: f64 = 1e-6;
 
 /// Why a quantity has no value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +71,7 @@ pub fn measure(volts: &[f64], sample_interval_s: f64, volts_per_count: f64) -> M
     if vpp < MIN_SWING_COUNTS * volts_per_count {
         let (mean, rms) = stats::mean_and_rms(volts);
         return Measured {
-            vmean: Ok(mean),
+            vmean: Ok(snap_to_zero(mean, volts_per_count)),
             vrms: Ok(rms),
             ..Measured::all_invalid(vmax, vmin, Invalid::NoSignal)
         };
@@ -84,11 +86,19 @@ pub fn measure(volts: &[f64], sample_interval_s: f64, volts_per_count: f64) -> M
         vmax,
         vmin,
         vpp,
-        vmean: Ok(vmean),
+        vmean: Ok(snap_to_zero(vmean, volts_per_count)),
         vrms: Ok(vrms),
         rise_time: edges.rise,
         fall_time: edges.fall,
         ..timing(&crossings, sample_interval_s)
+    }
+}
+
+fn snap_to_zero(mean: f64, volts_per_count: f64) -> f64 {
+    if mean.abs() < ZERO_MEAN_COUNT_FRACTION * volts_per_count {
+        0.0
+    } else {
+        mean
     }
 }
 

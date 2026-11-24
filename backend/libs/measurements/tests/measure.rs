@@ -217,3 +217,33 @@ fn given_a_triangle_when_measured_then_edge_times_follow_the_median_levels() {
     assert!(near(measured.rise_time.unwrap(), 0.4 * 256e-6, 0.02));
     assert!(near(measured.fall_time.unwrap(), 0.4 * 256e-6, 0.02));
 }
+
+#[test]
+fn given_a_record_that_starts_high_when_measured_then_frequency_fits_from_the_falling_edge_first() {
+    let record = square(1250, 1250 - 100, 0, 1.9);
+    assert!(record[0] > 0.0);
+
+    let measured = measure(&record, 800e-9, VOLTS_PER_COUNT);
+
+    assert!(near(measured.frequency.unwrap(), 1000.0, 1e-4));
+    assert!(near(measured.period.unwrap(), 1e-3, 1e-4));
+}
+
+#[test]
+fn given_exactly_two_rising_edges_when_measured_then_frequency_comes_from_their_spacing() {
+    let record: Vec<f64> = (0..1500).map(|i| if i % 500 < 250 { 0.0 } else { 1.0 }).collect();
+
+    let measured = measure(&record, 1e-6, VOLTS_PER_COUNT);
+
+    assert!(near(measured.frequency.unwrap(), 2000.0, 1e-3));
+    assert!(near(measured.period.unwrap(), 500e-6, 1e-3));
+}
+
+#[test]
+fn given_samples_whose_sum_is_a_rounding_residue_when_measured_then_vmean_is_exactly_zero() {
+    let record: Vec<f64> = [0.2, 0.1, -0.3].iter().copied().cycle().take(3000).collect();
+
+    let measured = measure(&record, 1e-6, VOLTS_PER_COUNT);
+
+    assert_eq!(measured.vmean, Ok(0.0));
+}
