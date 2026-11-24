@@ -2,7 +2,7 @@ use std::path::Path;
 
 use sweepscope_acquisition::{
     AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FormattedValue, InstrumentFacts,
-    InstrumentState, Phase, ScaleChoice, SettingTarget, SetupLoaded, SetupNotice, StateSnapshot, TriggerPatch,
+    InstrumentState, Phase, ScaleChoice, SettingTarget, SetupLoaded, SetupNotice, TriggerPatch,
 };
 use sweepscope_kernel::contracts::{Slope, Sweep};
 use ts_rs::{Config, TS};
@@ -20,13 +20,11 @@ fn given_the_state_slices_when_exported_then_revisions_are_numbers_and_fields_ar
     InstrumentState::export_all(&config).unwrap();
     AcquisitionStatus::export_all(&config).unwrap();
     InstrumentFacts::export_all(&config).unwrap();
-    StateSnapshot::export_all(&config).unwrap();
 
     assert!(generated("InstrumentState.ts").contains("revision: number"));
     assert!(generated("InstrumentState.ts").contains("channels: Array<ChannelState>"));
     assert!(generated("AcquisitionStatus.ts").contains("phase: Phase"));
     assert!(generated("InstrumentFacts.ts").contains("sampleRate: FormattedValue | null"));
-    assert!(generated("StateSnapshot.ts").contains("connection: ConnectionSnapshot"));
 }
 
 #[test]

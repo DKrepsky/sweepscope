@@ -7,7 +7,9 @@ use sweepscope_device::{
     DeviceCatalog, DeviceDeps, DeviceModule, HantekCatalog, SimulatedCatalog, SimulatorControl, SimulatorSource,
 };
 use sweepscope_display::{DisplayDeps, DisplayModule};
-use sweepscope_kernel::{Bus, Clock, FileStorage, KernelError, Storage, SystemClock};
+use sweepscope_export::{ExportDeps, ExportModule};
+use sweepscope_kernel::{Bus, Clock, FilePicker, FileStorage, KernelError, Storage, SystemClock};
+use sweepscope_measurement::{MeasurementDeps, MeasurementModule};
 use sweepscope_settings::{SettingsDeps, SettingsModule};
 
 const SIMULATOR_VARIABLE: &str = "SWEEPSCOPE_SIMULATOR";
@@ -18,6 +20,8 @@ const NO_HARDWARE_VARIABLE: &str = "SWEEPSCOPE_NO_HARDWARE";
 pub struct Backend {
     pub bus: Bus,
     _display: DisplayModule,
+    _measurement: MeasurementModule,
+    _export: ExportModule,
     _acquisition: AcquisitionModule,
     _device: DeviceModule,
     _settings: SettingsModule,
@@ -26,6 +30,7 @@ pub struct Backend {
 /// Everything `compose` needs from the outside, so tests can swap the world for fakes.
 pub struct Wiring {
     pub storage: Arc<dyn Storage>,
+    pub picker: Arc<dyn FilePicker>,
     pub clock: Arc<dyn Clock>,
     pub hardware: Option<Box<dyn DeviceCatalog>>,
     pub simulator: Option<SimulatorSource>,
@@ -36,12 +41,23 @@ pub fn compose(wiring: Wiring) -> Result<Backend, KernelError> {
     let bus = Bus::new();
     let settings = SettingsModule::new(SettingsDeps {
         bus: bus.clone(),
-        storage: wiring.storage,
+        storage: Arc::clone(&wiring.storage),
     })?;
-    // Acquisition learns the connection only from events, so it must exist before the device publishes.
+    // Consumers of frames and the instrument state exist before the producers publish.
+    let measurement = MeasurementModule::new(MeasurementDeps {
+        bus: bus.clone(),
+        clock: Arc::clone(&wiring.clock),
+    })?;
+    let export = ExportModule::new(ExportDeps {
+        bus: bus.clone(),
+        picker: Arc::clone(&wiring.picker),
+        unix_time_us: wiring.unix_time_us,
+    })?;
     let acquisition = AcquisitionModule::new(AcquisitionDeps {
         bus: bus.clone(),
         clock: Arc::clone(&wiring.clock),
+        storage: wiring.storage,
+        picker: wiring.picker,
     })?;
     let device = DeviceModule::new(DeviceDeps {
         bus: bus.clone(),
@@ -56,17 +72,20 @@ pub fn compose(wiring: Wiring) -> Result<Backend, KernelError> {
     Ok(Backend {
         bus,
         _display: display,
+        _measurement: measurement,
+        _export: export,
         _acquisition: acquisition,
         _device: device,
         _settings: settings,
     })
 }
 
-pub fn compose_on_disk(config_dir: PathBuf) -> Result<Backend, KernelError> {
+pub fn compose_on_disk(config_dir: PathBuf, picker: Arc<dyn FilePicker>) -> Result<Backend, KernelError> {
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let start_plugged = simulator_requested(std::env::var(SIMULATOR_VARIABLE).ok().as_deref());
     compose(Wiring {
         storage: Arc::new(FileStorage::new(config_dir)),
+        picker,
         hardware: choose_hardware(
             hardware_disabled(std::env::var(NO_HARDWARE_VARIABLE).ok().as_deref()),
             hardware_catalog,

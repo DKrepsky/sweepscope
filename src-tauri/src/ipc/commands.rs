@@ -1,14 +1,18 @@
 use sweepscope_acquisition::{
-    ChannelPatch, ForceTriggerNow, GetInstrument, InstrumentSnapshot, ResetSetting, SetChannel, SetRunning, SetTrigger,
-    SetTriggerLevel, SetTriggerPosition, SettingTarget, StateSnapshot, StepSetting, TriggerPatch,
+    ChannelPatch, ForceTriggerNow, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
+    SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, StepSetting, TriggerPatch,
 };
-use sweepscope_device::{GetConnection, RetryConnection, UseSimulator};
-use sweepscope_kernel::{Bus, KernelError};
+use sweepscope_device::{RetryConnection, UseSimulator};
+use sweepscope_display::{InterpolationMode, SetInterpolation};
+use sweepscope_export::{ExportFormat, ExportFrame, SaveScreenshot};
+use sweepscope_kernel::contracts::SavedFile;
+use sweepscope_kernel::{Bus, KernelError, Request};
 use sweepscope_settings::{LoadUiState, SaveUiState, UiStateEntry};
-use tauri::ipc::{Channel, InvokeResponseBody};
+use tauri::ipc::{Channel, InvokeBody, InvokeResponseBody};
 use tauri::State;
 
 use super::frames::FrameStreams;
+use super::snapshot::{snapshot_with, StateSnapshot};
 use crate::composition::{unix_time_us, Backend};
 
 /// Every command passed to `handler`; compared in tests with the manifest, `build.rs` and the capability.
@@ -17,6 +21,11 @@ pub const REGISTERED_COMMANDS: &[&str] = &[
     "load_ui_state",
     "save_ui_state",
     "get_snapshot",
+    "set_interpolation",
+    "export_frame",
+    "save_screenshot",
+    "save_setup",
+    "load_setup",
     "set_running",
     "force_trigger",
     "set_channel",
@@ -39,20 +48,23 @@ pub fn save_ui_state_with(bus: &Bus, entry: UiStateEntry) -> Result<(), KernelEr
     bus.request(SaveUiState(entry))
 }
 
-/// Assembles the four slices; the shell holds no state of its own (ADR 0013 item 1).
-pub fn snapshot_with(bus: &Bus) -> Result<StateSnapshot, KernelError> {
-    let connection = bus.request(GetConnection)?;
-    let InstrumentSnapshot {
-        instrument,
-        status,
-        facts,
-    } = bus.request(GetInstrument)?;
-    Ok(StateSnapshot {
-        connection,
-        instrument,
-        status,
-        facts,
-    })
+/// The raw body of `save_screenshot`; a JSON body is refused so the command never parses untrusted text as bytes.
+pub fn screenshot_bytes(body: &InvokeBody) -> Result<Vec<u8>, KernelError> {
+    match body {
+        InvokeBody::Raw(bytes) => Ok(bytes.clone()),
+        InvokeBody::Json(_) => Err(KernelError::recoverable("the screenshot must be sent as binary data")),
+    }
+}
+
+/// Dialogs block, so file commands run on a blocking thread and never on the main thread or the bus.
+async fn blocking_request<R>(bus: Bus, request: R) -> Result<R::Response, KernelError>
+where
+    R: Request + Send + 'static,
+    R::Response: Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || bus.request(request))
+        .await
+        .map_err(|error| KernelError::fatal(format!("the file command stopped unexpectedly: {error}")))?
 }
 
 #[tauri::command]
@@ -68,6 +80,35 @@ fn save_ui_state(backend: State<'_, Backend>, entry: UiStateEntry) -> Result<(),
 #[tauri::command]
 fn get_snapshot(backend: State<'_, Backend>) -> Result<StateSnapshot, KernelError> {
     snapshot_with(&backend.bus)
+}
+
+#[tauri::command]
+fn set_interpolation(backend: State<'_, Backend>, mode: InterpolationMode) -> Result<(), KernelError> {
+    backend.bus.request(SetInterpolation { mode })
+}
+
+#[tauri::command]
+async fn export_frame(backend: State<'_, Backend>, format: ExportFormat) -> Result<Option<SavedFile>, KernelError> {
+    blocking_request(backend.bus.clone(), ExportFrame { format }).await
+}
+
+#[tauri::command]
+async fn save_screenshot(
+    backend: State<'_, Backend>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<Option<SavedFile>, KernelError> {
+    let png = screenshot_bytes(request.body())?;
+    blocking_request(backend.bus.clone(), SaveScreenshot { png }).await
+}
+
+#[tauri::command]
+async fn save_setup(backend: State<'_, Backend>) -> Result<Option<SavedFile>, KernelError> {
+    blocking_request(backend.bus.clone(), SaveSetup).await
+}
+
+#[tauri::command]
+async fn load_setup(backend: State<'_, Backend>) -> Result<Option<SetupLoaded>, KernelError> {
+    blocking_request(backend.bus.clone(), LoadSetup).await
 }
 
 #[tauri::command]
@@ -139,6 +180,11 @@ pub fn install(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry
         load_ui_state,
         save_ui_state,
         get_snapshot,
+        set_interpolation,
+        export_frame,
+        save_screenshot,
+        save_setup,
+        load_setup,
         set_running,
         force_trigger,
         set_channel,
@@ -157,17 +203,12 @@ pub fn install(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
-    use std::time::Duration;
 
-    use sweepscope_acquisition::{AcquisitionStatus, InstrumentFacts, Phase};
-    use sweepscope_device::{DeviceDeps, DeviceModule};
-    use sweepscope_kernel::contracts::ConnectionState;
-    use sweepscope_kernel::testing::{eventually, FakeClock, MemoryStorage};
+    use sweepscope_kernel::testing::MemoryStorage;
     use sweepscope_kernel::ErrorCategory;
     use sweepscope_settings::{SettingsDeps, SettingsModule};
 
     use super::*;
-    use crate::composition::{compose, simulator_source, Wiring};
 
     fn entry(namespace: &str) -> UiStateEntry {
         UiStateEntry {
@@ -185,24 +226,6 @@ mod tests {
         })
         .expect("settings module");
         (bus, module)
-    }
-
-    fn quiet_instrument() -> InstrumentSnapshot {
-        InstrumentSnapshot {
-            instrument: None,
-            status: AcquisitionStatus {
-                revision: 1,
-                phase: Phase::Stopped,
-            },
-            facts: InstrumentFacts {
-                revision: 1,
-                sample_rate: None,
-                sample_interval: None,
-                record_points: None,
-                capture_rate: None,
-                dead_time: None,
-            },
-        }
     }
 
     #[test]
@@ -232,53 +255,17 @@ mod tests {
     }
 
     #[test]
-    fn given_no_slice_handlers_when_a_snapshot_is_requested_then_the_error_has_category_and_message_without_paths() {
-        let error = snapshot_with(&Bus::new()).expect_err("no handler registered");
+    fn given_a_json_body_when_the_screenshot_bytes_are_read_then_it_is_refused() {
+        let error = screenshot_bytes(&InvokeBody::Json(serde_json::json!([137, 80]))).expect_err("json body");
 
-        let json = serde_json::to_value(&error).expect("serialise");
-        assert!(json["category"].is_string());
-        assert!(json["message"].is_string());
-        assert!(!error.message.contains('/') && !error.message.contains('\\'));
+        assert_eq!(error.category, ErrorCategory::Recoverable);
+        assert!(error.message.contains("binary"));
     }
 
     #[test]
-    fn given_a_ready_simulated_device_when_a_snapshot_is_requested_then_it_carries_the_connection_and_the_instrument_slices(
-    ) {
-        let bus = Bus::new();
-        let _device = DeviceModule::new(DeviceDeps {
-            bus: bus.clone(),
-            clock: Arc::new(FakeClock::default()),
-            hardware: None,
-            simulator: Some(simulator_source(Arc::new(FakeClock::default()), true)),
-        })
-        .expect("device module");
-        bus.handle(|_: GetInstrument| Ok(quiet_instrument()))
-            .expect("fake acquisition");
-        assert!(eventually(Duration::from_secs(5), || {
-            snapshot_with(&bus).is_ok_and(|s| s.connection.state == ConnectionState::Ready)
-        }));
+    fn given_a_raw_body_when_the_screenshot_bytes_are_read_then_they_are_returned_unchanged() {
+        let bytes = screenshot_bytes(&InvokeBody::Raw(vec![137, 80, 78, 71])).expect("raw body");
 
-        let snapshot = snapshot_with(&bus).expect("snapshot");
-
-        assert!(snapshot.connection.simulator_active);
-        assert_eq!(snapshot.status.phase, Phase::Stopped);
-        assert_eq!(snapshot.instrument, None);
-    }
-
-    #[test]
-    fn given_the_composed_app_with_the_simulator_when_a_snapshot_is_requested_then_the_device_becomes_ready() {
-        let clock = Arc::new(FakeClock::default());
-        let backend = compose(Wiring {
-            storage: Arc::new(MemoryStorage::default()),
-            clock: clock.clone(),
-            hardware: None,
-            simulator: Some(simulator_source(clock, true)),
-            unix_time_us: crate::composition::unix_time_us,
-        })
-        .expect("compose");
-
-        assert!(eventually(Duration::from_secs(5), || {
-            snapshot_with(&backend.bus).is_ok_and(|s| s.connection.state == ConnectionState::Ready)
-        }));
+        assert_eq!(bytes, [137, 80, 78, 71]);
     }
 }

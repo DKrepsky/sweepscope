@@ -5,13 +5,17 @@ use std::time::Duration;
 
 use serde_json::Value;
 use sweepscope_acquisition::{FactsChanged, InstrumentChanged, StatusChanged};
+use sweepscope_display::DisplayChanged;
 use sweepscope_kernel::contracts::ConnectionChanged;
 use sweepscope_kernel::{Bus, Event, KernelError, Subscription};
+use sweepscope_measurement::MeasurementsChanged;
 
 pub const CONNECTION_CHANGED: &str = "connection_changed";
 pub const INSTRUMENT_CHANGED: &str = "instrument_changed";
 pub const STATUS_CHANGED: &str = "status_changed";
 pub const FACTS_CHANGED: &str = "facts_changed";
+pub const DISPLAY_CHANGED: &str = "display_changed";
+pub const MEASUREMENTS_CHANGED: &str = "measurements_changed";
 
 const POLL: Duration = Duration::from_millis(50);
 
@@ -51,6 +55,12 @@ impl EventForwarders {
             serde_json::to_value(e.0)
         })?;
         forwarders.forward(bus, emitter, FACTS_CHANGED, |e: FactsChanged| serde_json::to_value(e.0))?;
+        forwarders.forward(bus, emitter, DISPLAY_CHANGED, |e: DisplayChanged| {
+            serde_json::to_value(e.0)
+        })?;
+        forwarders.forward(bus, emitter, MEASUREMENTS_CHANGED, |e: MeasurementsChanged| {
+            serde_json::to_value(e.0)
+        })?;
         Ok(forwarders)
     }
 
@@ -105,8 +115,10 @@ mod tests {
     use std::sync::Mutex;
 
     use sweepscope_acquisition::{AcquisitionStatus, InstrumentFacts, Phase};
+    use sweepscope_display::{DisplayState, InterpolationMode};
     use sweepscope_kernel::contracts::{ConnectionSnapshot, ConnectionState};
     use sweepscope_kernel::testing::eventually;
+    use sweepscope_measurement::MeasurementsState;
 
     use super::*;
 
@@ -197,6 +209,31 @@ mod tests {
         assert!(eventually(WAIT, || recorder.names().len() == 2));
         assert_eq!(recorder.payload(STATUS_CHANGED).expect("status")["revision"], 3);
         assert_eq!(recorder.payload(FACTS_CHANGED).expect("facts")["revision"], 4);
+    }
+
+    #[test]
+    fn given_display_and_measurement_changes_when_published_then_each_is_emitted_under_its_own_name() {
+        let (bus, recorder, _forwarders) = started();
+
+        bus.publish(DisplayChanged(DisplayState {
+            revision: 5,
+            interpolation: InterpolationMode::Sinc,
+            automatic: true,
+        }));
+        bus.publish(MeasurementsChanged(MeasurementsState {
+            revision: 6,
+            channels: Vec::new(),
+            accuracy_note: String::new(),
+        }));
+
+        assert!(eventually(WAIT, || recorder.names().len() == 2));
+        let display = recorder.payload(DISPLAY_CHANGED).expect("display");
+        assert_eq!(display["revision"], 5);
+        assert_eq!(display["interpolation"], "sinc");
+        assert_eq!(
+            recorder.payload(MEASUREMENTS_CHANGED).expect("measurements")["revision"],
+            6
+        );
     }
 
     #[test]

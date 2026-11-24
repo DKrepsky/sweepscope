@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sweepscope_kernel::contracts::{ConnectionSnapshot, Coupling, FormattedValue, SavedFile, Slope, Sweep};
+use sweepscope_kernel::contracts::{Coupling, FormattedValue, SavedFile, Slope, Sweep};
 use sweepscope_kernel::{Event, Request};
 use ts_rs::TS;
 
@@ -153,17 +153,6 @@ pub struct InstrumentFacts {
     pub record_points: Option<FormattedValue>,
     pub capture_rate: Option<FormattedValue>,
     pub dead_time: Option<FormattedValue>,
-}
-
-/// What `get_snapshot` returns; the shell assembles it from `GetConnection` and `GetInstrument`.
-#[derive(Debug, Clone, PartialEq, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
-pub struct StateSnapshot {
-    pub connection: ConnectionSnapshot,
-    pub instrument: Option<InstrumentState>,
-    pub status: AcquisitionStatus,
-    pub facts: InstrumentFacts,
 }
 
 /// Optional fields: a missing field leaves the setting alone.

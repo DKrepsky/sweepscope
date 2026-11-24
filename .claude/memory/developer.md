@@ -271,3 +271,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## measurement module (developer-3, WP6)
 - `features/measurement`: `channel.rs` (frame to cells), `slice.rs` (revision, text-only change test, 250 ms rate limit, pure and unit-tested with explicit `Instant`s), `module.rs` (thread, 20 ms poll, held-back change flushed when `Clock::now` passes the interval). Tests use synthetic calibrator waves (features cannot import `device`); put a rising edge inside a short record by offsetting the start by `period - lead`.
 - `FrameContext`/`Frame` channels are 1-based in slices (`index + 1`); lib crate is named `measurements`, formatter `engineering-format`.
+
+## M2 shell (WP9, developer-6)
+- `tauri-plugin-dialog` 2.8 used from Rust only (`ipc/picker.rs`: architecture check allows `tauri::` only in main.rs and ipc/); `main.rs` registers `.plugin(tauri_plugin_dialog::init())`; blocking dialogs run via `tauri::async_runtime::spawn_blocking` in async commands.
+- ts-rs cannot export a type from `src-tauri` that imports feature types (relative `export_to` makes garbage import paths), so `StateSnapshot.ts` is rendered by `manifest::render_state_snapshot_ts`; regenerate both generated files with `UPDATE_GENERATED=1 cargo test -p sweepscope-app`.
+- Raw command body: `tauri::ipc::Request::body()` is `InvokeBody::Raw` for bytes; JSON bodies are refused. Heredocs with many shell steps get refused in this sandbox: use the Write tool and split commands.

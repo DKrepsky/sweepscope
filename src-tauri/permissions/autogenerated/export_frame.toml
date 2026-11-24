@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-export-frame"
+description = "Enables the export_frame command without any pre-configured scope."
+commands.allow = ["export_frame"]
+
+[[permission]]
+identifier = "deny-export-frame"
+description = "Denies the export_frame command without any pre-configured scope."
+commands.deny = ["export_frame"]
