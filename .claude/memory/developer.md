@@ -366,3 +366,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - New real stream feeds open on first model subscription, so e2e stubs must acknowledge open/close roll and spectrum streams (added to `e2e/support/tauri-stub.ts`).
 - NumberField `errorText="external"` = invalid state only, caller draws the text. Backend units are ASCII `us`; message text converts to `µs`.
 - Fresh worktrees have no node_modules: `npm ci` in frontend. The graph.spec 33 ms probe is flaky under load (webkit).
+## M3 fix round 2 (developer-10)
+- Core keeps a `HeldFrame` (frame, setup revision, derived); `rederive_held` in `after_change` re-publishes `FrameCaptured` when stopped and the derived trace differs (same setup revision only).
+- Roll toolbar at 1024: trigger phase chip is dropped in roll (it was 170 px when "Waiting for trigger"); scrollWidth alone hides a squeezed spacer, also assert drawer button right edge <= Settings left.

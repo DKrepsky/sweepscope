@@ -358,17 +358,42 @@ test.describe('#27 roll mode availability', () => {
     await expect(button(page, 'Cursors')).toHaveAttribute('aria-disabled', 'true');
   });
 
-  for (const width of [1024, 1280, 1440]) {
-    for (const mode of ['roll', 'yt'] as const) {
-      test(`given ${mode} mode at ${width} px, when the toolbar is measured, then it does not overflow and keeps File and Screenshot visible`, async ({
+  const sizes: [number, number][] = [
+    [1024, 900],
+    [1024, 720],
+    [1280, 900],
+    [1440, 900],
+  ];
+  for (const [width, height] of sizes) {
+    for (const mode of ['roll', 'recording', 'yt'] as const) {
+      test(`given ${mode} mode at ${width}x${height}, when the toolbar is measured, then it does not overflow and keeps File and Screenshot visible`, async ({
         page,
       }) => {
-        await page.setViewportSize({ width, height: 900 });
+        await page.setViewportSize({ width, height });
         await openMain(page);
-        if (mode === 'roll') await emit(page, 'instrument_changed', rollState());
-        await emit(page, 'status_changed', acquisitionStatus({ revision: 80, phase: 'auto' }));
+        if (mode !== 'yt') await emit(page, 'instrument_changed', rollState());
+        if (mode === 'recording') {
+          await emit(page, 'recording_changed', {
+            revision: 6,
+            active: true,
+            fileName: 'a.ssroll',
+            duration: { value: 3, text: '0:00:03', unit: '' },
+            bytesWritten: { value: 2048, text: '2.0', unit: 'KiB' },
+            failure: null,
+          });
+        }
+        await emit(
+          page,
+          'status_changed',
+          acquisitionStatus({ revision: 80, phase: mode === 'yt' ? 'auto' : 'waitingForTrigger' }),
+        );
         const overflow = await toolbar(page).evaluate((el) => el.scrollWidth - el.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
+        if (width === 1024) {
+          const drawer = await page.getByRole('button', { name: 'Measurements drawer' }).boundingBox();
+          const settings = await button(page, 'Settings').boundingBox();
+          expect((drawer?.x ?? 0) + (drawer?.width ?? 0)).toBeLessThanOrEqual(settings?.x ?? 0);
+        }
         for (const name of [/^File/, 'Screenshot', 'Settings']) {
           const box = await button(page, name).boundingBox();
           expect(box && box.x + box.width).toBeLessThanOrEqual(width);
