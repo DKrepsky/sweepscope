@@ -1,10 +1,13 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { axisOf, nudgedPosition, positionFromPointer } from './marker-geometry';
-  import type { MarkerKind } from './marker-geometry';
+  import type { MarkerKind, ScreenAxis } from './marker-geometry';
 
   interface Props {
     kind: MarkerKind;
+    axis?: ScreenAxis;
+    level?: number;
+    valueText?: string;
     position: number;
     label: string;
     name: string;
@@ -22,6 +25,9 @@
 
   let {
     kind,
+    axis: screenAxis = 'y',
+    level = 1,
+    valueText,
     position,
     label,
     name,
@@ -37,7 +43,7 @@
     onreset,
   }: Props = $props();
 
-  const axis = $derived(axisOf(kind));
+  const axis = $derived(axisOf(kind, screenAxis));
   const reasonId = $props.id();
   let focused = $state(false);
   const showReason = $derived(disabled && focused && !!disabledReason);
@@ -45,7 +51,11 @@
   let lastPosition: number | null = null;
   let keyPosition = $state<number | null>(null);
   const shown = $derived(dragPosition ?? keyPosition ?? position);
-  const placement = $derived(axis === 'vertical' ? `top: ${(1 - shown) * 100}%` : `left: ${shown * 100}%`);
+  const placement = $derived(
+    axis === 'vertical'
+      ? `top: ${(1 - shown) * 100}%`
+      : `left: ${shown * 100}%${kind === 'peak' ? `; top: ${(1 - level) * 100}%` : ''}`,
+  );
 
   $effect(() => {
     void position;
@@ -86,7 +96,7 @@
   function onkeydown(event: KeyboardEvent) {
     if (disabled) return;
     if (event.key === 'Delete') return ondelete?.();
-    const next = nudgedPosition(axis, event, shown, step);
+    const next = nudgedPosition(axis, event, shown, step, kind === 'peak');
     if (next === null) return;
     event.preventDefault();
     keyPosition = next;
@@ -97,6 +107,7 @@
 
 <div
   class="marker {kind}"
+  class:axis-x={screenAxis === 'x'}
   class:pending
   class:dragging={dragPosition !== null}
   class:disabled
@@ -107,7 +118,7 @@
   aria-valuemin="0"
   aria-valuemax="1"
   aria-valuenow={shown}
-  aria-valuetext="{Math.round(shown * 100)} %"
+  aria-valuetext={valueText ?? `${Math.round(shown * 100)} %`}
   aria-disabled={disabled}
   title={disabled ? disabledReason : undefined}
   aria-describedby={showReason ? reasonId : undefined}
@@ -165,6 +176,18 @@
     inset-block-end: 0;
   }
 
+  .marker.ground.axis-x {
+    inset-inline-end: auto;
+    inset-block-start: 0;
+    cursor: ew-resize;
+    transform: translateX(-50%);
+  }
+
+  .marker.peak {
+    cursor: ew-resize;
+    transform: translate(-50%, -100%);
+  }
+
   .marker.disabled {
     cursor: default;
   }
@@ -181,6 +204,16 @@
 
   .ground .shape {
     clip-path: polygon(0 0, 70% 0, 100% 50%, 70% 100%, 0 100%);
+  }
+
+  .ground.axis-x .shape {
+    clip-path: polygon(50% 0, 100% 35%, 100% 100%, 0 100%, 0 35%);
+    padding-block-start: var(--ss-space-1);
+  }
+
+  .peak .shape {
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    padding-block-end: var(--ss-space-2);
   }
 
   .trigger-level .shape {
@@ -255,6 +288,16 @@
 
   .ground .tag {
     inset-inline-end: 100%;
+  }
+
+  .ground.axis-x .tag {
+    inset-inline: 100% auto;
+  }
+
+  .peak .tag {
+    inset-inline-start: 100%;
+    inset-block-start: 0;
+    transform: none;
   }
 
   .trigger-level .tag {
