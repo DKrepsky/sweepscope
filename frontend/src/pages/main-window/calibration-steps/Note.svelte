@@ -33,6 +33,10 @@
     border-inline-start: var(--ss-space-1) solid var(--ss-color-status-info);
     font-size: var(--ss-font-size-xs);
   }
+  .note[tabindex='-1']:focus,
+  .note[tabindex='-1']:focus-visible {
+    outline: none;
+  }
   .good {
     border-inline-start-color: var(--ss-color-status-ok);
   }
