@@ -49,11 +49,11 @@ Personas: PRD section 3. Journeys derive from US-01 to US-19.
 | J1 | **First connection** (US-01, DEV-6, APP-3) | `Disconnected` chip and hint. After plug-in: `Settling`, then `Ready` with model and firmware in the status bar. A first-run hint points at the CAL terminal. | Permission denied: error Banner with the udev command, `Copy command`, `Retry`. Not found: `Disconnected` plus "Connect a scope or use the simulator". |
 | J2 | **Quick look** (US-02) | `Autoset` button; screen settles; Toast reports the result. | No signal: Toast "No signal on any enabled channel". |
 | J3 | **Unplug and replug** (US-03) | Screen freezes on the last frame (dimmed), `Disconnected` banner with last-frame time; controls disabled but readable; numbers muted with `Frozen`. After replug: `Settling`, setup restored. | Repeated events do not stack banners. Frozen frame can still be cursor-read and saved. |
-| J4 | **Vertical setup** (US-04) | Channel rows (8.1). | Value outside the verified region: `?` badge on the row and `Unverified` in the scale strip. |
+| J4 | **Vertical setup** (US-04) | Channel rows (8.1). | Any range is usable; no verification markers (M4, #50). |
 | J5 | **Sample rate awareness** (US-05) | Instrument facts always in the status bar and Horizontal group (slots, section 4). | Warning Banner and measurement badge when the backend raises an aliasing warning. |
 | J6 | **Trigger a repeating signal** (US-09) | Drag the level marker; `Trig'd` chip. | Normal sweep without event: chip `Waiting for trigger`. Auto sweep: chip `Auto`. |
 | J7 | **Single shot** (US-10) | `Single`, chip `Armed`, then `Trig'd` and `Stop`. | Stop during `Armed` cancels. No modals. |
-| J8 | **Measure** (US-12, 13, 14) | Cursors (`C`), measurement matrix. | Invalid: `-` with footnote. Unverified: `?`. Stopped or disconnected: muted and `Frozen`. |
+| J8 | **Measure** (US-12, 13, 14) | Cursors (`C`), measurement matrix. | Invalid: `-` with footnote. Stopped or disconnected: muted and `Frozen`. |
 | J9 | **Slow signal / roll** (US-08) | Chip `Roll`; moving time axis. | Gap band labelled `GAP`, never a splice. |
 | J10 | **Zero calibration** (US-14) | TaskPanel in the sidebar (non-modal). | Failure shown inside the panel. |
 | J11 | **Export and resume** (US-17, 18) | `Save` menu; opened capture sets `Offline`. | Offline: acquisition controls disabled with tooltip "Offline: no device". |
@@ -84,10 +84,10 @@ Personas: PRD section 3. Journeys derive from US-01 to US-19.
 | A Toolbar (44 px) | Run control, global tools | Run/Stop toggle, Single, Force, Autoset; acquisition chips; view tabs (Yt, XY, FFT); persistence; cursors, math, ref; save, screenshot, settings | Run/Stop is one toggle: label is the action a click performs, the chip beside it is the state. Order never changes. |
 | B Horizontal readout (28 px) | Position in time | Time/div, trigger position, window size, record overview bar | Overview shows the record, visible window and trigger tick (HOR-2). |
 | C Scope screen | The measurement | Graticule, traces, trigger guides, cursors, markers, overlays | Sizing rule in 3.3. |
-| D1 Scale strip | Scales at a glance | One chip per channel: number, volts/div, coupling, `Unverified` badge; `off` | Always visible. |
+| D1 Scale strip | Scales at a glance | One chip per channel: number, volts/div, coupling; `off` | Always visible. |
 | D2 Dock | Controls | **Vertical** (4 channel rows), **Horizontal**, **Trigger** | Fixed row heights. |
 | E Sidebar (344 px at 100 %) | Numbers | Cursors panel; Measurements panel (`Now`, `Stats`) | Collapses per 3.2. |
-| F Status bar (24 px) | Instrument facts | Connection (model, firmware, FPGA, calibration); effective sample rate; record length; capture rate and dead time (slots from PRD 5.2); renderer; accuracy note | Read-only. Warning items turn amber with an icon. |
+| F Status bar (24 px) | Instrument facts | Connection (model, firmware, FPGA, calibration); effective sample rate; record length; capture rate and dead time (slots from PRD 5.2); renderer; **calibration tag** at the right end (`CALIBRATED` / `NO CALIBRATION`, M4 spec 2). Connection is the dot, bold state word, muted detail item (M4 spec 2.1) | Read-only. Warning items turn amber with an icon. |
 
 Out of scope for the window: generator controls (PRD 5.2: none on the BC), digital channels, deep memory.
 
@@ -130,7 +130,7 @@ Height tiers (window height in rem; thresholds are minimum heights, calibrated b
 
 These are the final thresholds (they replace the provisional 56 / 50 / 45 rem values). The measured values differ from the early estimates because the W3 dock is 20.9 rem high, not 16.25. Consequence: a 1366 x 768 laptop (48 rem) at W1 or W2 gets H1; at W3 it gets H4 (tabs), because two dock rows plus a two-line status bar do not fit above the 720 px floor.
 
-**Known limit:** banners (for example the notifications stack and the unverified-hardware banner) are not counted in the height thresholds. Near a threshold a visible banner can take height the table did not budget and cause slight scrolling of the content region, even though the window is above the threshold. Toolbar and status bar stay pinned; the screen keeps its minimum size.
+**Known limit:** banners (for example the notifications stack) are not counted in the height thresholds. Near a threshold a visible banner can take height the table did not budget and cause slight scrolling of the content region, even though the window is above the threshold. Toolbar and status bar stay pinned; the screen keeps its minimum size.
 
 Collapse order when space runs out (first collapses first): 1 toolbar tool labels (W2: secondary tools; W3: brand, captions, Single/Force/Autoset text), 2 sidebar to drawer (width), 3 dock wraps (width), 4 record overview (height), 5 dock to compact rows (height), 6 status bar items by priority (lowest first: renderer, accuracy note, record length, capture rate), 7 height tier H4: the three dock groups become tabs `Vertical | Horizontal | Trigger` showing one group at a time (same tab order, Trigger one click away; the trigger summary is shown in the scale strip), 8 below the floor: scroll (see above). Steps 1 to 5 are driven by the **available stage size, never by window size alone**: they are re-evaluated when text scale, OS scale or window size change. The scope screen is **never** collapsed or clipped: it absorbs spare space, and a collapse step is triggered when the screen would drop below its minimum size (3.3).
 
@@ -169,8 +169,7 @@ Text scale and OS scale are independent: the OS scale changes device pixels per 
 | AC-L1 to AC-L3, content floor, pinned bars | Required | BUG-2 and BUG-1 (rem minimum) |
 | Hairline graticule at 1.5 and 2 (AC-G2) | Required | BUG-8: code fix, rule corrected in 8.5 |
 | Stop contrast | Required | D-L2 (decided) |
-| Status bar renderer and accuracy right-aligned | Deferred | Left-aligned accepted until the status bar gets its real slots (first feature story touching it) |
-| `Unverified` footnote line under measurements | Deferred | Belongs to the Measurements table; the scaffold has only the placeholder note |
+| Status bar renderer right-aligned | Deferred | Left-aligned accepted until the status bar gets its real slots (first feature story touching it). The calibration tag is right-aligned (M4) |
 | Sidebar grows to 28 rem on ultrawide | Deferred | Scaffold keeps 21.5 rem; do with the sidebar content story |
 | Key `M` and the other shortcuts | Deferred | Arrive with the feature each one acts on |
 
@@ -191,8 +190,7 @@ fixes **where** and **how** each is shown. Values in the prototype are placehold
 | Effective sample rate, sample interval, record length (PRD 5.2, US-05) | Status bar items; Horizontal group readline | `Readout` with unit; changes highlight for the duration of one `motion-normal` | `Fs <value> <unit>`, `Ts <value>`, `Record <n> pts/ch` |
 | Capture rate and dead time (PRD 5.2) | Status bar item | Same | `Capture <n> /s  dead time <n> %` (exact quantities: Q-E1) |
 | Warning that the displayed signal may be misread (aliasing, US-05) | `Badge warning` `Alias` on the status bar Fs item (amber, icon), the channel scale chip and the measurement column header; amber edge and footnote on that channel's Frequency and Period cells. No banner (M3 D6) | Dashed amber, clears with the backend state | Tooltip text in the M3 spec 6.2 |
-| Unverified value (PRD 5.2) | `Badge warning` `?` on channel row; `Badge warning` `Unverified` in scale strip; `?` after value and amber left edge in a measurement cell; badge inside dropdown items; tooltip | Dashed amber outline | Tooltip: `Unverified (see accuracy note).` plus note text from PM |
-| Accuracy note (PRD 5.2) | Status bar item `Accuracy` opening a Popover; cursor panel note line; trigger tooltip | Secondary text, `info` icon | Text owned by the PM (Q-E4) |
+| Calibration status and accuracy summary (VER-3, M4) | Status bar `CalibrationTag` (right end) with tooltip; modal `CalibrationDialog` on click. Cursor panel and trigger position keep their accuracy note lines | Tag: amber outline and warning icon `NO CALIBRATION`, green outline and check icon `CALIBRATED`, dimmed `Calibration -` without a device | Wording in M4 spec 7; numbers from the backend |
 | Software-computed feature (PRD open question 2) | `Badge software` `SW` next to the control or view | Solid blue outline | `SW` plus tooltip "Computed in software" |
 | Roll data gap (PRD 5.2, US-08) | Scope screen overlay; status bar `Gaps n` item | Band in `color-gap-fill` between two dashed `status-warning` lines, label `GAP <duration>`, scrolls with the trace, no trace inside | `GAP` |
 | Invalid measurement (MEA-4) | Measurement cell | Muted `-` followed by footnote key `[n]`; reasons listed under the table and in a tooltip | `[n] <reason from backend>` |
@@ -273,7 +271,7 @@ Always with a text label and a glyph.
 | `color-status-auto` | `#a2aeff` | `Auto` | none |
 | `color-status-disconnected` | `#f0877f` | `Disconnected` | cross |
 | `color-status-error` | `#ff6b6b` | `Error` | warning triangle |
-| `color-status-warning` | `#e0a030` | `Unverified`, gap, warnings | dashed border or warning triangle |
+| `color-status-warning` | `#e0a030` | gap, alias, `NO CALIBRATION`, warnings | dashed border or warning triangle |
 | `color-status-info` | `#7fb0e0` | `SW` | none |
 | `color-status-offline` | `#b0b8c4` | `Offline` | none |
 | `color-status-record` | `#ff8fb1` (M3) | `Rec` | filled dot |
@@ -380,7 +378,7 @@ All in `ui/`, props and callbacks only, composition by snippets, no application 
 | Badge | `kind` (warning, software, offline, error, experimental) | `children` | static |
 | StatusChip | `kind`, `filled`, `dim` | `children`, `left` | active, dim |
 | Panel / TaskPanel | none | `header`, `body`, `actions` | normal, collapsed |
-| MeasurementMatrix | columns, rows | `cell`, `footnotes` | cell: valid, unverified, invalid, stale; channel off: column omitted |
+| MeasurementMatrix | columns, rows | `cell`, `footnotes` | cell: valid, invalid, stale; channel off: column omitted |
 | Readout | `value`, `unit`, `muted` | `label` | live, muted |
 | Graph | `traces[]`, `view` | `overlay`, `gutterLeft`, `gutterRight`, `gutterTop` | live, frozen, empty |
 | Marker / Cursor | `kind`/`axis`, `position`, `color` | `tag` | idle, hover, dragging (ghost), pending, disabled |
@@ -390,15 +388,17 @@ All in `ui/`, props and callbacks only, composition by snippets, no application 
 | Menu | `items[]`, `onselect` | `item` | open, hover, disabled, with badge |
 | Tooltip | `delay` 500 ms | `children` | on hover and on focus |
 
+M4 additions (spec `specs/m4-polish/design-spec.md` 6): `CalibrationTag` (states none, calibrated, unavailable; snippet `tooltip`), `CalibrationDialog` (modal, 6 steps, focus to the step heading, Esc cancels), `StepChips` (`ui/`, states done, current, todo), `ConnectionItem` (dot, bold state word, muted detail; replaces the connection StatusChip and the Simulator chip); token `color-scrim` `rgb(8 9 10 / 0.66)`; icons `close`, `ok`, `info`; `MeasurementMatrix` loses the `unverified` state. Removed: all UNVERIFIED and PARTIALLY VERIFIED tags, badges, markers and popovers, and the status bar `Accuracy` item.
+
 M3 additions (spec `specs/m3-analyse/design-spec.md` 7): `ScreenNote` (snippets `title`, `children`, `actions`; kind info or warning); `Graph` props `ticksX[]`, `ticksY[]`; `Menu` item `checked` (radio); `Marker` kinds `peak` and `axis="x"`; `StatusChip` kind `record` and text `Done`; `Button` busy look; `MeasurementMatrix` snippet `columnHeader`; icons `record`, `pulse-positive`, `pulse-negative`, `peak`, `info`. Token additions: `opacity-persist-newest/oldest/hold`, `color-gap-fill`, `color-status-record` (to be added to `tokens.css` by the developer).
 
 ### 9.1 Channel row
 
-`[number toggle] [Stepper volts/div] [NumberField position] [Segmented AC|DC] [ToggleButton BW] [ToggleButton probe] [ToggleButton Inv] [Badge ?]`. 3 px left border in the channel colour; selected row on `ch-tint`. A disabled channel: number toggle outline only, other controls at 40 % opacity, still keyboard reachable.
+`[number toggle] [Stepper volts/div] [NumberField position] [Segmented AC|DC] [ToggleButton BW] [ToggleButton probe] [ToggleButton Inv]`. 3 px left border in the channel colour; selected row on `ch-tint`. A disabled channel: number toggle outline only, other controls at 40 % opacity, still keyboard reachable.
 
 ### 9.2 Trigger group
 
-Type (Edge, Pulse, Video disabled with `Exp`), source 1 to 4 (coloured, disabled when the channel is off), slope, level stepper, sweep (Auto, Normal), accuracy-note slot. **Pulse (M3, spec 6.4)**: the slope Segmented becomes polarity (positive or negative pulse), a `Width` row is added with condition Segmented `> < = ≠` and a `NumberField` (invalid input: error border and message, applied value kept), and the accuracy note moves to the Type row tooltip. **Roll**: the group is disabled in place with a visible reason line.
+Type (Edge, Pulse, Video disabled with `Exp`), source 1 to 4 (coloured, disabled when the channel is off), slope, level stepper, sweep (Auto, Normal), trigger-position accuracy-note slot. **Pulse (M3, spec 6.4)**: the slope Segmented becomes polarity (positive or negative pulse), a `Width` row is added with condition Segmented `> < = ≠` and a `NumberField` (invalid input: error border and message, applied value kept), and the accuracy note moves to the Type row tooltip. **Roll**: the group is disabled in place with a visible reason line.
 
 ### 9.3 Acceptance criteria per component
 
@@ -413,7 +413,7 @@ Format: **Given** a state, **when** an action, **then** an observable result. "T
 | AC-N1 | NumberField | Given editing, when Enter is pressed, then `commit(text)` fires; Esc restores the shown value. Given `error`, then border uses `status-error` and the message is below or in the tooltip; the layout does not move. |
 | AC-BD1 | Badge | Given kind warning, then dashed outline in `status-warning`; software, solid `status-info`; offline, `status-offline`; each has a text label (never colour only) and a tooltip. |
 | AC-C1 | StatusChip | Given any chip, then it has text, a glyph and a colour from 5.5. Given an inactive kind, then it stays in place at 40 % opacity (no layout shift). State changes are announced in an `aria-live=polite` region. |
-| AC-M1 | MeasurementMatrix | Given an invalid value, then the cell shows muted `-` plus `[n]`, and the reason for `[n]` appears under the table and in the tooltip. Given an unverified range, then the value is followed by `?` and the cell has an amber left edge. Given a disabled channel, then its column is absent. Given frozen data, then values use `text-muted` and the header shows `Frozen` or `Offline`. |
+| AC-M1 | MeasurementMatrix | Given an invalid value, then the cell shows muted `-` plus `[n]`, and the reason for `[n]` appears under the table and in the tooltip. Given a disabled channel, then its column is absent. Given frozen data, then values use `text-muted` and the header shows `Frozen` or `Offline`. |
 | AC-G1 | Graph | Given 1 to 4 channels, then each trace uses its channel token and the draw order of 8.1. Given the graph empty, then only the graticule shows. Given frozen, then traces are at 40 % opacity. Given a trace beyond the screen, then 8.4 applies. |
 | AC-G2 | Graph, HiDPI | Given OS scale 100, 125, 150 and 200 %, then every graticule, frame and axis line is exactly one device pixel wide in a grid token colour (no neighbouring pixel tinted), and all other strokes are at least one device pixel (pixel scan per scale). |
 | AC-L1 | Layout | Given any window of at least the content floor (3.2) at any text scale, then the scope screen is 10:8, at least 32 x 25.6 rem, fully inside the stage (no clipped edge), and the Run control, scale strip, Trigger group (at H4: the Trigger tab and the trigger summary in the scale strip), connection state and sample rate are visible without scrolling. |
@@ -519,8 +519,8 @@ Files in `docs/design-prototype/` (static, no network, no JavaScript). **All num
 
 | File | Content |
 |---|---|
-| `index.html` | Main window at 1440 x 900: 10 x 8 graticule, three traces, trigger markers, cursors, Run control, Vertical, Horizontal and Trigger groups, cursors and measurements panels (including `-` with footnoted reasons and the unverified marker), status bar with the slots of section 4 |
-| `components.html` | State sheet of tokens and components, status chips, measurement cell states, gap and disconnected overlays, banners, task panel, tooltip |
+| `index.html` | Main window at 1440 x 900: 10 x 8 graticule, three traces, trigger markers, cursors, Run control, Vertical, Horizontal and Trigger groups, cursors and measurements panels (including `-` with footnoted reasons), status bar with the slots of section 4 |
+| `components.html` | State sheet of tokens and components, status chips, measurement cell states, gap and disconnected overlays, banners, tooltip. M4 adds `specs/m4-polish/prototypes/` (calibration dialog, status tag, connection item); `index.html` and `components.html` still show the removed unverified markers and Accuracy item until regenerated |
 | `tokens.css` | Tokens of section 5 |
 | `prototype.css` | Component styles using tokens only |
 | `main-window.png` | Rendering of `index.html` |
@@ -556,8 +556,8 @@ For the Staff Engineer to validate against the driver's `docs/protocol.md`, `prd
 |---|---|---|
 | Q-E1 | Which instrument facts does the backend publish for the status slots (effective sample rate, interval, record length, capture rate, dead time) and in what units and update rate? Design needs one value and one unit per slot. | Staff |
 | Q-E2 | Who decides when an aliasing warning is raised (PRD US-05 states a rule)? Is the warning a backend state the UI only displays? | Staff |
-| Q-E3 | Does the backend expose a per-value "verified" flag for volts/div and time base steps so the UI marks `Unverified` without knowing the table? | Staff |
-| Q-E4 | Wording and ownership of the accuracy note and the unverified tooltip text. | PM |
+| Q-E3 | Void (M4 #50: verification markers removed) | n/a |
+| Q-E4 | Void (M4): the accuracy summary is the calibration tag tooltip, wording in M4 spec 7 | n/a |
 | Q-E5 | Number of significant digits per quantity, and the unit prefix rules (design only fixes the look). | Staff |
 | Q-E6 | Origin of cursor X values: PRD 5.2 says time cursors are relative to samples, not the trigger. The prototype shows the window's left edge as origin. Confirm what the backend and PRD intend. | Staff, PM |
 | Q-E7 | Which settings are accepted while acquisition is stopped, offline, or in roll mode (affects which controls are disabled and what the markers do)? | Staff |

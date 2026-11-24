@@ -23,7 +23,7 @@ The vendor software for this class of device is Windows-only, dated and closed. 
 
 1. A user can connect a 6254BC, press one button and see a stable, correctly scaled waveform within a minute.
 2. Controls follow the front panel of a bench scope (vertical, horizontal, trigger, run/stop) so that existing scope knowledge transfers.
-3. Numbers on screen (volts, time, frequency) are correct and carry a stated accuracy; where the hardware layer has not verified a value, the application says so.
+3. Numbers on screen (volts, time, frequency) are correct and carry a stated accuracy; the device calibration status (`CALIBRATED` / `NO CALIBRATION`) and its accuracy summary are shown in the status bar.
 4. The application survives the hardware's quirks (re-enumeration, unplug, stalls) without crashing or hanging.
 5. Device support is a plug-in boundary (a trait), not a hard dependency throughout the code.
 
@@ -126,7 +126,7 @@ one unit. Statuses mirror the driver's verification table. The application must 
 | **Sample rate falls as channels are enabled** (1 / 2 / 4 ns interval). | The UI shows the effective sample rate and warns when it is too low for the displayed signal (aliasing risk, 250 MS/s with 250 MHz bandwidth). |
 | **Time bases 2 ns to 500 ns share the ADC interval**, so samples per division fall below 250 there. | Display uses sin(x)/x interpolation by default at fast time bases. |
 | **Trigger position accuracy about ±6 samples**, depends on channel count and time base. | Do not display trigger-relative time to sub-sample claims; document the uncertainty. Time cursors are relative to samples, not the trigger. |
-| **Volts accuracy: up to 2 to 3 counts (about 5 % of a division) at extreme vertical positions**, ranges below 50 mV and above 1 V/div unchecked, one unit measured. | Show an accuracy note in the measurement panel and "unverified range" marker for ranges outside 50 mV to 1 V/div. Provide a user zero-offset calibration using a shorted input. |
+| **Volts accuracy: up to 2 to 3 counts (about 0.1 division) at extreme vertical positions**, ranges below 50 mV and above 1 V/div unchecked, one unit measured. | Show the accuracy summary in the tooltip of the calibration status in the status bar (no per-range verification markers, decided in M4). Provide a user zero-offset calibration using a shorted input. |
 | **An open input is not zero** (picks up neighbouring channels). | Zero-calibration wizard instructs to short the input. Never use an open input as reference. |
 | **Video trigger untested**, serial triggers, peak detect and alternate trigger not implemented. | Video trigger hidden or labelled experimental. |
 | **Re-enumeration**: after plug-in the device disappears about 1.2 s later and returns with a new address; opening in that window can fail or wedge the device until replug. | Use `DeviceMonitor` and never open devices by hand outside it. Connection state machine (section 7.1). |
@@ -169,7 +169,7 @@ Priority: **M** must (v1.0), **S** should (v1.x), **C** could (later).
 |---|---|---|
 | VER-1 | Per channel: enable, volts/div (12 ranges), position, AC/DC, bandwidth limit, invert, colour, label. | M |
 | VER-2 | Probe attenuation factor (1×, 10×, 100×, custom) applied to scale and labels. | M |
-| VER-3 | Zero-offset calibration wizard (short the input) stored per range and channel. | S |
+| VER-3 | Zero-offset calibration dialog (short each input in turn) for the whole device, stored per range and channel; status `CALIBRATED` only when every channel is calibrated. | S |
 | HOR-1 | Time/div (36 steps) and horizontal trigger position (percent) with trigger marker. | M |
 | HOR-2 | Zoom and pan inside the record, with a record overview bar. | S |
 | TRG-1 | Edge trigger: source, level (draggable marker), slope. | M |
@@ -315,8 +315,8 @@ As an embedded developer, I want a measurement panel so that I get frequency, Vp
 
 **US-14 Trust the numbers** (Section 5.2, VER-3)
 As a test engineer, I want to know the accuracy limits so that I do not report a value the hardware cannot support.
-- Measurements display an uncertainty hint for ranges outside the verified region (50 mV to 1 V/div).
-- A zero-calibration wizard shows how to short the input and stores the offset per channel and range.
+- The status bar shows `CALIBRATED` or `NO CALIBRATION`; hovering it shows the accuracy summary.
+- A zero-calibration modal dialog walks through each channel, shows how to short the input and stores the offset per channel and range.
 - The documentation contains an "accuracy" page derived from the driver's verification table.
 
 **US-15 Spectrum** (MEA-5)
@@ -408,7 +408,7 @@ end-to-end latency from driver return to pixels, and the roll-mode stream.
 | **M1 Live view** | Device manager with hotplug, acquisition thread, Yt display, run/stop, vertical and horizontal controls, edge trigger | US-01, 03, 04, 09 pass on hardware |
 | **M2 Measure** | Cursors, automatic measurements, interpolation, export CSV/PNG, setups | US-06, 12, 13, 17, 18 |
 | **M3 Analyse** | Roll mode, persistence, FFT, math, XY, auto-setup, pulse trigger | US-02, 05, 07, 08, 10, 11, 15, 16 |
-| **M4 Polish** | Calibration wizard, accuracy documentation, packaging, headless mode | US-14, 19; AppImage and .deb builds |
+| **M4 Polish** | Calibration dialog, accuracy documentation, packaging, headless mode | US-14, 19; AppImage and .deb builds |
 | **Later** | Second device, SCPI server, mask test, deep-memory devices, Windows/macOS | |
 
 ## 10. Risks and open questions
@@ -416,7 +416,7 @@ end-to-end latency from driver return to pixels, and the roll-mode stream.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Update rate of the USB frame cycle is lower than users expect | Looks sluggish next to bench scopes | Measure early (M0/M1), show capture rate, set expectations in docs; ask the driver to expose lower-latency readback if it helps |
-| Only one unit measured by the driver (volts, zero model) | Wrong voltages on other units | Verification markers, zero-cal wizard, collect reports |
+| Only one unit measured by the driver (volts, zero model) | Wrong voltages on other units | Calibration status and accuracy tooltip, zero-calibration dialog, collect reports |
 | 4096-sample verified window versus the datasheet's 64 K | Smaller records than advertised | Report to the driver project; extend only after verification |
 | Device wedges after an early open during re-enumeration | Needs replug, bad first impression | Open only through `DeviceMonitor`; stress test (US-03) |
 | WebKitGTK rendering problems on some GPUs (NVIDIA, DMABUF) and uncertain IPC throughput on Linux | Stuttering or blank waveform view for some users | M0 spike on several machines; Canvas 2D fallback (DSP-9); documented environment workaround; downsample on the Rust side |

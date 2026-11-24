@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>SweepScope (small sizes)</title>
+  <rect x="48" y="48" width="928" height="928" rx="200" fill="#101214"/>
+  <path d="M130 512C193.7 365.4 257.3 232.0 321.0 232.0C384.7 232.0 448.3 365.4 512.0 512.0C575.7 658.6 639.3 792.0 703.0 792.0C766.7 792.0 830.3 658.6 894.0 512.0" fill="none" stroke="#f2e24a" stroke-width="104" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

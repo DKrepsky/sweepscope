@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="1024" height="1024" rx="180" fill="#101418"/><path d="M96 512 C 224 128, 352 128, 512 512 S 800 896, 928 512" fill="none" stroke="#3ddc97" stroke-width="64" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>SweepScope</title>
+  <!-- Colours are the SweepScope tokens: bg-scope #101214, grid-major #2a3036, grid-axis #3d454d, grid-frame #59616a, ch1 #f2e24a -->
+  <rect x="100" y="100" width="824" height="824" rx="190" fill="#101214"/>
+  <rect x="112" y="112" width="800" height="800" rx="178" fill="none" stroke="#59616a" stroke-width="8"/>
+  <g stroke="#2a3036" stroke-width="8" fill="none">
+    <path d="M312 200V824M712 200V824M200 312H824M200 712H824"/>
+  </g>
+  <g stroke="#3d454d" stroke-width="10" fill="none">
+    <path d="M512 200V824M200 512H824"/>
+  </g>
+  <path d="M200 512C252.0 386.3 304.0 272.0 356.0 272.0C408.0 272.0 460.0 386.3 512.0 512.0C564.0 637.7 616.0 752.0 668.0 752.0C720.0 752.0 772.0 637.7 824.0 512.0" fill="none" stroke="#f2e24a" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
