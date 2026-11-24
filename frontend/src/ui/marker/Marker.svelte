@@ -184,6 +184,7 @@
   }
 
   .marker.peak {
+    margin-inline: 0;
     cursor: ew-resize;
     transform: translate(-50%, -100%);
   }
