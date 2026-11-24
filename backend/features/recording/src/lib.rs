@@ -2,9 +2,13 @@
 #![forbid(unsafe_code)]
 
 mod files;
+mod format;
 mod messages;
 mod module;
+mod os_files;
+mod recorder;
 
 pub use files::{RecordFiles, RecordWriter};
 pub use messages::{GetRecording, RecordingChanged, RecordingFailure, RecordingState, StartRecording, StopRecording};
 pub use module::{RecordingDeps, RecordingModule};
+pub use os_files::OsRecordFiles;
