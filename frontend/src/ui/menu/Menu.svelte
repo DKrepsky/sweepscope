@@ -51,12 +51,14 @@
   <button
     bind:this={buttons[index]}
     type="button"
-    role="menuitem"
+    role={entry.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
     class="entry"
+    aria-checked={entry.checked === undefined ? undefined : entry.checked}
     aria-disabled={entry.disabled ? 'true' : undefined}
     tabindex={index === 0 ? 0 : -1}
     onclick={() => activate(entry)}
   >
+    {#if entry.checked !== undefined}<span class="check" aria-hidden="true">{entry.checked ? '✓' : ''}</span>{/if}
     {#if item}{@render item({ id: entry.id })}{:else}<span class="label">{entry.label}</span>{/if}
     {#if entry.badge}<span class="badge">{entry.badge}</span>{/if}
   </button>
@@ -116,6 +118,10 @@
   .entry[aria-disabled='true'] {
     color: var(--ss-color-text-disabled);
     cursor: not-allowed;
+  }
+  .check {
+    inline-size: 1em;
+    margin-inline-end: calc(-1 * var(--ss-space-2));
   }
   .badge {
     font-size: var(--ss-font-size-2xs);

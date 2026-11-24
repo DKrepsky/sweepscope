@@ -10,15 +10,18 @@
     triggerSummary?: string;
   }
 
+  const CLIP_TIP =
+    'The signal reaches the converter limits; amplitude measurements are not valid. Increase volts per division.';
   const { channels, cursorSource, triggerSummary }: Props = $props();
 
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
   const shownText = (channel: ChannelModel) => (channel.enabled ? summary(channel) : 'off');
   const unverified = (channel: ChannelModel) => (channel.enabled && channel.unverified ? ' Unverified' : '');
+  const clip = (channel: ChannelModel) => (channel.enabled && channel.clipped ? ' Clip' : '');
   /** WCAG 2.5.3: the name starts with the visible text. */
   const accessibleName = (channel: ChannelModel) =>
-    `${channel.number} ${shownText(channel)}${unverified(channel)}, channel ${channel.number} scale`;
+    `${channel.number} ${shownText(channel)}${unverified(channel)}${clip(channel)}, channel ${channel.number} scale`;
 </script>
 
 <div class="strip" data-region="scale-strip" role="group" aria-label="Channel scales">
@@ -36,6 +39,9 @@
       <span class="ss-num">{shownText(channel)}</span>
       {#if channel.enabled && channel.unverified}
         <Badge kind="warning" tooltip={channel.unverified}>Unverified</Badge>
+      {/if}
+      {#if channel.enabled && channel.clipped}
+        <Badge kind="error" tooltip={CLIP_TIP}>Clip</Badge>
       {/if}
     </button>
   {/each}

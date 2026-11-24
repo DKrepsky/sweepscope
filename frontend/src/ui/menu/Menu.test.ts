@@ -73,6 +73,18 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitem', { name: /Save/ })).toHaveTextContent('Exp');
   });
 
+  it('given checked and unchecked toggle items, when rendered, then they are menu checkboxes with matching state', () => {
+    setup({
+      items: [
+        { id: 'a', label: 'Alpha', checked: true },
+        { id: 'b', label: 'Beta', checked: false },
+      ],
+    });
+
+    expect(screen.getByRole('menuitemcheckbox', { name: /Alpha/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemcheckbox', { name: /Beta/ })).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('given Menu open, when the pointer is pressed outside, then onclose is called', async () => {
     const { onclose } = setup();
 

@@ -7,14 +7,15 @@
     cursors: CursorsModel;
     measurements: MeasurementsModel;
     onclearcursors: () => void;
+    onpin: (id: string, pinned: boolean) => void;
   }
 
-  const { cursors, measurements, onclearcursors }: Props = $props();
+  const { cursors, measurements, onclearcursors, onpin }: Props = $props();
 </script>
 
 <aside class="side" data-region="sidebar" aria-label="Cursors and measurements">
   <CursorsPanel {cursors} onclear={onclearcursors} />
-  <MeasurementsPanel {measurements} />
+  <MeasurementsPanel {measurements} {onpin} />
 </aside>
 
 <style>
