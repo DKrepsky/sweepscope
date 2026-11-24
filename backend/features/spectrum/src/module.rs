@@ -159,8 +159,12 @@ impl Shared {
     fn refresh(&self, core: &mut Core) {
         let analysis = self.analysis(core);
         let axis = axis_for(core, analysis.as_ref());
-        if let (Some(analysis), Some(last)) = (&analysis, &core.last) {
-            let bytes = self.encode_frame(core, analysis, axis, last.context.setup_revision as u32);
+        let revision = core
+            .last
+            .as_ref()
+            .and_then(|last| u32::try_from(last.context.setup_revision).ok());
+        if let (Some(analysis), Some(_), Some(revision)) = (&analysis, &core.last, revision) {
+            let bytes = self.encode_frame(core, analysis, axis, revision);
             core.sequence = core.sequence.wrapping_add(1);
             self.bus.publish(SpectrumFrameReady { bytes: Arc::new(bytes) });
         }

@@ -96,8 +96,9 @@ impl Worker {
             self.device.configure(&applied.setup)?;
         }
         self.device.start_roll()?;
+        let session = self.control.session();
         let mut counter = RollCounter::new(self.clock.now(), applied.sample_interval_s);
-        while !self.control.roll_should_end_within(POLL_INTERVAL) {
+        while !self.control.roll_should_end_within(session, POLL_INTERVAL) {
             let item = match self.device.poll_roll() {
                 Ok(frame) => counter.samples(self.clock.now(), frame),
                 Err(DeviceError::Overrun) => Some(counter.gap(self.clock.now())),
