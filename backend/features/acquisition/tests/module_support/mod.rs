@@ -7,12 +7,12 @@ use std::time::Duration;
 
 use sweepscope_acquisition::{
     AcquisitionDeps, AcquisitionModule, FactsChanged, GetInstrument, InstrumentChanged, InstrumentSnapshot,
-    StatusChanged,
+    SettingTarget, StatusChanged, StepSetting,
 };
 use sweepscope_kernel::contracts::{
     AcquisitionSetup, ApplySetup, CaptureCompleted, CaptureOutcome, ChannelData, ConnectionChanged, ConnectionIssue,
     ConnectionIssueKind, ConnectionSnapshot, ConnectionState, DeviceIdentity, DeviceSource, ForceTrigger, Frame,
-    FrameCaptured, SetCapturing, TriggerOutcome,
+    FrameCaptured, RollCaptured, RollPolled, RollPolledItem, SetCapturing, TriggerOutcome,
 };
 use sweepscope_kernel::testing::{eventually, EventRecorder, FakeClock, MemoryStorage, ScriptedPicker};
 use sweepscope_kernel::{Bus, KernelError};
@@ -97,6 +97,7 @@ pub struct Rig {
     pub status: EventRecorder<StatusChanged>,
     pub facts: EventRecorder<FactsChanged>,
     pub frames: EventRecorder<FrameCaptured>,
+    pub rolls: EventRecorder<RollCaptured>,
     pub storage: MemoryStorage,
     pub module: AcquisitionModule,
     connection_revision: AtomicU64,
@@ -117,6 +118,7 @@ pub fn rig_with(storage: MemoryStorage, picker: ScriptedPicker) -> Rig {
     let status = EventRecorder::new(&bus);
     let facts = EventRecorder::new(&bus);
     let frames = EventRecorder::new(&bus);
+    let rolls = EventRecorder::new(&bus);
     let module = AcquisitionModule::new(AcquisitionDeps {
         bus: bus.clone(),
         clock: Arc::new(clock.clone()),
@@ -132,6 +134,7 @@ pub fn rig_with(storage: MemoryStorage, picker: ScriptedPicker) -> Rig {
         status,
         facts,
         frames,
+        rolls,
         storage,
         module,
         connection_revision: AtomicU64::new(1),
@@ -240,6 +243,33 @@ impl Rig {
             setup_revision,
             CaptureOutcome::Frame(Arc::new(frame(TriggerOutcome::Auto))),
         );
+    }
+
+    /// Steps the time base until the instrument is in (or out of) roll mode.
+    pub fn step_time_base_until_roll(&self, roll: bool) {
+        let direction = if roll { 1 } else { -1 };
+        while self.snapshot().instrument.unwrap().horizontal.roll != roll {
+            self.bus
+                .request(StepSetting {
+                    target: SettingTarget::TimeBase,
+                    direction,
+                })
+                .unwrap();
+        }
+    }
+
+    pub fn poll_samples(&self, setup_revision: u64, first_index: u64) {
+        self.bus.publish(RollPolled {
+            setup_revision,
+            item: RollPolledItem::Samples {
+                first_index,
+                frame: Arc::new(frame(TriggerOutcome::None)),
+            },
+        });
+    }
+
+    pub fn roll_items(&self) -> Vec<RollCaptured> {
+        self.rolls.events()
     }
 
     /// The module handles events in order, so seeing the newest sentinel frame means every earlier event was handled.

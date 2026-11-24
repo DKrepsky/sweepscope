@@ -7,15 +7,22 @@ use sweepscope_kernel::contracts::{Capabilities, Slope};
 use super::math;
 use super::meter::CaptureMeter;
 use super::model::{Model, CHANNELS};
+use super::pulse;
 use crate::{
     Availability, ChannelState, ControlsAvailability, FormattedValue, HorizontalState, InstrumentFacts,
-    InstrumentState, ScaleChoice, TriggerKindName, TriggerState,
+    InstrumentState, ScaleChoice, TriggerState,
 };
 
 pub const NO_SCOPE: &str = "No scope connected";
-pub const ROLL_BLOCKED: &str = "Roll mode arrives in a later release";
+pub const TRIGGER_IN_ROLL: &str =
+    "Trigger is not available in roll mode (500 ms/div and slower). Use a faster time base to trigger.";
+pub const SINGLE_IN_ROLL: &str = "Single needs a captured record; not available in roll mode.";
+pub const VIEWS_IN_ROLL: &str =
+    "XY, FFT, persistence, math and cursors need a captured record; not available in roll mode.";
+pub const AUTOSET_IN_ROLL: &str = "Auto-setup needs a captured record; not available in roll mode.";
+pub const AUTOSET_RUNNING: &str = "Auto-setup is running";
+pub const RECORD_NEEDS_ROLL: &str = "Recording needs roll mode (500 ms/div or slower)";
 pub const LAST_CHANNEL: &str = "At least one channel must stay on";
-const NOT_YET: &str = "Not available yet";
 const NOT_RUNNING: &str = "Start acquisition first";
 const RANGE_LOW_LIMIT_V: f64 = 0.05;
 const RANGE_HIGH_LIMIT_V: f64 = 1.0;
@@ -51,21 +58,50 @@ fn availability(enabled: bool, reason: &str) -> Availability {
     }
 }
 
-/// `reason` is the connection text while no device is ready; it overrides every availability.
-pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, reason: Option<&str>) -> InstrumentState {
-    let gate = |own: Availability| reason.map_or(own, unavailable);
-    let controls = ControlsAvailability {
-        run: gate(available()),
-        force: gate(availability(model.running, NOT_RUNNING)),
+/// What can lock the controls from outside the model.
+pub struct Locks<'a> {
+    /// The connection text while no device is ready; it overrides every availability.
+    pub connection: Option<&'a str>,
+    pub autoset_running: bool,
+}
+
+/// Available unless one of the reasons applies; the first that does is shown.
+fn unless(reasons: &[(bool, &str)]) -> Availability {
+    reasons
+        .iter()
+        .find(|(blocked, _)| *blocked)
+        .map_or_else(available, |(_, reason)| unavailable(reason))
+}
+
+fn controls_availability(
+    model: &Model,
+    roll: bool,
+    locks: &Locks,
+    gate: &impl Fn(Availability) -> Availability,
+) -> ControlsAvailability {
+    let busy = locks.autoset_running;
+    ControlsAvailability {
+        run: gate(unless(&[(busy, AUTOSET_RUNNING)])),
+        force: gate(unless(&[
+            (roll, TRIGGER_IN_ROLL),
+            (busy, AUTOSET_RUNNING),
+            (!model.running, NOT_RUNNING),
+        ])),
         vertical: gate(available()),
         horizontal: gate(available()),
-        trigger: gate(available()),
+        trigger: gate(unless(&[(roll, TRIGGER_IN_ROLL)])),
         files: gate(available()),
-        single: gate(unavailable(NOT_YET)),
-        autoset: gate(unavailable(NOT_YET)),
-        record: gate(unavailable(NOT_YET)),
-        frame_views: gate(available()),
-    };
+        single: gate(unless(&[(roll, SINGLE_IN_ROLL), (busy, AUTOSET_RUNNING)])),
+        autoset: gate(unless(&[(roll, AUTOSET_IN_ROLL), (busy, AUTOSET_RUNNING)])),
+        record: gate(unless(&[(!roll, RECORD_NEEDS_ROLL), (!model.running, NOT_RUNNING)])),
+        frame_views: gate(unless(&[(roll, VIEWS_IN_ROLL)])),
+    }
+}
+
+pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, locks: &Locks) -> InstrumentState {
+    let gate = |own: Availability| locks.connection.map_or(own, unavailable);
+    let roll = model.in_roll(caps);
+    let controls = controls_availability(model, roll, locks, &gate);
     InstrumentState {
         revision,
         running: model.running,
@@ -133,12 +169,7 @@ fn horizontal_state(
 ) -> HorizontalState {
     let index = usize::from(model.setup.time_base_index);
     let step = caps.time_bases.get(index);
-    let slower_is_roll = caps.time_bases.get(index + 1).is_some_and(|t| t.streaming);
-    let slower = if slower_is_roll {
-        unavailable(ROLL_BLOCKED)
-    } else {
-        availability(index + 1 < caps.time_bases.len(), "Slowest time base")
-    };
+    let slower = availability(index + 1 < caps.time_bases.len(), "Slowest time base");
     let g = model.geometry(caps);
     let record_len = f64::from(caps.record_len);
     let window_divs = (g.window_len - 1) as f64 / g.samples_per_div;
@@ -156,7 +187,7 @@ fn horizontal_state(
         window_start_fraction: g.window_start as f64 / record_len,
         window_size_fraction: g.window_len as f64 / record_len,
         trigger_tick_fraction: model.setup.trigger.horizontal_position_percent / 100.0,
-        roll: false,
+        roll: model.in_roll(caps),
     }
 }
 
@@ -177,8 +208,8 @@ fn trigger_state(caps: &Capabilities, model: &Model) -> TriggerState {
         level,
         level_divisions: model.level_divisions(caps),
         position_tag: format!("{} {}", position.text, position.unit),
-        kind: TriggerKindName::Edge,
-        pulse: None,
+        kind: pulse::kind_name(model),
+        pulse: pulse::state(model),
     }
 }
 

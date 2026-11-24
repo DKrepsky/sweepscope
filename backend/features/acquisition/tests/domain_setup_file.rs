@@ -2,8 +2,10 @@ mod domain_support;
 
 use domain_support::{capabilities, enable_all, patch_position, ready_instrument};
 use serde_json::{json, Value};
-use sweepscope_acquisition::{ChannelPatch, Defaults, Instrument, SettingTarget, SetupFile, TriggerPatch};
-use sweepscope_kernel::contracts::{Coupling, Slope, Sweep};
+use sweepscope_acquisition::{
+    ChannelPatch, Defaults, Instrument, SettingTarget, SetupFile, TriggerKindName, TriggerPatch,
+};
+use sweepscope_kernel::contracts::{Coupling, PulseCondition, Slope, Sweep};
 
 const CH1: SettingTarget = SettingTarget::Range { channel: 1 };
 
@@ -113,15 +115,87 @@ fn given_a_range_the_device_does_not_have_when_loaded_then_the_current_range_sta
 }
 
 #[test]
-fn given_a_roll_mode_time_base_when_loaded_then_the_current_time_base_stays_and_a_warning_names_it() {
+fn given_a_time_base_the_device_does_not_have_when_loaded_then_the_current_one_stays_and_a_warning_names_it() {
+    let mut value = saved(&ready_instrument());
+    value["time_base_s_per_div"] = json!(3.0);
+    let mut instrument = ready_instrument();
+
+    let report = instrument.apply_setup_file(&parsed(&value)).unwrap();
+
+    assert_eq!(report.warnings, ["Time/div 3.00 s is not available; kept 200 us"]);
+    assert_eq!(saved(&instrument)["time_base_s_per_div"], 200e-6);
+}
+
+#[test]
+fn given_a_roll_mode_time_base_when_loaded_then_it_is_applied_and_the_instrument_rolls() {
     let mut value = saved(&ready_instrument());
     value["time_base_s_per_div"] = json!(1.0);
     let mut instrument = ready_instrument();
 
     let report = instrument.apply_setup_file(&parsed(&value)).unwrap();
 
-    assert_eq!(report.warnings, ["Time/div 1.00 s is not available; kept 200 us"]);
-    assert_eq!(saved(&instrument)["time_base_s_per_div"], 200e-6);
+    assert!(report.warnings.is_empty());
+    assert!(instrument.state(1).unwrap().horizontal.roll);
+}
+
+#[test]
+fn given_a_file_without_pulse_keys_when_loaded_then_the_trigger_is_an_edge() {
+    let value = saved(&ready_instrument());
+    let mut instrument = ready_instrument();
+
+    instrument.apply_setup_file(&parsed(&value)).unwrap();
+
+    assert!(value["trigger"].get("pulse").is_none());
+    assert_eq!(instrument.state(1).unwrap().trigger.kind, TriggerKindName::Edge);
+}
+
+#[test]
+fn given_a_file_with_pulse_keys_when_loaded_then_the_pulse_trigger_is_restored() {
+    let mut value = saved(&ready_instrument());
+    value["trigger"]["pulse"] = json!({ "width_s": 0.0002, "condition": "less" });
+    let mut instrument = ready_instrument();
+
+    instrument.apply_setup_file(&parsed(&value)).unwrap();
+
+    let state = instrument.state(1).unwrap().trigger;
+    assert_eq!(state.kind, TriggerKindName::Pulse);
+    let pulse = state.pulse.unwrap();
+    assert_eq!(pulse.condition, PulseCondition::Less);
+    assert_eq!(pulse.width.text, "200");
+}
+
+#[test]
+fn given_a_pulse_trigger_when_saved_then_the_keys_are_written_and_load_back_equal() {
+    let mut instrument = ready_instrument();
+    instrument
+        .set_trigger(TriggerPatch {
+            kind: Some(TriggerKindName::Pulse),
+            width_text: Some("2 ms".into()),
+            ..TriggerPatch::default()
+        })
+        .unwrap();
+    let value = saved(&instrument);
+    let mut other = ready_instrument();
+
+    other.apply_setup_file(&parsed(&value)).unwrap();
+
+    assert_eq!(value["trigger"]["pulse"]["width_s"], 0.002);
+    assert_eq!(
+        other.state(1).unwrap().trigger.pulse,
+        instrument.state(1).unwrap().trigger.pulse
+    );
+}
+
+#[test]
+fn given_a_pulse_width_out_of_range_when_loaded_then_the_trigger_stays_an_edge_with_a_warning() {
+    let mut value = saved(&ready_instrument());
+    value["trigger"]["pulse"] = json!({ "width_s": 100.0, "condition": "equal" });
+    let mut instrument = ready_instrument();
+
+    let report = instrument.apply_setup_file(&parsed(&value)).unwrap();
+
+    assert_eq!(report.warnings.len(), 1);
+    assert_eq!(instrument.state(1).unwrap().trigger.kind, TriggerKindName::Edge);
 }
 
 #[test]

@@ -8,8 +8,8 @@ use super::effects::Effects;
 use super::setup_files::SetupFiles;
 use super::shared::Shared;
 use crate::{
-    ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
-    SetTriggerLevel, SetTriggerPosition, StepSetting,
+    ArmSingle, ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
+    SetTriggerLevel, SetTriggerPosition, StartAutoset, StepSetting,
 };
 
 /// Registers every request of this feature. The handlers hold the module state weakly: the bus lives as long as the
@@ -21,6 +21,8 @@ pub fn register(bus: &Bus, shared: &Arc<Shared>, files: SetupFiles) -> Result<()
         core.set_running(r.running, fx, now)
     })?;
     on(bus, weak, |core, _: ForceTriggerNow, fx, _| core.force_trigger(fx))?;
+    on(bus, weak, |core, _: ArmSingle, fx, now| core.arm_single(fx, now))?;
+    on(bus, weak, |core, _: StartAutoset, fx, _| core.start_autoset(fx))?;
     on(bus, weak, |core, r: SetChannel, fx, now| {
         core.edit(fx, now, |i| i.set_channel(r.channel, r.patch))
     })?;
