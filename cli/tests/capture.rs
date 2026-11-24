@@ -146,12 +146,13 @@ fn given_no_scope_when_the_device_wait_ends_then_the_status_is_no_device() {
     let rig = Rig::new("auto");
     rig.control.unplug();
     let mut options = rig.options(1, ExportFormat::Csv);
-    options.device_wait = Duration::from_millis(100);
+    options.device_wait = Duration::ZERO;
 
     let error = rig.run(&options).unwrap_err();
 
     assert_eq!(error.status, ExitStatus::NoDevice);
     assert!(rig.files().is_empty());
+    assert!(!rig.out().exists());
 }
 
 #[test]
@@ -160,7 +161,7 @@ fn given_a_normal_sweep_on_a_flat_input_when_the_frame_timeout_passes_then_the_s
     rig.control
         .set_signal(0, SignalSpec::new(SignalKind::Sine).with_amplitude(0.0));
     let mut options = rig.options(2, ExportFormat::Csv);
-    options.timeout = Duration::from_millis(300);
+    options.timeout = Duration::ZERO;
 
     let error = rig.run(&options).unwrap_err();
 

@@ -413,3 +413,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## Acquisition consumer facts
 - Deterministic race tests: hook the fake device's ApplySetup handler (`FakeDevice::on_next_apply`), which runs on the module thread, to publish events at an exact point of the consumer loop. Trigger source 2 makes channel-2 offsets change the setup while channel-1 offsets do not.
 - `ZeroOffsetsApplied` is the acknowledgement a publisher can wait for after `ZeroOffsetsChanged`.
+
+## M4 backend fix round (developer-2)
+- Done-table cells come from session.rs (offset_cell); tooltip rows from view.rs offset_text. Shared engineering-format gives "0.00 V" (golden), so exact zero is special-cased locally.
+- CLI tests: Duration::ZERO replaces wall-clock timeouts. FrameFiles removes a folder it created if the run fails empty.
+- Heredoc appends and compound python/cargo chains get refused in the worktree: use Edit and separate calls.

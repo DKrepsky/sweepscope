@@ -20,6 +20,19 @@ use crate::picker::SetupPath;
 pub fn capture(options: &CaptureOptions, environment: Environment, log: &mut dyn Write) -> Result<(), CliError> {
     let files = FrameFiles::new(options.out.clone(), options.format, options.count);
     files.prepare()?;
+    let result = run(options, environment, &files, log);
+    if result.is_err() {
+        files.remove_if_created_and_empty();
+    }
+    result
+}
+
+fn run(
+    options: &CaptureOptions,
+    environment: Environment,
+    files: &FrameFiles,
+    log: &mut dyn Write,
+) -> Result<(), CliError> {
     let bus = Bus::new();
     let connections = bus.subscribe::<ConnectionChanged>();
     let instruments = bus.subscribe::<InstrumentChanged>();
@@ -32,7 +45,7 @@ pub fn capture(options: &CaptureOptions, environment: Environment, log: &mut dyn
     load_setup(&bus, log)?;
     let frames = bus.subscribe::<FrameCaptured>();
     bus.request(SetRunning { running: true }).map_err(failure)?;
-    let result = write_frames(&frames, &files, options, unix_time_us, log);
+    let result = write_frames(&frames, files, options, unix_time_us, log);
     let _ = bus.request(SetRunning { running: false });
     result
 }

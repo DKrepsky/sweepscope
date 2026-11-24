@@ -32,7 +32,10 @@ fn given_a_channel_being_measured_when_the_device_is_lost_then_the_session_fails
     rig.disconnect();
     let session = rig.until_step(ZeroStep::Failed).session.unwrap();
 
-    assert!(session.failure.unwrap().contains("disconnected"));
+    assert!(session
+        .failure
+        .unwrap()
+        .contains("Device disconnected. Calibration cancelled. Nothing was stored."));
     assert_eq!(rig.storage.read(FILE_KEY).unwrap(), None);
 }
 

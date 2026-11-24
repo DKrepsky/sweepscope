@@ -1,4 +1,5 @@
 //! The files of one run: `capture-NNNN.csv|bin`, never overwriting what is already there.
+use std::cell::Cell;
 use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
@@ -13,11 +14,17 @@ pub struct FrameFiles {
     dir: PathBuf,
     format: ExportFormat,
     count: u32,
+    created_dir: Cell<bool>,
 }
 
 impl FrameFiles {
     pub fn new(dir: PathBuf, format: ExportFormat, count: u32) -> Self {
-        Self { dir, format, count }
+        Self {
+            dir,
+            format,
+            count,
+            created_dir: Cell::new(false),
+        }
     }
 
     pub fn file_name(&self, number: u32) -> String {
@@ -26,6 +33,7 @@ impl FrameFiles {
 
     /// Creates the folder and refuses the run when any of its files exists, before the scope is touched.
     pub fn prepare(&self) -> Result<(), CliError> {
+        self.created_dir.set(!self.dir.exists());
         fs::create_dir_all(&self.dir).map_err(|error| CliError::io("create", &self.dir.to_string_lossy(), &error))?;
         let taken = (1..=self.count)
             .map(|number| self.file_name(number))
@@ -33,6 +41,13 @@ impl FrameFiles {
         match taken {
             Some(name) => Err(CliError::failure(format!("{name} already exists, nothing was written"))),
             None => Ok(()),
+        }
+    }
+
+    /// After a failed run: removes the folder this run created when nothing was written into it.
+    pub fn remove_if_created_and_empty(&self) {
+        if self.created_dir.get() {
+            let _ = fs::remove_dir(&self.dir);
         }
     }
 
@@ -97,6 +112,42 @@ mod tests {
         FrameFiles::new(out.clone(), ExportFormat::Csv, 1).prepare().unwrap();
 
         assert!(out.is_dir());
+    }
+
+    #[test]
+    fn given_a_folder_created_by_the_run_when_nothing_was_written_then_it_is_removed() {
+        let dir = TempDir::new();
+        let out = dir.path().join("out");
+        let target = FrameFiles::new(out.clone(), ExportFormat::Csv, 1);
+        target.prepare().unwrap();
+
+        target.remove_if_created_and_empty();
+
+        assert!(!out.exists());
+    }
+
+    #[test]
+    fn given_a_folder_created_by_the_run_when_a_frame_was_written_then_it_stays() {
+        let dir = TempDir::new();
+        let out = dir.path().join("out");
+        let target = FrameFiles::new(out.clone(), ExportFormat::Csv, 1);
+        target.prepare().unwrap();
+        target.write(1, b"x").unwrap();
+
+        target.remove_if_created_and_empty();
+
+        assert!(out.join("capture-0001.csv").is_file());
+    }
+
+    #[test]
+    fn given_an_existing_empty_folder_when_the_run_fails_then_it_is_kept() {
+        let dir = TempDir::new();
+        let target = files(&dir, ExportFormat::Csv, 1);
+        target.prepare().unwrap();
+
+        target.remove_if_created_and_empty();
+
+        assert!(dir.path().is_dir());
     }
 
     #[test]

@@ -106,3 +106,43 @@ fn given_a_failing_storage_when_saved_then_the_error_is_returned() {
 
     assert_eq!(result, Err(KernelError::recoverable("disk full")));
 }
+
+fn stored_with(value: &str) -> Vec<u8> {
+    format!(
+        r#"{{"format":"sweepscope-zero-offsets","version":1,"units":{{"A":{{"stored_at_utc":"t","volts":[[{value}],[],[],[]]}}}}}}"#
+    )
+    .into_bytes()
+}
+
+#[test]
+fn given_an_offset_beyond_any_range_when_loaded_then_it_is_treated_as_corrupt() {
+    let storage = MemoryStorage::default();
+    let bytes = stored_with("1e9");
+    storage.write(FILE_KEY, &bytes).unwrap();
+
+    let file = OffsetFile::load(&storage).unwrap();
+
+    assert_eq!(file.offsets_for("A"), None);
+    assert_eq!(storage.read(CORRUPT_KEY).unwrap(), Some(bytes));
+}
+
+#[test]
+fn given_a_non_finite_offset_when_loaded_then_it_is_treated_as_corrupt() {
+    let storage = MemoryStorage::default();
+    storage.write(FILE_KEY, &stored_with("1e999")).unwrap();
+
+    let file = OffsetFile::load(&storage).unwrap();
+
+    assert_eq!(file.offsets_for("A"), None);
+    assert!(storage.read(CORRUPT_KEY).unwrap().is_some());
+}
+
+#[test]
+fn given_an_offset_at_the_bound_when_loaded_then_it_is_kept() {
+    let storage = MemoryStorage::default();
+    storage.write(FILE_KEY, &stored_with("-40.0")).unwrap();
+
+    let file = OffsetFile::load(&storage).unwrap();
+
+    assert!(file.offsets_for("A").is_some());
+}
