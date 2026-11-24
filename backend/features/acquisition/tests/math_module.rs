@@ -155,3 +155,51 @@ fn given_roll_mode_when_math_is_enabled_then_the_request_is_rejected_with_the_ro
 
     assert!(message.contains("not available in roll mode"));
 }
+
+#[test]
+fn given_a_frame_held_while_stopped_when_the_operation_changes_then_the_frame_is_published_again_with_the_new_trace() {
+    let rig = running_with_math();
+    deliver_frame(&rig);
+    rig.bus.request(SetRunning { running: false }).unwrap();
+    let seen = rig.frames.events().len();
+
+    rig.bus
+        .request(SetMath {
+            patch: MathPatch {
+                operation: Some(MathOperation::Multiply),
+                ..MathPatch::default()
+            },
+        })
+        .unwrap();
+
+    rig.wait(|| rig.frames.events().len() > seen);
+    let derived = rig
+        .frames
+        .events()
+        .last()
+        .unwrap()
+        .derived
+        .clone()
+        .expect("a derived trace");
+    assert_eq!(derived.unit, DerivedUnit::VoltsSquared);
+    assert_eq!(derived.volts, vec![0.0, 0.0]);
+}
+
+#[test]
+fn given_a_frame_held_while_stopped_when_the_state_changes_without_touching_math_then_nothing_is_published_again() {
+    let rig = running_with_math();
+    deliver_frame(&rig);
+    rig.bus.request(SetRunning { running: false }).unwrap();
+    let seen = rig.frames.events().len();
+
+    rig.bus
+        .request(SetMath {
+            patch: MathPatch {
+                enabled: Some(true),
+                ..MathPatch::default()
+            },
+        })
+        .unwrap();
+
+    assert_eq!(rig.frames.events().len(), seen);
+}

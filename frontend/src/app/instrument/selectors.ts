@@ -49,6 +49,10 @@ function unavailableChip(connection: Connection): ChipModel {
 const rollChips = (instrument: InstrumentState | undefined): ChipModel[] =>
   instrument?.horizontal.roll ? [ROLL_CHIP] : [];
 
+/** Roll mode has no trigger, so a trigger phase chip would only claim room the toolbar lacks at 1024 px. */
+const triggerChips = (instrument: InstrumentState | undefined, phase: ChipModel | undefined): ChipModel[] =>
+  phase && !instrument?.horizontal.roll ? [phase] : [];
+
 export function statusChips(
   connection: Connection,
   instrument: InstrumentState | undefined,
@@ -60,7 +64,7 @@ export function statusChips(
     const stopped: ChipModel = { id: 'state', kind: 'stop', text: 'Stop' };
     return status?.phase === 'done' && phase ? [stopped, phase] : [stopped];
   }
-  return [{ id: 'state', kind: 'run', text: 'Run' }, ...rollChips(instrument), ...(phase ? [phase] : [])];
+  return [{ id: 'state', kind: 'run', text: 'Run' }, ...rollChips(instrument), ...triggerChips(instrument, phase)];
 }
 
 function readyChip(connection: ConnectionSnapshot): ConnectionChip {

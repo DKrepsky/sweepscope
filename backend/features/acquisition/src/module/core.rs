@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use sweepscope_kernel::contracts::{
-    Capabilities, CaptureCompleted, CaptureOutcome, ConnectionChanged, ConnectionState, DeviceIdentity, DeviceSource,
-    FrameCaptured, RollPolled, TriggerOutcome,
+    Capabilities, CaptureCompleted, CaptureOutcome, ConnectionChanged, ConnectionState, DerivedTrace, DeviceIdentity,
+    DeviceSource, Frame, FrameCaptured, RollPolled, TriggerOutcome,
 };
 use sweepscope_kernel::KernelError;
 
@@ -40,6 +41,14 @@ pub struct Core {
     last_facts_at: Option<Instant>,
     saved_setup: Option<SetupFile>,
     unsaved_since: Option<Instant>,
+    held: Option<HeldFrame>,
+}
+
+/// The newest published frame, kept so a math change while stopped can be shown on it.
+struct HeldFrame {
+    frame: Arc<Frame>,
+    setup_revision: u64,
+    derived: Option<Arc<DerivedTrace>>,
 }
 
 impl Core {
@@ -64,6 +73,7 @@ impl Core {
             },
             instrument_revision: 0,
             setup_revision: 0,
+            held: None,
             session: None,
             last_facts_at: None,
             saved_setup: None,
@@ -148,6 +158,31 @@ impl Core {
         }
         self.roll.sync(&self.instrument, &mut fx.outputs);
         self.track_setup(fx, now);
+        self.rederive_held(fx);
+    }
+
+    /// While stopped the screen shows the held frame, so a changed math trace must be derived from it again.
+    fn rederive_held(&mut self, fx: &mut Effects) {
+        if self.instrument.running() {
+            return;
+        }
+        let Some(held) = self
+            .held
+            .as_mut()
+            .filter(|held| held.setup_revision == self.setup_revision)
+        else {
+            return;
+        };
+        let derived = derive_trace(&self.instrument, &held.frame);
+        if derived == held.derived {
+            return;
+        }
+        held.derived = derived.clone();
+        fx.outputs.push(Output::Frame(FrameCaptured {
+            frame: Arc::clone(&held.frame),
+            context: self.instrument.frame_context(self.setup_revision),
+            derived,
+        }));
     }
 
     pub fn set_running(&mut self, on: bool, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
@@ -373,6 +408,11 @@ impl Core {
                 self.sync_autoset(fx);
                 let context = self.instrument.frame_context(self.setup_revision);
                 let derived = derive_trace(&self.instrument, &frame);
+                self.held = Some(HeldFrame {
+                    frame: Arc::clone(&frame),
+                    setup_revision: self.setup_revision,
+                    derived: derived.clone(),
+                });
                 fx.outputs.push(Output::Frame(FrameCaptured {
                     frame,
                     context,

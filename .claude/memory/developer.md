@@ -371,3 +371,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - M row status badge now sits on its own subgrid line (`grid-column: 2 / -1`, `[data-math-status]`); a badge in the 1fr column paints over its neighbours when the dock is narrow. Roll chip text truncates with ellipsis and `title` carries the full text.
 - Dock at 720 px height uses channel tabs: e2e must click the `M` tab in the `Channel tabs` group before reading the M row.
 - `e2e/capability.spec.ts` (Node fs allowed there, not in `src`, and vite `?raw` of files outside the frontend is denied) checks `COMMANDS` and the stub's exported `ACKNOWLEDGED_COMMANDS` against `src-tauri/capabilities/main.json`.
+## M3 fix round 2 (developer-10)
+- Core keeps a `HeldFrame` (frame, setup revision, derived); `rederive_held` in `after_change` re-publishes `FrameCaptured` when stopped and the derived trace differs (same setup revision only).
+- Roll toolbar at 1024: trigger phase chip is dropped in roll (it was 170 px when "Waiting for trigger"); scrollWidth alone hides a squeezed spacer, also assert drawer button right edge <= Settings left.

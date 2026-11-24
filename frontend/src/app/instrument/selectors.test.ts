@@ -76,13 +76,12 @@ describe('statusChips', () => {
     expect(chips('done', false)[1]).not.toHaveProperty('dim');
   });
 
-  it('given a running instrument in roll mode, when selected, then a Roll chip follows the Run chip', () => {
+  it('given a running instrument in roll mode, when selected, then a Roll chip follows the Run chip and no trigger chip appears', () => {
     const roll = instrumentState({ running: true, horizontal: { ...instrumentState().horizontal, roll: true } });
     const texts = statusChips(ready, roll, acquisitionStatus({ phase: 'auto' })).map((c) => [c.kind, c.text]);
     expect(texts).toEqual([
       ['run', 'Run'],
       ['roll', 'Roll'],
-      ['auto', 'Auto'],
     ]);
   });
 
