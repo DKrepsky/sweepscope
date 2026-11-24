@@ -153,6 +153,7 @@
           disabled={off}
           disabledReason={reason}
           error={pulse.error}
+          errorText="external"
           ariaLabel="Pulse width"
         >
           {#snippet left()}<small>WIDTH</small>{/snippet}

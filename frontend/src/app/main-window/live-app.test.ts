@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import { createFakeClient } from '../../api';
-import { instrumentState, stateSnapshot } from '../instrument/test-data';
+import { instrumentState, recordingState, stateSnapshot } from '../instrument/test-data';
 import type { FrameBudgetProbe } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
 import { createLiveApp } from './live-app';
@@ -77,6 +77,47 @@ describe('createLiveApp', () => {
     app.stop();
 
     expect(client.openStreamCount('frames')).toBe(0);
+  });
+
+  describe('analysis wiring', () => {
+    it('given the live app, when Single, Autoset, Persist and Record are used, then each sends its backend command', async () => {
+      const { client, app } = setup();
+      for (const name of ['arm_single', 'start_autoset', 'set_persistence', 'start_recording'] as const) {
+        client.respond(name, () => null);
+      }
+      await app.start();
+
+      app.model.armSingle();
+      app.model.startAutoset();
+      app.model.setPersistence('infinite');
+      app.model.startRecording();
+
+      expect(client.calls.map((call) => call.name)).toEqual(
+        expect.arrayContaining(['arm_single', 'start_autoset', 'set_persistence', 'start_recording']),
+      );
+    });
+
+    it('given the live app, when the model is read, then the roll and spectrum streams open', async () => {
+      const { client, app } = setup();
+      await app.start();
+
+      const stop = app.model.subscribe(() => {});
+
+      expect(client.openStreamCount('roll')).toBe(1);
+      expect(client.openStreamCount('spectrum')).toBe(1);
+      stop();
+    });
+
+    it('given a recording state from the backend, when it arrives, then the model shows it', async () => {
+      const { client, app } = setup();
+      await app.start();
+      const stop = app.model.subscribe(() => {});
+
+      client.emit('recording_changed', recordingState({ revision: 5, active: true }));
+
+      expect(get(app.model).recording.active).toBe(true);
+      stop();
+    });
   });
 
   describe('setup notice', () => {

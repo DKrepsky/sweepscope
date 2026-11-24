@@ -10,6 +10,13 @@ const setup = (extra = {}) => {
 };
 
 describe('NumberField', () => {
+  it('given an error shown by the caller, when rendered, then the field is invalid and draws no message itself', () => {
+    const { input } = setup({ error: 'bad width', errorText: 'external' });
+
+    expect(input()).toBeInvalid();
+    expect(screen.queryByText('bad width')).toBeNull();
+  });
+
   it('AC-N1: given editing text, when Enter is pressed, then commit fires once with the text', async () => {
     const { commit, input } = setup();
     await userEvent.clear(input());

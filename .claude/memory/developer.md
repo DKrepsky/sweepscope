@@ -360,3 +360,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## M3 fix round (developer-10)
 - Toolbar fit: roll adds a Roll chip (75 px); the brand is hidden by a container query below 100 rem toolbar width. e2e measures overflow at 1024/1280/1440 in Yt and roll. Frontend formatBytes is binary (KiB) like the backend readout.
 - Playwright from a scratchpad config needs `E2E_PREVIEW_PORT` for csp.spec (hardcoded 4173 otherwise).
+
+## M3 fix round wiring (developer-8)
+- `createLiveApp` now builds the analysis sources itself (stores.spectrum/recording + `createRollFeed`/`createSpectrumFeed`) and passes `commands` as `analyseCommands`; no optional dependency, no inert fallbacks, so main.ts cannot forget them. `live-app.test.ts` "analysis wiring" composes the real thing against the fake client.
+- New real stream feeds open on first model subscription, so e2e stubs must acknowledge open/close roll and spectrum streams (added to `e2e/support/tauri-stub.ts`).
+- NumberField `errorText="external"` = invalid state only, caller draws the text. Backend units are ASCII `us`; message text converts to `µs`.
+- Fresh worktrees have no node_modules: `npm ci` in frontend. The graph.spec 33 ms probe is flaky under load (webkit).
