@@ -300,3 +300,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
 - Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
 - Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
+
+## M3 B3 lessons
+- Worktree-isolated shell refuses compound commands that mix git with other pipes; run one simple command per call. Fresh worktrees lack `frontend/node_modules`: `npm ci --prefer-offline` works.
+- Shared golden vectors: `engineering-format/tests/golden*.tsv` (value, quantity, text, unit); TS reads `golden.tsv` and `golden_analyse.tsv` in `frontend/tools/formatting-golden.test.ts`. Rust negative values that round to zero print no minus.

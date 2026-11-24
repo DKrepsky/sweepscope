@@ -21,7 +21,8 @@ pub(crate) fn render(value: f64, quantity: Quantity) -> (String, i32) {
         exponent += GROUP;
         text = number(magnitude, exponent, quantity);
     }
-    let sign = if value < 0.0 && magnitude != 0.0 { "-" } else { "" };
+    let rounds_to_zero = text.parse::<f64>().is_ok_and(|n| n == 0.0);
+    let sign = if value < 0.0 && !rounds_to_zero { "-" } else { "" };
     (format!("{sign}{text}"), exponent)
 }
 
@@ -46,6 +47,7 @@ fn number(magnitude: f64, exponent: i32, quantity: Quantity) -> String {
         Digits::Exact => exact(scaled),
         Digits::ThreeSignificant => significant(scaled, 3),
         Digits::FourSignificant => significant(scaled, 4),
+        Digits::OneDecimal => format!("{scaled:.1}"),
     }
 }
 
