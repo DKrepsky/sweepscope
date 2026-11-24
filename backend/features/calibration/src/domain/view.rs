@@ -60,7 +60,7 @@ fn cells(ranges: &[f64], text: impl Fn(usize, f64, f64) -> String) -> ChannelToo
     }
 }
 
-/// Millivolts, up to two decimals without trailing zeros (`+6.6 mV`, `0 mV`): the same form in every state.
+/// Millivolts, up to two decimals without trailing zeros (`+6.6 mV`, `0 V`): the same form in every state.
 fn offset_text(volts: f64, range: f64) -> String {
     let millivolts = volts * 1e3;
     let decimals = match millivolts.abs() {
@@ -70,7 +70,7 @@ fn offset_text(volts: f64, range: f64) -> String {
     };
     let rounded = format!("{:.decimals$}", millivolts.abs());
     if rounded.parse::<f64>() == Ok(0.0) {
-        return format!("0 mV at {}", range_text(range));
+        return format!("0 V at {}", range_text(range));
     }
     let sign = if millivolts < 0.0 { TRUE_MINUS } else { "+" };
     let magnitude = if decimals == 0 {
