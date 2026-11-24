@@ -42,7 +42,7 @@ fn calibrated_channel(volts: Option<&Vec<f64>>, ranges: &[f64]) -> ChannelToolti
 
 fn typical_channel(ranges: &[f64]) -> ChannelTooltip {
     cells(ranges, |index, range, factor| match TYPICAL_MILLIVOLTS.get(index) {
-        Some(millivolts) => trimmed(offset_text(millivolts * 1e-3 * factor, range * factor)),
+        Some(millivolts) => offset_text(millivolts * 1e-3 * factor, range * factor),
         None => {
             let two_counts = TYPICAL_COUNTS_ABOVE * range / COUNTS_PER_DIV * factor;
             format!("up to {} at {}", volts_text(two_counts), range_text(range * factor))
@@ -60,18 +60,7 @@ fn cells(ranges: &[f64], text: impl Fn(usize, f64, f64) -> String) -> ChannelToo
     }
 }
 
-/// `+6.60 mV at 20 mV/div` becomes `+6.6 mV at 20 mV/div`: the typical figures carry two or three digits only.
-fn trimmed(text: String) -> String {
-    let Some((number, rest)) = text.split_once(' ') else {
-        return text;
-    };
-    if !number.contains('.') {
-        return text;
-    }
-    format!("{} {rest}", number.trim_end_matches('0').trim_end_matches('.'))
-}
-
-/// Millivolts with two to zero decimals: offsets are small and `+0.66 mV` reads better than `660 uV`.
+/// Millivolts, up to two decimals without trailing zeros (`+6.6 mV`, `0 mV`): the same form in every state.
 fn offset_text(volts: f64, range: f64) -> String {
     let millivolts = volts * 1e3;
     let decimals = match millivolts.abs() {
@@ -79,12 +68,15 @@ fn offset_text(volts: f64, range: f64) -> String {
         m if m < 100.0 => 1,
         _ => 0,
     };
-    let magnitude = format!("{:.decimals$}", millivolts.abs());
-    let rounds_to_zero = magnitude.parse::<f64>() == Ok(0.0);
-    let sign = if millivolts < 0.0 && !rounds_to_zero {
-        TRUE_MINUS
+    let rounded = format!("{:.decimals$}", millivolts.abs());
+    if rounded.parse::<f64>() == Ok(0.0) {
+        return format!("0 mV at {}", range_text(range));
+    }
+    let sign = if millivolts < 0.0 { TRUE_MINUS } else { "+" };
+    let magnitude = if decimals == 0 {
+        rounded.as_str()
     } else {
-        "+"
+        rounded.trim_end_matches('0').trim_end_matches('.')
     };
     format!("{sign}{magnitude} mV at {}", range_text(range))
 }
