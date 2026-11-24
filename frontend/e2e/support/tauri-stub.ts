@@ -8,9 +8,8 @@ export interface IpcCall {
 }
 
 /** A connected simulator with channels 1 to 3 on and 4 off, so the dock shows both row states. */
-const readySnapshot = (unverifiedTimeBase: boolean, zero: Partial<ZeroCalibrationState>) => {
+const readySnapshot = (zero: Partial<ZeroCalibrationState>) => {
   const base = instrumentState();
-  const timeBase = { ...base.horizontal.timeBase, verified: !unverifiedTimeBase };
   const snapshot = stateSnapshot({
     instrument: {
       ...base,
@@ -199,12 +198,7 @@ export async function stubTauri(
         },
       };
     },
-    [
-      initialSettings,
-      readySnapshot(options.unverifiedTimeBase ?? false, options.zero ?? {}),
-      options.commands ?? {},
-      ACKNOWLEDGED_COMMANDS,
-    ] as const,
+    [initialSettings, readySnapshot(options.zero ?? {}), options.commands ?? {}, ACKNOWLEDGED_COMMANDS] as const,
   );
 }
 
