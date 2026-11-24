@@ -8,7 +8,7 @@ pub struct ChannelCapture {
     pub probe: f64,
     pub zero_code: f64,
     pub inverted: bool,
-    pub range_verified: bool,
+    pub calibrated: bool,
     pub codes: Vec<u8>,
 }
 
@@ -40,7 +40,7 @@ impl Capture {
                     probe: context.probe[index],
                     zero_code: data.zero_code,
                     inverted: context.invert[index],
-                    range_verified: context.range_verified[index],
+                    calibrated: context.calibrated[index],
                     codes: data.codes.clone(),
                 })
             })

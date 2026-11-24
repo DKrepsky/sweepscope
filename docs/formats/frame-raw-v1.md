@@ -25,11 +25,14 @@ Header keys:
     trigger_index     index of the trigger sample, null when there was none
     channels          list, ascending channel number, enabled channels only; each entry has
                       channel (1 to 4), volts_per_div (at the input), probe (1, 10 or 100),
-                      zero_code (the code of 0 V, may be fractional), inverted, range_verified
+                      zero_code (the code of 0 V, may be fractional), inverted, calibrated
+                      (true when the zero calibration offset was applied to zero_code)
 
 Volts of a sample: (code - zero_code) / counts_per_div * volts_per_div * probe. Time of sample k: k * sample_interval_s, counted from the
 first sample of the record. `inverted` tells that the display inverts the trace; the codes are stored as captured.
 
 ## Compatibility
+
+Files written before the zero calibration have `range_verified` instead of `calibrated`; a reader ignores it and treats a missing `calibrated` as false. The version stays 1.
 
 A reader must refuse a different magic or a `version` it does not know. A new version changes the `version` key and this document.

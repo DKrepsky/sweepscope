@@ -105,30 +105,22 @@ impl Exporter {
         self.newest.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    fn capture(&self) -> Result<Capture, KernelError> {
+    fn newest_frame(&self) -> Result<(FrameCaptured, String), KernelError> {
         let mut newest = self.newest();
         newest.absorb();
-        let (captured, arrived) = newest
+        newest
             .latest
-            .as_ref()
-            .ok_or_else(|| KernelError::recoverable("No waveform to export"))?;
-        Capture::from_frame(captured, arrived.clone())
+            .clone()
+            .ok_or_else(|| KernelError::recoverable("No waveform to export"))
     }
 
     fn export_frame(&self, format: ExportFormat) -> Result<Option<SavedFile>, KernelError> {
-        let capture = self.capture()?;
-        let now = (self.unix_time_us)();
+        let (captured, arrived) = self.newest_frame()?;
+        let bytes = encode_frame(&captured, &arrived, format)?;
+        let name = stamp::suggested_name((self.unix_time_us)(), file_extension(format));
         match format {
-            ExportFormat::Csv => {
-                let name = stamp::suggested_name(now, "csv");
-                let filter = filter("CSV", "csv");
-                self.save_one(&name, &filter, csv::encode(&capture).as_bytes())
-            }
-            ExportFormat::Raw => {
-                let name = stamp::suggested_name(now, "bin");
-                let bytes = raw::encode(&capture)?;
-                self.save_raw(&name, &bytes)
-            }
+            ExportFormat::Csv => self.save_one(&name, &filter("CSV", "csv"), &bytes),
+            ExportFormat::Raw => self.save_raw(&name, &bytes),
         }
     }
 
@@ -157,7 +149,7 @@ impl Exporter {
         };
         let sidecar = path.with_extension("format.txt");
         let previous = read_existing(&sidecar)?;
-        write_atomic(&sidecar, layout_text().as_bytes())?;
+        write_atomic(&sidecar, raw_layout_text().as_bytes())?;
         // The raw file goes last: its write is atomic, so a failure leaves the old file in place and only the sidecar needs undoing.
         if let Err(error) = write_atomic(&path, bytes) {
             restore(&sidecar, previous);
@@ -206,8 +198,33 @@ fn file_name(path: &Path) -> String {
 }
 
 /// The text of the "Layout" section of the format document, which travels beside each raw file.
-fn layout_text() -> String {
+pub fn raw_layout_text() -> String {
     let mut lines = FORMAT_DOC.lines().skip_while(|line| line.trim() != "## Layout").skip(1);
     let section: Vec<&str> = lines.by_ref().take_while(|line| !line.starts_with("## ")).collect();
     format!("{}\n", section.join("\n").trim())
+}
+
+pub fn file_extension(format: ExportFormat) -> &'static str {
+    match format {
+        ExportFormat::Csv => "csv",
+        ExportFormat::Raw => "bin",
+    }
+}
+
+/// The exact bytes `ExportFrame` writes, for callers that save through their own path (the capture CLI).
+pub fn encode_frame(
+    captured: &FrameCaptured,
+    timestamp_utc: &str,
+    format: ExportFormat,
+) -> Result<Vec<u8>, KernelError> {
+    let capture = Capture::from_frame(captured, timestamp_utc.to_owned())?;
+    match format {
+        ExportFormat::Csv => Ok(csv::encode(&capture).into_bytes()),
+        ExportFormat::Raw => raw::encode(&capture),
+    }
+}
+
+/// ISO 8601 UTC, second resolution, from a Unix time in microseconds.
+pub fn iso_8601_utc(unix_time_us: f64) -> String {
+    stamp::iso_8601(unix_time_us)
 }

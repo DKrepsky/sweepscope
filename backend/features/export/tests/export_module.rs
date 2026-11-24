@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use sweepscope_export::{decode_raw, ExportDeps, ExportFormat, ExportFrame, ExportModule, SaveScreenshot};
+use sweepscope_export::{
+    decode_raw, encode_frame, file_extension, iso_8601_utc, raw_layout_text, ExportDeps, ExportFormat, ExportFrame,
+    ExportModule, SaveScreenshot,
+};
 use sweepscope_kernel::contracts::{ChannelData, Frame, FrameCaptured, FrameContext, TriggerOutcome};
 use sweepscope_kernel::testing::{ScriptedPicker, TempDir};
 use sweepscope_kernel::{Bus, ErrorCategory};
 
 const NOW_US: f64 = 1_700_000_000_000_000.0;
 const GOLDEN: &str = "tests/frame-raw-v1.bin";
+const LEGACY: &str = "tests/frame-raw-v1-legacy.bin";
 
 fn clock() -> f64 {
     NOW_US
@@ -63,7 +67,7 @@ fn frame() -> FrameCaptured {
             window_len: 4,
             invert: [false, false, true, false],
             probe: [1.0, 1.0, 10.0, 1.0],
-            range_verified: [true, true, false, true],
+            calibrated: [true, true, false, true],
             seconds_per_div: 1e-6,
         },
         derived: None,
@@ -91,7 +95,7 @@ fn given_a_frame_and_a_picked_path_when_csv_is_exported_then_the_file_has_metada
     assert_eq!(lines[1], "# timestamp_utc: 2023-11-14T22:13:20Z");
     assert!(lines.contains(&"# trigger_index: 2"));
     assert!(lines.contains(&"# ch3_probe: 10"));
-    assert!(lines.contains(&"# ch3_range_verified: false"));
+    assert!(lines.contains(&"# ch3_zero_offset_applied: false"));
     assert!(!lines.iter().any(|line| line.starts_with("# ch2_")));
     let header = lines.iter().position(|line| !line.starts_with('#')).unwrap();
     assert_eq!(lines[header], "time_s,ch1_v,ch3_v");
@@ -136,7 +140,7 @@ fn given_a_frame_when_raw_is_exported_then_decoding_returns_the_codes_and_header
     assert_eq!(capture.channels[1].codes, vec![0, 64, 128, 192]);
     assert_eq!(capture.channels[1].probe, 10.0);
     assert!(capture.channels[1].inverted);
-    assert!(!capture.channels[1].range_verified);
+    assert!(!capture.channels[1].calibrated);
 }
 
 #[test]
@@ -449,4 +453,83 @@ fn given_a_truncated_or_foreign_file_when_decoded_then_it_is_refused() {
     let mut bytes = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(GOLDEN)).unwrap();
     bytes.pop();
     assert!(decode_raw(&bytes).is_err());
+}
+
+fn frame_captured() -> FrameCaptured {
+    frame()
+}
+
+#[test]
+fn given_the_legacy_golden_with_range_verified_when_decoded_then_calibrated_is_false() {
+    let bytes = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(LEGACY)).unwrap();
+
+    let capture = decode_raw(&bytes).unwrap();
+
+    assert_eq!(capture.channels.len(), 2);
+    assert!(capture.channels.iter().all(|channel| !channel.calibrated));
+    assert_eq!(capture.channels[1].codes, vec![0, 64, 128, 192]);
+}
+
+#[test]
+fn given_a_frame_when_encoded_as_raw_then_the_header_has_calibrated_and_no_range_verified() {
+    let bytes = encode_frame(&frame_captured(), "2023-11-14T22:13:20Z", ExportFormat::Raw).unwrap();
+
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("\"calibrated\":true"));
+    assert!(!text.contains("range_verified"));
+}
+
+#[test]
+fn given_a_frame_when_encoded_as_csv_then_channels_carry_zero_offset_applied() {
+    let bytes = encode_frame(&frame_captured(), "2023-11-14T22:13:20Z", ExportFormat::Csv).unwrap();
+
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.contains("# ch1_zero_offset_applied: true"));
+    assert!(text.contains("# ch3_zero_offset_applied: false"));
+    assert!(!text.contains("range_verified"));
+}
+
+#[test]
+fn given_a_frame_when_encoded_then_the_bytes_equal_what_the_module_writes() {
+    let target = TempDir::new();
+    let rig = rig(vec![Some(target.path().join("cap.bin"))]);
+    rig.bus.publish(frame());
+    rig.bus
+        .request(ExportFrame {
+            format: ExportFormat::Raw,
+        })
+        .unwrap();
+
+    let encoded = encode_frame(&frame_captured(), "2023-11-14T22:13:20Z", ExportFormat::Raw).unwrap();
+
+    assert_eq!(encoded, std::fs::read(target.path().join("cap.bin")).unwrap());
+}
+
+#[test]
+fn given_a_frame_without_samples_when_encoded_then_the_error_is_recoverable() {
+    let mut captured = frame_captured();
+    Arc::make_mut(&mut captured.frame).channels = Default::default();
+
+    let error = encode_frame(&captured, "t", ExportFormat::Csv).unwrap_err();
+
+    assert_eq!(error.category, ErrorCategory::Recoverable);
+}
+
+#[test]
+fn given_each_format_when_asked_for_its_extension_then_csv_and_bin_are_returned() {
+    assert_eq!(file_extension(ExportFormat::Csv), "csv");
+    assert_eq!(file_extension(ExportFormat::Raw), "bin");
+}
+
+#[test]
+fn given_the_format_document_when_the_layout_text_is_read_then_it_names_the_calibrated_key() {
+    let text = raw_layout_text();
+
+    assert!(text.starts_with("A SweepScope raw capture"));
+    assert!(text.contains("calibrated"));
+}
+
+#[test]
+fn given_a_known_instant_when_formatted_publicly_then_it_is_iso_8601_utc() {
+    assert_eq!(iso_8601_utc(NOW_US), "2023-11-14T22:13:20Z");
 }

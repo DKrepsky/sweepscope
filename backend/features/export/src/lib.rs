@@ -9,5 +9,5 @@ mod raw;
 mod stamp;
 
 pub use messages::{ExportFormat, ExportFrame, SaveScreenshot, COMMANDS};
-pub use module::{ExportDeps, ExportModule};
+pub use module::{encode_frame, file_extension, iso_8601_utc, raw_layout_text, ExportDeps, ExportModule};
 pub use raw::{decode_raw, RawCapture, RawChannel};

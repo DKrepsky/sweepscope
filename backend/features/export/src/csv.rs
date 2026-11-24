@@ -44,7 +44,7 @@ fn metadata(capture: &Capture) -> String {
         let n = channel.channel;
         line(&format!("ch{n}_volts_per_div"), channel.volts_per_div.to_string());
         line(&format!("ch{n}_probe"), channel.probe.to_string());
-        line(&format!("ch{n}_range_verified"), channel.range_verified.to_string());
+        line(&format!("ch{n}_zero_offset_applied"), channel.calibrated.to_string());
     }
     text
 }
