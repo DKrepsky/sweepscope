@@ -333,3 +333,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Module tests cannot flush the consumer thread for "nothing published" cases; use an ordered sentinel on the same subscription (stale poll then good poll) or an unplug as barrier.
 - Float traps: `50 * 1e-6 < 50e-6`; compare widths in rounded ns.
 - Tool calls with `cd` plus heredocs are refused in a worktree: write scripts to the scratchpad and run them with absolute paths.
+## M3 F5 stage and views (developer-9)
+- `selectGraph(inputs, { views, persistence, roll })` is the one place that picks Yt, XY, FFT or roll data; `GraphModel` now carries `view`, `running`, `dimmed` (only disconnected dims; stopped is full intensity), `math`, ticks (graph convention: Y ticks count from the bottom, the backend counts from the top), `xy`, `persistence {decayMs, epoch, revision}` and `tags`.
+- Persistence ghosts age by an injected clock: `createPausableClock` (app/views) is held still while `graph.running` is false. Ghost opacities now come from `tokens['opacity-persist-*']`.
+- XY: a division on X is a tenth of the width, so the X ground marker uses `xFractionFromGround` / `divisionsFromXFraction`. `formatFrequency` gives four digits (`300.0 Hz`).
+- `Menu` only has `checked` (role `menuitemcheckbox`), no radio role. Segmented segments cannot carry their own aria-label (name is the visible text).
+- Tests: `app/main-window/test-inputs.ts` builds `ModelInputs` from `app/instrument/test-data`. Playwright with a temp config copy: ports 5173/4173 are often taken by other agents, pick unusual ones and set `E2E_PREVIEW_PORT`.
