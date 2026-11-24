@@ -5,7 +5,7 @@ use super::DeviceIdentity;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum ConnectionState {
     Disconnected,
     Connecting,
@@ -15,7 +15,7 @@ pub enum ConnectionState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum DeviceSource {
     Hardware,
     Simulator,
@@ -23,7 +23,7 @@ pub enum DeviceSource {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum ConnectionIssueKind {
     PermissionDenied,
     CalibrationInvalid,
@@ -33,7 +33,7 @@ pub enum ConnectionIssueKind {
 /// What the user needs to fix a missing USB permission: the shipped rule file and the exact command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub struct PermissionHelp {
     pub rule_file: String,
     pub install_command: String,
@@ -42,7 +42,7 @@ pub struct PermissionHelp {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub struct ConnectionIssue {
     pub kind: ConnectionIssueKind,
     pub message: String,
@@ -52,7 +52,7 @@ pub struct ConnectionIssue {
 /// Connection slice (ADR 0013); `revision` is assigned by `device` and starts at 1 per process.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub struct ConnectionSnapshot {
     #[ts(type = "number")]
     pub revision: u64,

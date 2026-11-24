@@ -30,7 +30,7 @@ pub struct TriggerSetup {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum Coupling {
     Ac,
     Dc,
@@ -38,7 +38,7 @@ pub enum Coupling {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum Slope {
     Rising,
     Falling,
@@ -46,7 +46,7 @@ pub enum Slope {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export, export_to = "../../../frontend/src/api/generated/")]
 pub enum Sweep {
     Auto,
     Normal,
