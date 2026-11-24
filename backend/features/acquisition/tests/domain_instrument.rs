@@ -123,27 +123,37 @@ fn given_the_time_base_table_when_stepping_to_the_fastest_then_the_first_step_is
 }
 
 #[test]
-fn given_the_time_base_table_when_stepping_to_the_slowest_frame_step_then_roll_steps_are_blocked_with_the_roll_reason()
-{
+fn given_the_time_base_table_when_stepping_to_the_slowest_then_roll_steps_are_reached_and_the_end_has_a_reason() {
     let caps = capabilities();
-    let last_frame_step = time_base_index(&caps, 200e-3);
     let mut instrument = ready_instrument();
     for _ in 0..40 {
         instrument.step(SettingTarget::TimeBase, 1).unwrap();
     }
 
-    let time_base = &state(&instrument).horizontal.time_base;
+    let horizontal = state(&instrument).horizontal;
 
-    assert_eq!(time_base.index, last_frame_step);
-    assert!(!time_base.slower.enabled);
-    assert_eq!(
-        time_base.slower.reason.as_deref(),
-        Some("Roll mode arrives in a later release")
-    );
+    assert_eq!(usize::from(horizontal.time_base.index), caps.time_bases.len() - 1);
+    assert!(horizontal.roll);
+    assert_eq!(horizontal.time_base.slower.reason.as_deref(), Some("Slowest time base"));
 }
 
 #[test]
-fn given_25_frame_steps_when_stepping_slower_from_the_fastest_then_all_25_are_reachable() {
+fn given_the_slowest_frame_step_when_stepping_slower_then_roll_mode_starts() {
+    let caps = capabilities();
+    let mut instrument = ready_instrument();
+    instrument.reset(SettingTarget::TimeBase).unwrap();
+    while instrument.setup().unwrap().time_base_index < time_base_index(&caps, 200e-3) {
+        instrument.step(SettingTarget::TimeBase, 1).unwrap();
+    }
+    assert!(!state(&instrument).horizontal.roll);
+
+    instrument.step(SettingTarget::TimeBase, 1).unwrap();
+
+    assert!(state(&instrument).horizontal.roll);
+}
+
+#[test]
+fn given_the_time_base_table_when_stepping_slower_from_the_fastest_then_every_step_is_reachable() {
     let mut instrument = ready_instrument();
     for _ in 0..40 {
         instrument.step(SettingTarget::TimeBase, -1).unwrap();
@@ -153,7 +163,7 @@ fn given_25_frame_steps_when_stepping_slower_from_the_fastest_then_all_25_are_re
         .filter(|_| instrument.step(SettingTarget::TimeBase, 1).unwrap().setup_changed)
         .count();
 
-    assert_eq!(reached, 24);
+    assert_eq!(reached, capabilities().time_bases.len() - 1);
 }
 
 #[test]

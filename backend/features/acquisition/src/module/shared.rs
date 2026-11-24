@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
-use sweepscope_kernel::contracts::{ApplySetup, CaptureCompleted, ConnectionChanged, ForceTrigger, SetCapturing};
+use sweepscope_kernel::contracts::{
+    ApplySetup, CaptureCompleted, ConnectionChanged, ForceTrigger, RollPolled, SetCapturing,
+};
 use sweepscope_kernel::{Bus, Clock, KernelError, Storage};
 
 use super::core::Core;
@@ -91,6 +93,10 @@ impl Shared {
         self.react(|core, effects, now| core.capture(completed, effects, now));
     }
 
+    pub fn roll_polled(&self, polled: RollPolled) {
+        self.react(|core, effects, _| core.roll_polled(polled, effects));
+    }
+
     pub fn tick(&self) {
         self.react(|core, effects, now| core.tick(effects, now));
     }
@@ -117,6 +123,7 @@ impl Shared {
             Output::Status(status) => self.bus.publish(StatusChanged(status)),
             Output::Facts(facts) => self.bus.publish(FactsChanged(*facts)),
             Output::Frame(frame) => self.bus.publish(frame),
+            Output::Roll(item) => self.bus.publish(item),
         }
     }
 

@@ -2,17 +2,19 @@ use std::time::{Duration, Instant};
 
 use sweepscope_kernel::contracts::{
     Capabilities, CaptureCompleted, CaptureOutcome, ConnectionChanged, ConnectionState, DeviceIdentity, DeviceSource,
-    FrameCaptured, TriggerOutcome,
+    FrameCaptured, RollPolled, TriggerOutcome,
 };
 use sweepscope_kernel::KernelError;
 
+use super::autoset;
 use super::derive::derive_trace;
 use super::effects::{Call, Effects, Output};
+use super::roll::RollSessions;
 use crate::domain::autoset_run::AutosetRun;
 use crate::domain::setup_file::SetupFile;
 use crate::{
-    next_status, AcquisitionStatus, CaptureMeter, Change, Defaults, FormattedValue, Instrument, InstrumentFacts,
-    InstrumentSnapshot, Phase, SetupReport, StatusEvent,
+    next_status, AcquisitionStatus, AutosetStatus, CaptureMeter, Change, ControlsAvailability, Defaults,
+    FormattedValue, Instrument, InstrumentFacts, InstrumentSnapshot, Phase, SetupReport, StatusEvent,
 };
 
 const FACTS_EVERY: Duration = Duration::from_millis(250);
@@ -29,6 +31,8 @@ pub struct Core {
     instrument: Instrument,
     meter: CaptureMeter,
     status: AcquisitionStatus,
+    autoset: AutosetRun,
+    roll: RollSessions,
     facts: InstrumentFacts,
     instrument_revision: u64,
     setup_revision: u64,
@@ -46,8 +50,10 @@ impl Core {
             status: AcquisitionStatus {
                 revision: 1,
                 phase: Phase::Stopped,
-                autoset: AutosetRun.status(),
+                autoset: AutosetStatus::default(),
             },
+            autoset: Default::default(),
+            roll: RollSessions::default(),
             facts: InstrumentFacts {
                 revision: 1,
                 sample_rate: None,
@@ -140,11 +146,16 @@ impl Core {
             self.publish_instrument(fx);
             self.refresh_facts(fx, now, true);
         }
+        self.roll.sync(&self.instrument, &mut fx.outputs);
         self.track_setup(fx, now);
     }
 
     pub fn set_running(&mut self, on: bool, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
+        let was_single = self.instrument.single_armed();
         let change = self.instrument.set_running(on)?;
+        if was_single {
+            self.send_setup(fx);
+        }
         if change.state_changed {
             fx.calls.push(Call::Capturing(on));
             self.meter.clear();
@@ -152,22 +163,84 @@ impl Core {
             self.publish_instrument(fx);
             self.refresh_facts(fx, now, true);
         }
+        self.roll.sync(&self.instrument, &mut fx.outputs);
         Ok(())
     }
 
+    /// One capture that waits for a trigger; the device runs with `Normal` sweep until the frame comes.
+    pub fn arm_single(&mut self, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
+        self.require(|controls| &controls.single, "Single is not available")?;
+        self.instrument.arm_single()?;
+        self.send_setup(fx);
+        fx.calls.push(Call::Capturing(true));
+        self.meter.clear();
+        self.advance_phase(StatusEvent::ArmSingle, fx);
+        self.publish_instrument(fx);
+        self.refresh_facts(fx, now, true);
+        Ok(())
+    }
+
+    fn end_single(&mut self, fx: &mut Effects, now: Instant) {
+        if self.instrument.finish_single().is_err() {
+            return;
+        }
+        self.send_setup(fx);
+        fx.calls.push(Call::Capturing(false));
+        self.meter.clear();
+        self.advance_phase(StatusEvent::SingleDone, fx);
+        self.publish_instrument(fx);
+        self.refresh_facts(fx, now, true);
+        self.track_setup(fx, now);
+    }
+
     pub fn force_trigger(&mut self, fx: &mut Effects) -> Result<(), KernelError> {
+        self.require(|controls| &controls.force, "Force trigger is not available")?;
+        fx.calls.push(Call::Force);
+        Ok(())
+    }
+
+    pub fn start_autoset(&mut self, fx: &mut Effects) -> Result<(), KernelError> {
+        self.require(|controls| &controls.autoset, "Auto-setup is not available")?;
+        autoset::start(&mut self.autoset, fx);
+        self.sync_autoset(fx);
+        Ok(())
+    }
+
+    fn require(
+        &self,
+        control: fn(&ControlsAvailability) -> &crate::Availability,
+        fallback: &str,
+    ) -> Result<(), KernelError> {
         let state = self
             .instrument
             .state(self.instrument_revision)
             .ok_or_else(|| KernelError::recoverable(NO_SCOPE))?;
-        if !state.controls.force.enabled {
-            let reason = state.controls.force.reason;
-            return Err(KernelError::recoverable(
-                reason.unwrap_or_else(|| "Force trigger is not available".into()),
-            ));
+        let availability = control(&state.controls);
+        if availability.enabled {
+            return Ok(());
         }
-        fx.calls.push(Call::Force);
-        Ok(())
+        Err(KernelError::recoverable(
+            availability.reason.clone().unwrap_or_else(|| fallback.to_owned()),
+        ))
+    }
+
+    /// Publishes the auto-setup status and the locks it puts on the controls when either changed.
+    fn sync_autoset(&mut self, fx: &mut Effects) {
+        let status = self.autoset.status();
+        if status == self.status.autoset {
+            return;
+        }
+        let running_changed = status.running != self.status.autoset.running;
+        self.status = AcquisitionStatus {
+            revision: self.status.revision + 1,
+            phase: self.status.phase,
+            autoset: status,
+        };
+        fx.outputs.push(Output::Status(self.status.clone()));
+        if running_changed {
+            self.instrument.set_autoset_running(self.status.autoset.running);
+            self.publish_instrument(fx);
+        }
     }
 
     pub fn connection(&mut self, change: ConnectionChanged, fx: &mut Effects, now: Instant) {
@@ -189,6 +262,7 @@ impl Core {
             self.publish_instrument(fx);
             self.refresh_facts(fx, now, true);
         }
+        self.roll.sync(&self.instrument, &mut fx.outputs);
         self.track_setup(fx, now);
     }
 
@@ -198,7 +272,8 @@ impl Core {
         }
         match completed.outcome {
             CaptureOutcome::Frame(frame) => {
-                if let Some(event) = status_event(frame.trigger) {
+                let single = self.instrument.single_armed();
+                if let Some(event) = status_event(frame.trigger).filter(|_| !single) {
                     self.advance_phase(event, fx);
                 }
                 self.meter.record(now);
@@ -209,11 +284,27 @@ impl Core {
                     context,
                     derived,
                 }));
+                if single {
+                    self.end_single(fx, now);
+                    return;
+                }
                 self.refresh_facts(fx, now, false);
                 self.track_setup(fx, now);
             }
             CaptureOutcome::TimedOut => self.advance_phase(StatusEvent::TimedOut, fx),
         }
+    }
+
+    /// Roll items of the current setup only; a poll of an older revision belongs to a session that is over.
+    pub fn roll_polled(&mut self, polled: RollPolled, fx: &mut Effects) {
+        if polled.setup_revision != self.setup_revision {
+            return;
+        }
+        let Some(captured) = self.roll.item(polled) else {
+            return;
+        };
+        fx.outputs.push(Output::Roll(captured));
+        self.advance_phase(StatusEvent::Auto, fx);
     }
 
     pub fn tick(&mut self, fx: &mut Effects, now: Instant) {
@@ -264,7 +355,7 @@ impl Core {
     }
 
     fn send_setup(&mut self, fx: &mut Effects) {
-        let Some(setup) = self.instrument.setup().cloned() else {
+        let Some(setup) = self.instrument.device_setup() else {
             return;
         };
         self.setup_revision += 1;

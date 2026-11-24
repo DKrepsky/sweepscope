@@ -327,3 +327,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Generated api types are importable by deep path (`../../api/generated/X`) when `api/index.ts` (another package's file) lacks the export.
 - Editing another developer's file even temporarily is blocked by the permission classifier: verify against their pending fixture changes in a scratch copy (`cp -r src` + symlinked node_modules + `server.fs.strict:false` in the copied vite config).
 - Sandbox refuses compound commands that `cd ../..` or contain the word "enable" in grep/sed; use Read/Edit and separate commands.
+## M3 acquisition core (B7)
+- Roll sessions live in `acquisition/src/module/roll.rs` (`RollSessions::sync` after every state change; compares a `RollKey` of device setup, invert and probes). A Single keeps `Model.single`; the device gets `Model::device_setup()` (sweep Normal), the published sweep is untouched. Every path that ends a Single re-sends the setup.
+- Backend value units are ASCII (`us`); error texts that the spec fixes with `µs` convert the unit in the message only.
+- Module tests cannot flush the consumer thread for "nothing published" cases; use an ordered sentinel on the same subscription (stale poll then good poll) or an unplug as barrier.
+- Float traps: `50 * 1e-6 < 50e-6`; compare widths in rounded ns.
+- Tool calls with `cd` plus heredocs are refused in a worktree: write scripts to the scratchpad and run them with absolute paths.
