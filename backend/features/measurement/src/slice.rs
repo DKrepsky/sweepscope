@@ -19,6 +19,7 @@ impl Slice {
                 revision: 0,
                 channels: Vec::new(),
                 accuracy_note: texts::ACCURACY_NOTE.to_owned(),
+                warnings: Vec::new(),
             },
             published_at: None,
             unannounced: false,

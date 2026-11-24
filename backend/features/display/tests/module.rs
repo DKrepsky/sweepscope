@@ -14,6 +14,7 @@ fn captured(level: u8) -> FrameCaptured {
     FrameCaptured {
         frame: one_channel(vec![level; 4], TriggerOutcome::None),
         context: context(0, 4),
+        derived: None,
     }
 }
 

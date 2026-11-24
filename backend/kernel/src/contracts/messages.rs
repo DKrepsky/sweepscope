@@ -45,8 +45,74 @@ pub struct FrameContext {
 pub struct FrameCaptured {
     pub frame: Arc<Frame>,
     pub context: FrameContext,
+    /// The math trace of the same record (ADR 0019); `None` while math is off or unavailable.
+    pub derived: Option<Arc<DerivedTrace>>,
 }
 impl Event for FrameCaptured {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DerivedUnit {
+    Volts,
+    VoltsSquared,
+}
+
+/// Probe-scaled result of the math channel, one value per sample of the record.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DerivedTrace {
+    pub volts: Vec<f64>,
+    pub unit: DerivedUnit,
+    pub volts_per_div: f64,
+    pub position_divs: f64,
+}
+
+/// What the consumers of roll items need to scale them; `session` changes whenever the setup does.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RollContext {
+    pub session: u32,
+    pub invert: [bool; 4],
+    pub probe: [f64; 4],
+    pub seconds_per_div: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RollPolledItem {
+    Samples { first_index: u64, frame: Arc<Frame> },
+    Gap { after: u64, missed: u64 },
+}
+
+/// Published by the `device` worker while it rolls. Indices count from 0 at the start of a session; the session itself is assigned by `acquisition`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RollPolled {
+    pub setup_revision: u64,
+    pub item: RollPolledItem,
+}
+impl Event for RollPolled {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RollCloseReason {
+    Stopped,
+    LeftRoll,
+    Disconnected,
+    SetupChanged,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RollItem {
+    Opened,
+    Samples { first_index: u64, frame: Arc<Frame> },
+    Gap { after: u64, missed: u64 },
+    Closed { reason: RollCloseReason },
+}
+
+/// Published by `acquisition` for `display` and `recording`. Consumers keep an expected index: samples that start later
+/// are preceded by a `Gap { after: expected - 1, missed: first_index - expected }`; a `Gap` moves it to `after + 1 + missed`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RollCaptured {
+    pub session: u32,
+    pub item: RollItem,
+    pub context: RollContext,
+}
+impl Event for RollCaptured {}
 
 /// Sent by `acquisition`; the handler stores the intent and returns at once.
 #[derive(Debug, Clone, PartialEq)]

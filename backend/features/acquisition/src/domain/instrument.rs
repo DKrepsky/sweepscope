@@ -5,6 +5,7 @@ use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, FrameContext}
 use sweepscope_kernel::KernelError;
 
 use super::defaults::Defaults;
+use super::math;
 use super::meter::CaptureMeter;
 use super::model::{nearest_index, Model, CHANNELS};
 use super::setup_file::{self, SetupFile};
@@ -162,6 +163,7 @@ impl Instrument {
                     let divisions = model.level_divisions(caps) + f64::from(direction) * LEVEL_STEP_DIVS;
                     set_level(caps, model, divisions);
                 }
+                SettingTarget::MathScale | SettingTarget::MathPosition => math::step(model, target, direction),
             }
             Ok(())
         })
@@ -186,6 +188,7 @@ impl Instrument {
                 }
                 SettingTarget::TriggerPosition => model.trigger_fraction = defaults.trigger_fraction,
                 SettingTarget::TriggerLevel => model.setup.trigger.level_volts = 0.0,
+                SettingTarget::MathScale | SettingTarget::MathPosition => math::reset(model, target),
             }
             Ok(())
         })

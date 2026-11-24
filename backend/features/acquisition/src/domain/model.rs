@@ -1,6 +1,6 @@
 //! The editable part of the instrument: what the user chose, validated against the capabilities.
 use sweepscope_kernel::contracts::{
-    AcquisitionSetup, Capabilities, ChannelSetup, Coupling, Slope, Sweep, TriggerSetup, VerticalRange,
+    AcquisitionSetup, Capabilities, ChannelSetup, Coupling, Slope, Sweep, TriggerKind, TriggerSetup, VerticalRange,
 };
 
 use super::defaults::Defaults;
@@ -49,6 +49,7 @@ impl Model {
                     slope: Slope::Rising,
                     sweep: Sweep::Auto,
                     horizontal_position_percent: 0.0,
+                    kind: TriggerKind::Edge,
                 },
             },
             probes: [1.0; CHANNELS],

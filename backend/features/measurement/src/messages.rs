@@ -58,6 +58,7 @@ pub struct Measurement {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ChannelMeasurements {
+    /// 1 to 4 for the channels, 5 for the math trace (column `M`).
     pub channel: u8,
     /// Any sample of the record sits on a converter rail.
     pub clipped: bool,
@@ -76,6 +77,30 @@ pub struct MeasurementsState {
     pub revision: u64,
     pub channels: Vec<ChannelMeasurements>,
     pub accuracy_note: String,
+    /// Alias warnings per channel, raised and cleared with hysteresis.
+    pub warnings: Vec<Warning>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum WarningSeverity {
+    Warning,
+}
+
+/// A condition the UI shows as a badge next to what it affects.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Warning {
+    /// Stable per condition, for example `alias-ch2`.
+    pub id: String,
+    pub severity: WarningSeverity,
+    pub channel: Option<u8>,
+    /// Badge text, for example `Alias CH1`.
+    pub short: String,
+    /// The tooltip text.
+    pub message: String,
 }
 
 /// Published at most four times a second, only when a text changed; the shell forwards it as `measurements_changed`.

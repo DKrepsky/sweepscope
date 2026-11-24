@@ -171,6 +171,7 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: sweepscope_kernel::contracts::TriggerKind::Edge,
             },
         }
     }

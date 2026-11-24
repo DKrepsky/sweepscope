@@ -94,6 +94,7 @@ fn captured(wave: &Wave, seconds_per_div: f64, offset_s: f64) -> FrameCaptured {
     FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(seconds_per_div),
+        derived: None,
     }
 }
 
@@ -196,6 +197,7 @@ fn given_a_record_with_a_rail_code_when_measured_then_amplitudes_are_clipped_and
     bus.publish(FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(200e-6),
+        derived: None,
     });
 
     let channel = first_channel(&bus, &changes);
@@ -254,6 +256,7 @@ fn given_a_disabled_channel_when_measured_then_it_is_absent_and_enabled_ones_asc
     bus.publish(FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(200e-6),
+        derived: None,
     });
 
     let state = changes.recv_timeout(WAIT).unwrap().0;

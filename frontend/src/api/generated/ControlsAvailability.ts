@@ -5,4 +5,8 @@ export type ControlsAvailability = { run: Availability, force: Availability, ver
 /**
  * Save and load of setup files.
  */
-files: Availability, };
+files: Availability, single: Availability, autoset: Availability, record: Availability, 
+/**
+ * XY, FFT, persistence, math, cursors and measurements need a captured record; not available in roll.
+ */
+frameViews: Availability, };

@@ -6,4 +6,8 @@ export type HorizontalState = { timeBase: ScaleChoice,
 /**
  * Percent of the screen.
  */
-triggerPosition: FormattedValue, triggerPositionFraction: number, windowText: string, windowStartFraction: number, windowSizeFraction: number, triggerTickFraction: number, };
+triggerPosition: FormattedValue, triggerPositionFraction: number, windowText: string, windowStartFraction: number, windowSizeFraction: number, triggerTickFraction: number, 
+/**
+ * Roll mode (500 ms/div and slower): no trigger, no frames, items stream instead (ADR 0017).
+ */
+roll: boolean, };

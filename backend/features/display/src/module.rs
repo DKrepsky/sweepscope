@@ -8,7 +8,7 @@ use sweepscope_kernel::contracts::FrameCaptured;
 use sweepscope_kernel::{Bus, KernelError, Subscription};
 
 use crate::messages::{
-    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, SetInterpolation,
+    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, Persistence, SetInterpolation,
 };
 use crate::mode::automatic_mode;
 use crate::wire::encode_in_mode;
@@ -96,6 +96,7 @@ impl Shared {
                     revision: 0,
                     interpolation: InterpolationMode::Linear,
                     automatic: true,
+                    persistence: Persistence::Off,
                 },
                 chosen: None,
                 last: None,
@@ -133,6 +134,7 @@ impl Shared {
             revision: inner.state.revision,
             interpolation: inner.chosen.unwrap_or_else(|| automatic_mode(window_len)),
             automatic: inner.chosen.is_none(),
+            persistence: inner.state.persistence,
         };
         if next == inner.state {
             return;

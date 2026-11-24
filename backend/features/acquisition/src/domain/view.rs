@@ -4,16 +4,18 @@ use std::time::Instant;
 use engineering_format::{format, Quantity};
 use sweepscope_kernel::contracts::{Capabilities, Slope};
 
+use super::math;
 use super::meter::CaptureMeter;
 use super::model::{Model, CHANNELS};
 use crate::{
     Availability, ChannelState, ControlsAvailability, FormattedValue, HorizontalState, InstrumentFacts,
-    InstrumentState, ScaleChoice, TriggerState,
+    InstrumentState, ScaleChoice, TriggerKindName, TriggerState,
 };
 
 pub const NO_SCOPE: &str = "No scope connected";
 pub const ROLL_BLOCKED: &str = "Roll mode arrives in a later release";
 pub const LAST_CHANNEL: &str = "At least one channel must stay on";
+const NOT_YET: &str = "Not available yet";
 const NOT_RUNNING: &str = "Start acquisition first";
 const RANGE_LOW_LIMIT_V: f64 = 0.05;
 const RANGE_HIGH_LIMIT_V: f64 = 1.0;
@@ -59,6 +61,10 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, reaso
         horizontal: gate(available()),
         trigger: gate(available()),
         files: gate(available()),
+        single: gate(unavailable(NOT_YET)),
+        autoset: gate(unavailable(NOT_YET)),
+        record: gate(unavailable(NOT_YET)),
+        frame_views: gate(available()),
     };
     InstrumentState {
         revision,
@@ -68,6 +74,7 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, reaso
         trigger: trigger_state(caps, model),
         controls,
         setup_notice: None,
+        math: math::state(model),
     }
 }
 
@@ -149,6 +156,7 @@ fn horizontal_state(
         window_start_fraction: g.window_start as f64 / record_len,
         window_size_fraction: g.window_len as f64 / record_len,
         trigger_tick_fraction: model.setup.trigger.horizontal_position_percent / 100.0,
+        roll: false,
     }
 }
 
@@ -169,6 +177,8 @@ fn trigger_state(caps: &Capabilities, model: &Model) -> TriggerState {
         level,
         level_divisions: model.level_divisions(caps),
         position_tag: format!("{} {}", position.text, position.unit),
+        kind: TriggerKindName::Edge,
+        pulse: None,
     }
 }
 

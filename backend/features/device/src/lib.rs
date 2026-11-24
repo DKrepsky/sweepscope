@@ -23,5 +23,5 @@ pub use module::{DeviceDeps, DeviceModule, SimulatorSource, COMMANDS};
 pub use simulator::{device_id, SignalKind, SimulatedCatalog, SimulatedDevice, SimulatorControl};
 pub use sweepscope_kernel::contracts::{
     AcquisitionSetup, CalibrationStatus, Capabilities, ChannelData, ChannelSetup, Coupling, DeviceIdentity, Frame,
-    Slope, Sweep, TimeBaseStep, TriggerOutcome, TriggerSetup, VerticalRange,
+    Slope, Sweep, TimeBaseStep, TriggerKind, TriggerOutcome, TriggerSetup, VerticalRange,
 };

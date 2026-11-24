@@ -4,7 +4,7 @@ use std::time::Duration;
 use sweepscope_kernel::contracts::{
     AcquisitionSetup, ApplySetup, CaptureCompleted, CaptureOutcome, ChannelSetup, ConnectionChanged,
     ConnectionSnapshot, ConnectionState, Coupling, ForceTrigger, Frame, FrameCaptured, FrameContext, SetCapturing,
-    Slope, Sweep, TriggerOutcome, TriggerSetup,
+    Slope, Sweep, TriggerKind, TriggerOutcome, TriggerSetup,
 };
 use sweepscope_kernel::Bus;
 
@@ -46,6 +46,7 @@ fn setup() -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep: Sweep::Auto,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
     }
 }
@@ -58,10 +59,12 @@ fn given_a_frame_subscriber_when_two_frames_are_captured_then_the_latest_one_win
     bus.publish(FrameCaptured {
         frame: frame(),
         context: context(1),
+        derived: None,
     });
     bus.publish(FrameCaptured {
         frame: frame(),
         context: context(2),
+        derived: None,
     });
 
     let newest = frames.recv_timeout(Duration::ZERO).unwrap();

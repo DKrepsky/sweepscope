@@ -8,7 +8,8 @@ mod module;
 mod wire;
 
 pub use messages::{
-    DisplayChanged, DisplayFrameReady, DisplayState, GetDisplay, InterpolationMode, SetInterpolation, COMMANDS,
+    DisplayChanged, DisplayFrameReady, DisplayRollItem, DisplayState, GetDisplay, InterpolationMode, Persistence,
+    SetInterpolation, SetPersistence, COMMANDS,
 };
 pub use module::{DisplayDeps, DisplayModule};
 pub use wire::{encode, encode_in_mode, stamp_sent};

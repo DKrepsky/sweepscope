@@ -8,7 +8,7 @@ use std::time::Duration;
 use sweepscope_device::{
     AcquisitionSetup, CatalogEvent, ChannelSetup, Coupling, DeviceCatalog, DeviceDeps, DeviceError, DeviceId,
     DeviceModule, GetConnection, ScopeDevice, SimulatedCatalog, SimulatorControl, SimulatorSource, Slope, Sweep,
-    TriggerSetup,
+    TriggerKind, TriggerSetup,
 };
 use sweepscope_device::{Capabilities, DeviceIdentity, Frame};
 use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged, ConnectionSnapshot, ConnectionState};
@@ -225,6 +225,7 @@ pub fn setup(sweep: Sweep, level_volts: f64) -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
     }
 }

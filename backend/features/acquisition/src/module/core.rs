@@ -6,7 +6,9 @@ use sweepscope_kernel::contracts::{
 };
 use sweepscope_kernel::KernelError;
 
+use super::derive::derive_trace;
 use super::effects::{Call, Effects, Output};
+use crate::domain::autoset_run::AutosetRun;
 use crate::domain::setup_file::SetupFile;
 use crate::{
     next_status, AcquisitionStatus, CaptureMeter, Change, Defaults, FormattedValue, Instrument, InstrumentFacts,
@@ -44,6 +46,7 @@ impl Core {
             status: AcquisitionStatus {
                 revision: 1,
                 phase: Phase::Stopped,
+                autoset: AutosetRun.status(),
             },
             facts: InstrumentFacts {
                 revision: 1,
@@ -200,7 +203,12 @@ impl Core {
                 }
                 self.meter.record(now);
                 let context = self.instrument.frame_context(self.setup_revision);
-                fx.outputs.push(Output::Frame(FrameCaptured { frame, context }));
+                let derived = derive_trace(&self.instrument, &frame);
+                fx.outputs.push(Output::Frame(FrameCaptured {
+                    frame,
+                    context,
+                    derived,
+                }));
                 self.refresh_facts(fx, now, false);
                 self.track_setup(fx, now);
             }
@@ -277,6 +285,7 @@ impl Core {
             self.status = AcquisitionStatus {
                 revision: self.status.revision + 1,
                 phase,
+                autoset: self.status.autoset.clone(),
             };
             fx.outputs.push(Output::Status(self.status.clone()));
         }

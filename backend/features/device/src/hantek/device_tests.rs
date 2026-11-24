@@ -9,7 +9,7 @@ use hantek6xx4_lib::{CaptureOptions, MockTransport, Scope, Sweep as DriverSweep}
 use super::convert::capture_frame;
 use super::HantekDevice;
 use crate::{
-    AcquisitionSetup, CalibrationStatus, ChannelSetup, Coupling, DeviceError, ScopeDevice, Slope, Sweep,
+    AcquisitionSetup, CalibrationStatus, ChannelSetup, Coupling, DeviceError, ScopeDevice, Slope, Sweep, TriggerKind,
     TriggerOutcome, TriggerSetup,
 };
 
@@ -89,6 +89,7 @@ fn setup(sweep: Sweep) -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
     }
 }

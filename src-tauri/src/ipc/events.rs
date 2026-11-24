@@ -114,8 +114,8 @@ fn run<E>(
 mod tests {
     use std::sync::Mutex;
 
-    use sweepscope_acquisition::{AcquisitionStatus, InstrumentFacts, Phase};
-    use sweepscope_display::{DisplayState, InterpolationMode};
+    use sweepscope_acquisition::{AcquisitionStatus, AutosetStatus, InstrumentFacts, Phase};
+    use sweepscope_display::{DisplayState, InterpolationMode, Persistence};
     use sweepscope_kernel::contracts::{ConnectionSnapshot, ConnectionState};
     use sweepscope_kernel::testing::eventually;
     use sweepscope_measurement::MeasurementsState;
@@ -203,6 +203,7 @@ mod tests {
         bus.publish(StatusChanged(AcquisitionStatus {
             revision: 3,
             phase: Phase::Armed,
+            autoset: AutosetStatus::default(),
         }));
         bus.publish(FactsChanged(facts(4)));
 
@@ -219,11 +220,13 @@ mod tests {
             revision: 5,
             interpolation: InterpolationMode::Sinc,
             automatic: true,
+            persistence: Persistence::Off,
         }));
         bus.publish(MeasurementsChanged(MeasurementsState {
             revision: 6,
             channels: Vec::new(),
             accuracy_note: String::new(),
+            warnings: Vec::new(),
         }));
 
         assert!(eventually(WAIT, || recorder.names().len() == 2));

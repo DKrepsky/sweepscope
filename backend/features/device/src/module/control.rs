@@ -101,7 +101,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::{ChannelSetup, Coupling, Slope, Sweep, TriggerSetup};
+    use crate::{ChannelSetup, Coupling, Slope, Sweep, TriggerKind, TriggerSetup};
 
     fn setup(time_base_index: u8) -> AcquisitionSetup {
         let channel = ChannelSetup {
@@ -120,6 +120,7 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: TriggerKind::Edge,
             },
         }
     }

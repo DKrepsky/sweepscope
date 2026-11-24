@@ -16,7 +16,7 @@ pub fn capture_timeout(capabilities: &Capabilities, setup: &AcquisitionSetup) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ChannelSetup, Coupling, Slope, Sweep, TimeBaseStep, TriggerSetup};
+    use crate::{ChannelSetup, Coupling, Slope, Sweep, TimeBaseStep, TriggerKind, TriggerSetup};
 
     fn capabilities() -> Capabilities {
         let step = |seconds_per_div| TimeBaseStep {
@@ -51,6 +51,7 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: TriggerKind::Edge,
             },
         }
     }

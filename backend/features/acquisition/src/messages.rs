@@ -1,15 +1,7 @@
 use serde::{Deserialize, Serialize};
-use sweepscope_kernel::contracts::{Coupling, FormattedValue, SavedFile, Slope, Sweep};
+use sweepscope_kernel::contracts::{Availability, Coupling, FormattedValue, PulseCondition, SavedFile, Slope, Sweep};
 use sweepscope_kernel::{Event, Request};
 use ts_rs::TS;
-
-#[derive(Debug, Clone, PartialEq, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export)]
-pub struct Availability {
-    pub enabled: bool,
-    pub reason: Option<String>,
-}
 
 /// The current entry of a scale table. `faster` is a smaller volts or time per division.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -57,6 +49,8 @@ pub struct HorizontalState {
     pub window_start_fraction: f64,
     pub window_size_fraction: f64,
     pub trigger_tick_fraction: f64,
+    /// Roll mode (500 ms/div and slower): no trigger, no frames, items stream instead (ADR 0017).
+    pub roll: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -72,6 +66,27 @@ pub struct TriggerState {
     pub level_divisions: f64,
     pub level_tag: String,
     pub position_tag: String,
+    pub kind: TriggerKindName,
+    /// Set while `kind` is `pulse`.
+    pub pulse: Option<PulseState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum TriggerKindName {
+    Edge,
+    Pulse,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PulseState {
+    pub condition: PulseCondition,
+    pub width: FormattedValue,
+    /// False outside 50 us to 5 ms, the widths checked on hardware.
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -85,6 +100,11 @@ pub struct ControlsAvailability {
     pub trigger: Availability,
     /// Save and load of setup files.
     pub files: Availability,
+    pub single: Availability,
+    pub autoset: Availability,
+    pub record: Availability,
+    /// XY, FFT, persistence, math, cursors and measurements need a captured record; not available in roll.
+    pub frame_views: Availability,
 }
 
 /// Instrument slice. `channels` always holds four entries.
@@ -101,6 +121,65 @@ pub struct InstrumentState {
     pub controls: ControlsAvailability,
     /// Set once when the last setup could not be restored completely (ADR 0016 item 6).
     pub setup_notice: Option<SetupNotice>,
+    pub math: MathState,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum MathOperation {
+    Add,
+    Subtract,
+    Multiply,
+    InvertA,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
+pub enum MathStatus {
+    Ok,
+    /// The sources have very different scales; `detail` says which.
+    Mixed {
+        detail: String,
+    },
+    Unavailable {
+        reason: String,
+    },
+}
+
+/// The one math channel (ADR 0019); `label` reads like `A−B`.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct MathState {
+    pub enabled: bool,
+    pub operation: MathOperation,
+    /// Channel numbers, 1 to 4.
+    pub source_a: u8,
+    pub source_b: Option<u8>,
+    pub scale: ScaleChoice,
+    pub unit: String,
+    pub position: FormattedValue,
+    pub position_divs: f64,
+    pub status: MathStatus,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct MathPatch {
+    #[ts(optional)]
+    pub enabled: Option<bool>,
+    #[ts(optional)]
+    pub operation: Option<MathOperation>,
+    #[ts(optional)]
+    pub source_a: Option<u8>,
+    #[ts(optional)]
+    pub source_b: Option<u8>,
+    #[ts(optional)]
+    pub position_divs: Option<f64>,
 }
 
 /// A message the UI shows once per `id`.
@@ -131,6 +210,8 @@ pub enum Phase {
     WaitingForTrigger,
     Triggered,
     Auto,
+    /// Single finished.
+    Done,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -140,6 +221,37 @@ pub struct AcquisitionStatus {
     #[ts(type = "number")]
     pub revision: u64,
     pub phase: Phase,
+    pub autoset: AutosetStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AutosetStatus {
+    pub running: bool,
+    /// Set by the last auto-setup that saw a flat input, until a frame with signal arrives.
+    pub no_signal: bool,
+    pub outcome: Option<AutosetOutcome>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AutosetOutcome {
+    /// The UI shows each outcome once per `id`.
+    #[ts(type = "number")]
+    pub id: u64,
+    pub kind: AutosetOutcomeKind,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AutosetOutcomeKind {
+    Done,
+    NoSignal,
+    Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -184,6 +296,13 @@ pub struct TriggerPatch {
     pub slope: Option<Slope>,
     #[ts(optional)]
     pub sweep: Option<Sweep>,
+    #[ts(optional)]
+    pub kind: Option<TriggerKindName>,
+    #[ts(optional)]
+    pub condition: Option<PulseCondition>,
+    /// Text such as `500 us`; text that does not parse rejects the whole patch.
+    #[ts(optional)]
+    pub width_text: Option<String>,
 }
 
 /// What `step_setting` and `reset_setting` act on.
@@ -195,6 +314,8 @@ pub enum SettingTarget {
     TimeBase,
     TriggerPosition,
     TriggerLevel,
+    MathScale,
+    MathPosition,
 }
 
 /// Events: each carries one whole slice; the shell forwards them as `instrument_changed`, `status_changed`, `facts_changed`.
@@ -272,6 +393,27 @@ pub struct SetTrigger {
     pub patch: TriggerPatch,
 }
 impl Request for SetTrigger {
+    type Response = ();
+}
+
+/// Arms one capture; the first triggered frame ends it with phase `Done`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ArmSingle;
+impl Request for ArmSingle {
+    type Response = ();
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StartAutoset;
+impl Request for StartAutoset {
+    type Response = ();
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetMath {
+    pub patch: MathPatch,
+}
+impl Request for SetMath {
     type Response = ();
 }
 

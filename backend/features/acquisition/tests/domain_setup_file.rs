@@ -52,6 +52,7 @@ fn customised() -> Instrument {
             source: Some(2),
             slope: Some(Slope::Falling),
             sweep: Some(Sweep::Normal),
+            ..TriggerPatch::default()
         })
         .unwrap();
     instrument

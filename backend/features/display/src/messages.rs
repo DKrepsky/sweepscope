@@ -30,6 +30,23 @@ pub struct DisplayState {
     pub revision: u64,
     pub interpolation: InterpolationMode,
     pub automatic: bool,
+    pub persistence: Persistence,
+}
+
+/// How long ghosts of earlier frames stay on screen; the accumulation itself is rendering (architecture 5.7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub enum Persistence {
+    #[serde(rename = "off")]
+    Off,
+    #[serde(rename = "500ms")]
+    Ms500,
+    #[serde(rename = "1s")]
+    S1,
+    #[serde(rename = "2s")]
+    S2,
+    #[serde(rename = "infinite")]
+    Infinite,
 }
 
 /// Published when the state changes; the shell forwards it as `display_changed`.
@@ -51,6 +68,21 @@ pub struct SetInterpolation {
 impl Request for SetInterpolation {
     type Response = ();
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SetPersistence {
+    pub value: Persistence,
+}
+impl Request for SetPersistence {
+    type Response = ();
+}
+
+/// One encoded roll item (`SSL1`, ADR 0017); ordered subscribers see every item.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DisplayRollItem {
+    pub bytes: Arc<Vec<u8>>,
+}
+impl Event for DisplayRollItem {}
 
 pub const COMMANDS: &[CommandDescriptor] = &[CommandDescriptor {
     name: "set_interpolation",

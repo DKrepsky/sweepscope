@@ -2,8 +2,10 @@
 //!
 //! Create it before the device module: it learns the connection from `ConnectionChanged` events and cannot ask for it.
 
+mod autoset;
 mod commands;
 mod core;
+mod derive;
 mod effects;
 mod handlers;
 mod last_setup;

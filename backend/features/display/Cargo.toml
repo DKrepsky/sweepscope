@@ -13,3 +13,6 @@ sweepscope-kernel = { path = "../../kernel" }
 interpolation = { path = "../../libs/interpolation" }
 serde ={ version = "1", features = ["derive"] }
 ts-rs = "12"
+
+[dev-dependencies]
+serde_json = "1"

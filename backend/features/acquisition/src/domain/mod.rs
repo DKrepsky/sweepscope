@@ -1,8 +1,10 @@
 //! Pure instrument rules: geometry, `Instrument`, `next_status`, `CaptureMeter`, defaults (ADR 0010, ADR 0013).
 
+pub(crate) mod autoset_run;
 mod defaults;
 pub mod geometry;
 mod instrument;
+mod math;
 mod meter;
 mod model;
 pub mod setup_file;

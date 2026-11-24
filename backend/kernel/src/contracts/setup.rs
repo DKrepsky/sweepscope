@@ -26,6 +26,24 @@ pub struct TriggerSetup {
     pub slope: Slope,
     pub sweep: Sweep,
     pub horizontal_position_percent: f64,
+    pub kind: TriggerKind,
+}
+
+/// `slope` is the polarity of the pulse for `Pulse`; `width_s` is in seconds.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TriggerKind {
+    Edge,
+    Pulse { width_s: f64, condition: PulseCondition },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PulseCondition {
+    Equal,
+    NotEqual,
+    Greater,
+    Less,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

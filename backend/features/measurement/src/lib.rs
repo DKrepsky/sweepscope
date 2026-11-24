@@ -9,6 +9,6 @@ mod texts;
 
 pub use messages::{
     ChannelMeasurements, GetMeasurements, Invalid, InvalidReason, Measurement, MeasurementId, MeasurementsChanged,
-    MeasurementsState,
+    MeasurementsState, Warning, WarningSeverity,
 };
 pub use module::{MeasurementDeps, MeasurementModule};

@@ -300,3 +300,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
 - Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
 - Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
+
+## M3 B1 contracts facts
+- Worktree-isolated agents: multi-line bash with heredocs or `cd` plus pipes can be refused as "too complex". Write helper scripts with the Write tool into the scratchpad and run `python3 -I script.py`.
+- `Availability` now lives in `kernel::contracts` (feature crates must not import each other, `spectrum` needs it); `acquisition` re-exports it.
+- `device` re-exports selected kernel contract types in `lib.rs`; `hantek/convert.rs` also imports the driver's `TriggerKind`, so the kernel one must be qualified there.
+- A new field on a generated state type breaks `npm run typecheck` in frontend test data (`app/instrument/test-data.ts`, `selectors.ts`, main-window tests) but not vitest; the frontend packages fix those.
+- cargo fmt rewrites `AutosetRun::default()` on a unit struct only after clippy objects: write `AutosetRun` directly.
