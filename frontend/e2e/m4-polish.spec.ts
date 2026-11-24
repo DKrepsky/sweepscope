@@ -205,11 +205,6 @@ test.describe('calibration dialog', () => {
     await toDone(page);
     await expect(dialog(page)).toContainText('Step 6 of 6');
     await expect(dialog(page)).toContainText('Offsets applied per channel and range and kept after restart');
-    // The real backend reports no channel at Done (session.rs view), the stub copies that: the chips row is missing at step 6.
-    test.fail(
-      (await dialog(page).getByLabel('Channel 4, done').count()) === 0,
-      'BUG-31: the Done step has no channel chips row (design 3.1, wireframe step 6)',
-    );
     await expect(dialog(page).getByLabel('Channel 4, done')).toBeVisible();
     const rows = dialog(page).locator('tbody tr');
     await expect(rows).toHaveCount(12);
