@@ -27,6 +27,8 @@ export function graphState(
 
 const AUTO_TOOLTIP = 'Shown while the sweep is auto-triggering without a trigger event';
 
+const ROLL_CHIP: ChipModel = { id: 'mode', kind: 'roll', text: 'Roll' };
+
 const DONE_TOOLTIP = 'The single capture finished';
 
 const runChips: Record<AcquisitionStatus['phase'], ChipModel | undefined> = {
@@ -35,7 +37,7 @@ const runChips: Record<AcquisitionStatus['phase'], ChipModel | undefined> = {
   waitingForTrigger: { id: 'trigger', kind: 'armed', text: 'Waiting for trigger' },
   triggered: { id: 'trigger', kind: 'triggered', text: '▲ Trig’d', filled: true },
   auto: { id: 'trigger', kind: 'auto', text: 'Auto', dim: true, tooltip: AUTO_TOOLTIP },
-  done: { id: 'trigger', kind: 'stop', text: 'Done', dim: true, tooltip: DONE_TOOLTIP },
+  done: { id: 'trigger', kind: 'triggered', text: 'Done', tooltip: DONE_TOOLTIP },
 };
 
 function unavailableChip(connection: Connection): ChipModel {
@@ -43,6 +45,9 @@ function unavailableChip(connection: Connection): ChipModel {
   if (connection?.state === 'disconnected') return { id: 'state', kind: 'offline', text: 'Offline' };
   return { id: 'state', kind: 'offline', text: 'Connecting' };
 }
+
+const rollChips = (instrument: InstrumentState | undefined): ChipModel[] =>
+  instrument?.horizontal.roll ? [ROLL_CHIP] : [];
 
 export function statusChips(
   connection: Connection,
@@ -55,7 +60,7 @@ export function statusChips(
     const stopped: ChipModel = { id: 'state', kind: 'stop', text: 'Stop' };
     return status?.phase === 'done' && phase ? [stopped, phase] : [stopped];
   }
-  return [{ id: 'state', kind: 'run', text: 'Run' }, ...(phase ? [phase] : [])];
+  return [{ id: 'state', kind: 'run', text: 'Run' }, ...rollChips(instrument), ...(phase ? [phase] : [])];
 }
 
 function readyChip(connection: ConnectionSnapshot): ConnectionChip {

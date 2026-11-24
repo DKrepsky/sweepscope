@@ -1,13 +1,20 @@
 import { toAvailability, unavailableReason, type ModelInputs } from './select-common';
-import type { AutosetModel } from './types';
+import type { AutosetModel, Availability } from './types';
 
-/** Placeholder until the toolbar work package: availability follows the backend, nothing is busy. */
-export function selectAutoset({ connection, instrument, status }: ModelInputs): AutosetModel {
+const RUNNING = 'Auto-setup is running';
+
+/** Not available while a run is in progress: the run cannot be cancelled and a second press would queue another. */
+function availability({ connection, instrument }: ModelInputs, busy: boolean): Availability {
+  if (!instrument) return { enabled: false, reason: unavailableReason(connection) };
+  if (busy) return { enabled: false, reason: RUNNING };
+  return toAvailability(instrument.controls.autoset);
+}
+
+export function selectAutoset(inputs: ModelInputs): AutosetModel {
+  const busy = inputs.status?.autoset.running ?? false;
   return {
-    busy: status?.autoset.running ?? false,
-    noSignal: status?.autoset.noSignal ?? false,
-    available: instrument
-      ? toAvailability(instrument.controls.autoset)
-      : { enabled: false, reason: unavailableReason(connection) },
+    busy,
+    noSignal: inputs.status?.autoset.noSignal ?? false,
+    available: availability(inputs, busy),
   };
 }

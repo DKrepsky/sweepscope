@@ -1,31 +1,11 @@
-import { render, screen } from '@testing-library/svelte';
-import userEvent from '@testing-library/user-event';
-import { get } from 'svelte/store';
-import { describe, expect, it, vi } from 'vitest';
-import { createMockMainWindow, type ToolbarModel } from '../../app/main-window';
-import Toolbar from './Toolbar.svelte';
+import { screen } from '@testing-library/svelte';
+import { describe, expect, it } from 'vitest';
+import type { ToolbarModel } from '../../app/main-window';
+import { renderToolbar } from './toolbar-test-support';
 
 function setup(change: (toolbar: ToolbarModel) => ToolbarModel = (toolbar) => toolbar) {
-  const onfile = vi.fn();
-  const ontogglecursors = vi.fn();
-  const toolbar = change(get(createMockMainWindow()).toolbar);
-  render(Toolbar, {
-    props: {
-      toolbar,
-      toolLabels: true,
-      runLabels: true,
-      drawerButton: false,
-      drawerOpen: false,
-      textScale: 100,
-      ontogglerun: () => {},
-      onforce: () => {},
-      ontogglecursors,
-      ontoggledrawer: () => {},
-      ontextscale: () => {},
-      onfile,
-    },
-  });
-  return { onfile, ontogglecursors, user: userEvent.setup() };
+  const { calls, user } = renderToolbar(change);
+  return { onfile: calls.onfile, ontogglecursors: calls.ontogglecursors, user };
 }
 
 const noWaveform = (toolbar: ToolbarModel): ToolbarModel => ({

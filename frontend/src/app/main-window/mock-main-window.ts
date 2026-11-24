@@ -34,9 +34,9 @@ const stoppedChips: ChipModel[] = [{ id: 'state', kind: 'stop', text: 'Stop' }];
 const toolbar = (): MainWindowModel['toolbar'] => ({
   running: true,
   chips: runningChips,
-  persistence: 'Persist: Off',
-  view: 'yt',
+  single: { armed: false, availability: { enabled: true } },
   tools: { cursors: true, math: false, reference: false },
+  mathAvailability: { enabled: true },
   cursorsAvailability: { enabled: true },
   files: {
     saveSetup: { enabled: true },
@@ -194,12 +194,7 @@ const inertAnalysisActions = {
 function analysisActions(change: (update: (current: MainWindowModel) => MainWindowModel) => void) {
   return {
     ...inertAnalysisActions,
-    setView: (tab: ViewTab) =>
-      change((current) => ({
-        ...current,
-        views: { ...current.views, tab },
-        toolbar: { ...current.toolbar, view: tab },
-      })),
+    setView: (tab: ViewTab) => change((current) => ({ ...current, views: { ...current.views, tab } })),
     setXyAxis: (axis: 'x' | 'y', channel: ChannelNumber) =>
       change((current) => ({ ...current, views: { ...current.views, xy: { ...current.views.xy, [axis]: channel } } })),
     setPeakMode: (mode: PeakMode) => change((current) => ({ ...current, peak: { ...current.peak, mode } })),
@@ -211,7 +206,11 @@ function analysisActions(change: (update: (current: MainWindowModel) => MainWind
         persistence: { ...current.persistence, epoch: current.persistence.epoch + 1 },
       })),
     setMathEnabled: (enabled: boolean) =>
-      change((current) => ({ ...current, math: { ...current.math, row: { ...current.math.row, enabled } } })),
+      change((current) => ({
+        ...current,
+        math: { ...current.math, row: { ...current.math.row, enabled } },
+        toolbar: { ...current.toolbar, tools: { ...current.toolbar.tools, math: enabled } },
+      })),
   };
 }
 

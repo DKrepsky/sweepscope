@@ -78,6 +78,10 @@
   >
     <Toolbar
       toolbar={model.toolbar}
+      views={model.views}
+      persistence={model.persistence}
+      autoset={model.autoset}
+      recording={model.recording}
       toolLabels={tier.width === 'w1'}
       runLabels={!compact}
       drawerButton={compact}
@@ -85,6 +89,14 @@
       {textScale}
       ontogglerun={windowActions.toggleRun}
       onforce={windowActions.forceTrigger}
+      onarmsingle={windowActions.armSingle}
+      onautoset={windowActions.startAutoset}
+      onsetview={windowActions.setView}
+      onsetpersistence={windowActions.setPersistence}
+      onclearpersistence={windowActions.clearPersistence}
+      ontogglemath={() => windowActions.setMathEnabled(!model.toolbar.tools.math)}
+      onstartrecording={windowActions.startRecording}
+      onstoprecording={windowActions.stopRecording}
       ontogglecursors={windowActions.toggleCursors}
       ontoggledrawer={() => (drawerRequested = !drawerRequested)}
       {ontextscale}
@@ -166,6 +178,19 @@
       {#each notifications as notification (notification.id)}
         <Toast kind={notification.kind} ondismiss={() => onnotificationdismiss(notification.id)}>
           {#snippet text()}{notification.text}{/snippet}
+          {#snippet actions()}
+            {@const action = notification.action}
+            {#if action}
+              <Button
+                onclick={() => {
+                  action.run();
+                  onnotificationdismiss(notification.id);
+                }}
+              >
+                {action.label}
+              </Button>
+            {/if}
+          {/snippet}
         </Toast>
       {/each}
     </div>

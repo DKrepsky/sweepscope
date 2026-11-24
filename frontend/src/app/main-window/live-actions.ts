@@ -19,6 +19,8 @@ interface Deps {
   canToggleCursors: () => boolean;
   pinned: { set(id: string, pinned: boolean): Promise<void> };
   files: FileActions;
+  /** Hides the banner of the recording failure that is showing. */
+  dismissRecordingFailure: () => void;
 }
 
 const PROBES = [1, 10, 100];
@@ -78,12 +80,21 @@ function horizontalAndTriggerActions(commands: Commands) {
   };
 }
 
-function bannerAction({ commands, read, copyText }: Deps, id: BannerActionId) {
-  if (id === 'retry') commands.retryConnection();
-  else if (id === 'use-simulator') commands.useSimulator(true);
-  else {
-    const command = read().connection?.issue?.help?.installCommand;
-    if (command) copyText(command);
+function bannerAction({ commands, read, copyText, dismissRecordingFailure }: Deps, id: BannerActionId) {
+  switch (id) {
+    case 'retry':
+      return commands.retryConnection();
+    case 'use-simulator':
+      return commands.useSimulator(true);
+    case 'choose-new-file':
+      dismissRecordingFailure();
+      return commands.startRecording();
+    case 'dismiss':
+      return dismissRecordingFailure();
+    case 'copy-command': {
+      const command = read().connection?.issue?.help?.installCommand;
+      if (command) copyText(command);
+    }
   }
 }
 

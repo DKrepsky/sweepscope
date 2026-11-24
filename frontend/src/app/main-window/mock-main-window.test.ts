@@ -96,7 +96,6 @@ describe('createMockMainWindow', () => {
 
     const model = get(mock);
     expect(model.views.tab).toBe('xy');
-    expect(model.toolbar.view).toBe('xy');
     expect(model.views.xy.y).toBe(3);
     expect(model.persistence.value).toBe('2s');
     expect(model.peak.mode).toBe('manual');

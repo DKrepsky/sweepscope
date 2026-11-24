@@ -85,6 +85,29 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitemcheckbox', { name: /Beta/ })).toHaveAttribute('aria-checked', 'false');
   });
 
+  it('given radio items, when rendered, then they are menu radios and the chosen one is checked', () => {
+    setup({
+      items: [
+        { id: 'a', label: 'Alpha', checked: true, radio: true },
+        { id: 'b', label: 'Beta', checked: false, radio: true },
+      ],
+    });
+
+    expect(screen.getByRole('menuitemradio', { name: /Alpha/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemradio', { name: /Beta/ })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('given an item with a separator before it, when rendered, then a separator sits between the items', () => {
+    setup({
+      items: [
+        { id: 'a', label: 'Alpha' },
+        { id: 'b', label: 'Beta', separatorBefore: true },
+      ],
+    });
+
+    expect(screen.getAllByRole('separator')).toHaveLength(1);
+  });
+
   it('given Menu open, when the pointer is pressed outside, then onclose is called', async () => {
     const { onclose } = setup();
 

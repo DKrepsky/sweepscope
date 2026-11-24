@@ -5,6 +5,8 @@ import Toast from './Toast.svelte';
 
 const text = createRawSnippet(() => ({ render: () => '<span>Saved</span>' }));
 
+const actions = createRawSnippet(() => ({ render: () => '<button type="button">Retry</button>' }));
+
 describe('Toast', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -126,5 +128,11 @@ describe('Toast', () => {
     render(Toast, { kind, text, ondismiss: vi.fn() });
 
     expect(screen.getByRole(role)).toBeInTheDocument();
+  });
+
+  it('given an actions snippet, when rendered, then its button is shown after the text', () => {
+    render(Toast, { kind: 'warning', text, actions, ondismiss: vi.fn() });
+
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 });

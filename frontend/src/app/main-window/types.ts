@@ -22,7 +22,8 @@ export interface ScaleQuantity extends Quantity {
   step: { faster: Availability; slower: Availability };
 }
 
-export type ChipKind = 'run' | 'stop' | 'armed' | 'triggered' | 'auto' | 'disconnected' | 'error' | 'offline';
+export type ChipKind =
+  'run' | 'stop' | 'armed' | 'triggered' | 'auto' | 'roll' | 'record' | 'disconnected' | 'error' | 'offline';
 
 export interface ChipModel {
   id: string;
@@ -46,11 +47,11 @@ export interface FilesAvailability {
 export interface ToolbarModel {
   running: boolean;
   chips: ChipModel[];
-  persistence: string;
-  view: ViewTab;
   /** Arms one capture; `armed` while waiting, a second press cancels. */
   single?: { armed: boolean; availability: Availability };
   tools: { cursors: boolean; math: boolean; reference: boolean };
+  /** The Math tool mirrors the row M toggle; it needs a captured record. */
+  mathAvailability: Availability;
   /** The Cursors tool and the C key: they need a waveform unless cursors are already shown and can be cleared. */
   cursorsAvailability: Availability;
   files: FilesAvailability;

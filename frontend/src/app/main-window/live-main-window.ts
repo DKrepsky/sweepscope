@@ -13,6 +13,7 @@ import {
 import type { DecodedFrame } from '../waveform';
 import type { MainWindowActions } from './actions';
 import { createAnalyseActions } from './analyse-actions';
+import { createFailureDismissal } from '../recording';
 import { createLiveActions } from './live-actions';
 import { selectBanners } from './select-banners';
 import type { PinnedMeasurements } from './pinned-measurements';
@@ -53,7 +54,7 @@ function selectModel(i: ModelInputs): MainWindowModel {
   const { connection, instrument, selected } = i;
   const graph = selectGraph(connection, instrument, i.frame, selected);
   return {
-    toolbar: selectToolbar(connection, instrument, i.status, {
+    toolbar: selectToolbar(i, {
       hasWaveform: graph.state !== 'empty',
       cursorsOn: Object.keys(i.cursors).length > 0,
     }),
@@ -70,7 +71,7 @@ function selectModel(i: ModelInputs): MainWindowModel {
     measurements: selectMeasurements(i.measurements, i.pinned, graph.state),
     status: selectStatus(connection, instrument, i.facts, i.renderer, i.measurements),
     graph,
-    banners: selectBanners(connection),
+    banners: selectBanners(i),
     views: selectViews(i),
     persistence: selectPersistence(i),
     peak: selectPeak(i),
@@ -87,6 +88,7 @@ interface Presentation {
   xyAxes: Readable<ModelInputs['xyAxes']>;
   peak: Readable<ModelInputs['peak']>;
   persistenceEpoch: Readable<number>;
+  dismissedRecordingFailure: Readable<number>;
 }
 
 type BackendInputs = Pick<
@@ -94,7 +96,10 @@ type BackendInputs = Pick<
   'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements' | 'frame'
 >;
 type AnalysisInputs = Pick<ModelInputs, 'spectrum' | 'spectrumFrame' | 'recording' | 'roll'>;
-type PresentationInputs = Pick<ModelInputs, 'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch'>;
+type PresentationInputs = Pick<
+  ModelInputs,
+  'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch' | 'dismissedRecordingFailure'
+>;
 
 function backendInputs({ stores, frames }: Deps): Readable<BackendInputs> {
   const { connection, instrument, status, facts, display, measurements } = stores;
@@ -121,8 +126,15 @@ function analysisInputs({ analysis }: Deps): Readable<AnalysisInputs> {
 
 function presentationInputs(p: Presentation): Readable<PresentationInputs> {
   return derived(
-    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch],
-    ([selected, view, xyAxes, peak, persistenceEpoch]) => ({ selected, view, xyAxes, peak, persistenceEpoch }),
+    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch, p.dismissedRecordingFailure],
+    ([selected, view, xyAxes, peak, persistenceEpoch, dismissedRecordingFailure]) => ({
+      selected,
+      view,
+      xyAxes,
+      peak,
+      persistenceEpoch,
+      dismissedRecordingFailure,
+    }),
   );
 }
 
@@ -138,19 +150,31 @@ function deriveModel(deps: Deps, presentation: Presentation): Readable<MainWindo
 const enabledChannels = (instrument: ModelInputs['instrument']): ChannelNumber[] =>
   (instrument?.channels ?? []).filter((c) => c.enabled).map((c) => channelNumber(c.number));
 
+function presentation(analyseCommands: AnalyseCommands) {
+  return {
+    selected: writable<ChannelNumber>(1),
+    view: createViewStore({ setSpectrumActive: (active) => analyseCommands.setSpectrum({ active }) }),
+    xyAxes: createXyAxesStore(),
+    peak: createPeakMarkerStore(),
+    persistenceEpoch: createPersistenceEpoch(),
+    dismissedRecordingFailure: createFailureDismissal(),
+  };
+}
+
+/** The key and the toast's Retry press this too: a request while it cannot run is dropped instead of reaching the backend. */
+const whenAvailable = (model: Readable<MainWindowModel>, run: () => void) => () => {
+  if (get(model).autoset.available.enabled) run();
+};
+
 /**
  * Colour and label are fixed by tokens; channel selection, cursors, view, XY axes and the peak marker are presentation
  * state, never sent to the backend.
  */
 export function createLiveMainWindow(deps: Deps): LiveMainWindow {
   const { stores, analysis, commands, analyseCommands, cursors, pinned, files, copyText, notify } = deps;
-  const selected = writable<ChannelNumber>(1);
-  const view = createViewStore({ setSpectrumActive: (active) => analyseCommands.setSpectrum({ active }) });
-  const xy = createXyAxesStore();
-  const peak = createPeakMarkerStore();
-  const persistenceEpoch = createPersistenceEpoch();
-
-  const model = deriveModel(deps, { selected, view, xyAxes: xy, peak, persistenceEpoch });
+  const shown = presentation(analyseCommands);
+  const { selected, view, xyAxes: xy, peak, persistenceEpoch, dismissedRecordingFailure: failureDismissal } = shown;
+  const model = deriveModel(deps, shown);
 
   const actions = createLiveActions({
     commands,
@@ -165,6 +189,7 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
     canToggleCursors: () => get(model).toolbar.cursorsAvailability.enabled,
     pinned,
     files,
+    dismissRecordingFailure: () => failureDismissal.dismiss(get(analysis.recording)?.failure?.id ?? 0),
   });
   const analyseActions = createAnalyseActions({
     commands: analyseCommands,
@@ -177,5 +202,6 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
     binCount: () => get(analysis.spectrumFrame)?.bins ?? 0,
   });
 
-  return { subscribe: model.subscribe, ...actions, ...analyseActions };
+  const startAutoset = whenAvailable(model, analyseActions.startAutoset);
+  return { subscribe: model.subscribe, ...actions, ...analyseActions, startAutoset };
 }

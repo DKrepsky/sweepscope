@@ -36,6 +36,7 @@ function setup() {
 describe('window shortcuts', () => {
   it.each([
     ['c', 'toggleCursors'],
+    ['a', 'startAutoset'],
     ['{Control>}s{/Control}', 'saveSetup'],
     ['{Control>}e{/Control}', 'exportCsv'],
     ['{Control>}p{/Control}', 'saveScreenshot'],
