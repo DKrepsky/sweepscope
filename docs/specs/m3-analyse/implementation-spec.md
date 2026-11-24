@@ -1,6 +1,6 @@
 # Implementation spec: M3 Analyse (#22 to #31)
 
-Status: draft, waiting for G3
+Status: approved by the human at G3 on 2026-11-24 (spec, ADRs 0017-0020, product defaults 1-8, #22 AC1 reading, #26 bucket grading)
 Links: PRD 4.2, 5.1, 5.2, 6, 8.3 (US-02, 05, 07, 08, 10, 11, 15, 16); [architecture](../../architecture.md); [design](../../design.md); [design spec](design-spec.md) (approved G2, D1 to D11) and its [prototypes](prototypes/);
 M2 spec [m2-measure](../m2-measure/implementation-spec.md); ADRs [0009](../../adr/0009-roll-stream-gap-item.md), [0011](../../adr/0011-frame-wire-format-and-window-crop.md), [0013](../../adr/0013-state-slices-revisions-and-command-style.md),
 new [0017](../../adr/0017-roll-run-mode-items-and-recording-feature.md), [0018](../../adr/0018-spectrum-feature-and-fft-lib.md), [0019](../../adr/0019-derived-math-trace-in-acquisition-and-xy-in-the-frontend.md), [0020](../../adr/0020-auto-setup-as-a-decision-lib-driven-by-acquisition.md);
