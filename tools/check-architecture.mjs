@@ -15,7 +15,10 @@ const LOCATIONS = [
   ['lib', 'backend/libs/'],
   ['feature', 'backend/features/'],
   ['shell', 'src-tauri/'],
+  ['shell', 'cli/'],
 ];
+
+const CLI_LOCATION = 'cli/';
 
 const LAYER = { lib: 0, kernel: 1, feature: 2, shell: 3 };
 
@@ -41,12 +44,20 @@ export const DEPENDENCY_RULES = [
     id: 'tauri-outside-shell',
     broken: (from, to) => /^tauri(-|$)/.test(to.name) && from.kind !== 'shell',
   },
+  {
+    id: 'cli-without-tauri',
+    broken: (from, to) => from.location.startsWith(CLI_LOCATION) && /^tauri(-|$)/.test(to.name),
+  },
 ];
 
 export const TAURI_ALLOWED_SOURCES = [/^main\.rs$/, /^ipc\//];
 
+function locationOf(manifestPath, workspaceRoot) {
+  return relative(workspaceRoot, manifestPath).split('\\').join('/');
+}
+
 function kindOf(manifestPath, workspaceRoot) {
-  const path = relative(workspaceRoot, manifestPath).split('\\').join('/');
+  const path = locationOf(manifestPath, workspaceRoot);
   const match = LOCATIONS.find(([, prefix]) => path.startsWith(prefix));
   return match ? match[0] : 'unknown';
 }
@@ -55,13 +66,14 @@ export function checkMetadata(metadata) {
   const crates = metadata.packages.map((p) => ({
     name: p.name,
     kind: kindOf(p.manifest_path, metadata.workspace_root),
+    location: locationOf(p.manifest_path, metadata.workspace_root),
     dependencies: p.dependencies.map((d) => d.name),
   }));
   const ours = new Map(crates.map((c) => [c.name, c]));
   const violations = [];
   for (const crate of crates) {
     if (crate.kind === 'unknown') {
-      const message = `crate ${crate.name} is outside kernel, libs, features and src-tauri`;
+      const message = `crate ${crate.name} is outside kernel, libs, features, cli and src-tauri`;
       violations.push({ rule: 'unknown-crate-location', message });
     }
     for (const dependency of new Set(crate.dependencies)) {

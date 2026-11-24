@@ -374,3 +374,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## M3 fix round 2 (developer-10)
 - Core keeps a `HeldFrame` (frame, setup revision, derived); `rederive_held` in `after_change` re-publishes `FrameCaptured` when stopped and the derived trace differs (same setup revision only).
 - Roll toolbar at 1024: trigger phase chip is dropped in roll (it was 170 px when "Waiting for trigger"); scrollWidth alone hides a squeezed spacer, also assert drawer button right edge <= Settings left.
+
+## Headless CLI (WP14, developer-5)
+- `cli/` is the second composition root (lib `sweepscope_cli` + bin `sweepscope-cli`); `capture()` takes an `Environment` (storage, clock, catalogs), tests use `simulated_environment` with a `SimulatorControl` (unplug for exit 10, `SignalSpec` Sine amplitude 0 + Normal sweep for exit 11).
+- After `ConnectionChanged` says Ready, acquisition has not necessarily taken the device over: commands fail with "No scope connected". Wait for the first `InstrumentChanged` too. Stored offsets: publish `ZeroOffsetsChanged` yourself (the calibration module is a stub until WP10); acquisition drains offsets before captures.
+- `ReadOnlyStorage` swallows writes (acquisition writes last-setup.json, `OffsetFile::load` may write a .corrupt copy). The config-folder test reads `src-tauri/tauri.conf.json`: it fails until the identifier `io.github.dkrepsky.sweepscope` lands (WP7/WP11).
+- Tool sandbox refuses `cd && python3 - <<EOF` or `cat > file <<EOF` chains in a worktree; use Write/Edit, or a plain `python3 - <<EOF` alone.
