@@ -55,7 +55,7 @@ Personas: PRD section 3. Journeys derive from US-01 to US-19.
 | J7 | **Single shot** (US-10) | `Single`, chip `Armed`, then `Trig'd` and `Stop`. | Stop during `Armed` cancels. No modals. |
 | J8 | **Measure** (US-12, 13, 14) | Cursors (`C`), measurement matrix. | Invalid: `-` with footnote. Stopped or disconnected: muted and `Frozen`. |
 | J9 | **Slow signal / roll** (US-08) | Chip `Roll`; moving time axis. | Gap band labelled `GAP`, never a splice. |
-| J10 | **Zero calibration** (US-14) | TaskPanel in the sidebar (non-modal). | Failure shown inside the panel. |
+| J10 | **Zero calibration** (US-14) | Status bar `CalibrationTag`, click opens the modal `CalibrationDialog` (M4 spec 3): why, channel 1 to 4 (short the input, Calibrate), done with offsets per range and channel. | Not shorted: message in the dialog, nothing stored, `Try again`. Cancel at any step stores nothing. Acquisition is paused while the dialog is open. |
 | J11 | **Export and resume** (US-17, 18) | `Save` menu; opened capture sets `Offline`. | Offline: acquisition controls disabled with tooltip "Offline: no device". |
 
 ## 3. Main window layout and responsive behaviour
@@ -132,6 +132,8 @@ These are the final thresholds (they replace the provisional 56 / 50 / 45 rem va
 
 **Known limit:** banners (for example the notifications stack) are not counted in the height thresholds. Near a threshold a visible banner can take height the table did not budget and cause slight scrolling of the content region, even though the window is above the threshold. Toolbar and status bar stay pinned; the screen keeps its minimum size.
 
+**Known limit (M4, QA C-6, accepted):** the calibration tag sits at the right end of the status bar and is never dropped, so at text scale 150 to 200 % in a 1440 px window the available width falls in the existing scroll tier (below the content floor in rem) and the page scrolls horizontally; no new tier is added.
+
 Collapse order when space runs out (first collapses first): 1 toolbar tool labels (W2: secondary tools; W3: brand, captions, Single/Force/Autoset text), 2 sidebar to drawer (width), 3 dock wraps (width), 4 record overview (height), 5 dock to compact rows (height), 6 status bar items by priority (lowest first: renderer, accuracy note, record length, capture rate), 7 height tier H4: the three dock groups become tabs `Vertical | Horizontal | Trigger` showing one group at a time (same tab order, Trigger one click away; the trigger summary is shown in the scale strip), 8 below the floor: scroll (see above). Steps 1 to 5 are driven by the **available stage size, never by window size alone**: they are re-evaluated when text scale, OS scale or window size change. The scope screen is **never** collapsed or clipped: it absorbs spare space, and a collapse step is triggered when the screen would drop below its minimum size (3.3).
 
 **Never collapses or hides:** run control buttons and acquisition chips, the Trigger group (at H4 it is the `Trigger` tab plus the scale-strip summary), the scale strip, the scope screen with its markers, the connection state and the effective-sample-rate slot in the status bar (US-05 "at all times"; they wrap instead of dropping).
@@ -196,7 +198,6 @@ fixes **where** and **how** each is shown. Values in the prototype are placehold
 | Invalid measurement (MEA-4) | Measurement cell | Muted `-` followed by footnote key `[n]`; reasons listed under the table and in a tooltip | `[n] <reason from backend>` |
 | Frozen data (disconnected, stopped by loss, offline) | Panel header; numeric cells | Muted values and `Frozen` or `Offline` badge | |
 | Experimental feature (PRD 5.2 video trigger) | `Badge experimental` | Dotted outline, control disabled | `Exp` plus tooltip |
-| Calibration (VER-3) | TaskPanel; row `0` indicator when a zero offset is stored | | Wording by PM |
 
 ## 5. Tokens
 
@@ -377,7 +378,7 @@ All in `ui/`, props and callbacks only, composition by snippets, no application 
 | NumberField | `value`, `commit(text)`, `error` | `left`, `unit` | idle, editing, invalid, disabled |
 | Badge | `kind` (warning, software, offline, error, experimental) | `children` | static |
 | StatusChip | `kind`, `filled`, `dim` | `children`, `left` | active, dim |
-| Panel / TaskPanel | none | `header`, `body`, `actions` | normal, collapsed |
+| Panel / TaskPanel | none | `header`, `body`, `actions` | normal, collapsed (TaskPanel is the non-modal pattern for future in-sidebar tasks; the zero calibration uses the modal `CalibrationDialog`, M4) |
 | MeasurementMatrix | columns, rows | `cell`, `footnotes` | cell: valid, invalid, stale; channel off: column omitted |
 | Readout | `value`, `unit`, `muted` | `label` | live, muted |
 | Graph | `traces[]`, `view` | `overlay`, `gutterLeft`, `gutterRight`, `gutterTop` | live, frozen, empty |
@@ -423,7 +424,7 @@ Format: **Given** a state, **when** an action, **then** an observable result. "T
 | AC-MK1 | Marker, Cursor | Given a draggable marker, when the pointer drags it, then a ghost follows the pointer in the same frame and its tag shows the value with unit; on release the committed value shows when the backend confirms. Given disabled, then the cursor is the default pointer and the tooltip gives the reason. |
 | AC-SB1 | StatusBar | Given a window at tier W3, then connection state and the effective-sample-rate slot remain visible (wrapping to a second line if needed). Given a warning item, then it uses `status-warning` with an icon. |
 | AC-BN1 | Banner, Toast | Given an error banner, then it stays until dismissed or its cause clears, and shows an action. Given two banners, then at most 2 are visible, newest first. Error Toasts never auto-dismiss and always have a dismiss button; info Toasts dismiss after 4 s and warning Toasts after 8 s; the timer pauses on hover and on focus. A Toast never takes focus on its own. |
-| AC-D1 | Dialog, TaskPanel | Given acquisition running, when a modal Dialog is requested, then it does not open and the control shows "Stop acquisition first". A TaskPanel opens in the sidebar without blocking anything. |
+| AC-D1 | Dialog, TaskPanel | Given acquisition running, when a modal Dialog is requested by any action except the calibration dialog, then it does not open and the control shows "Stop acquisition first". A TaskPanel opens in the sidebar without blocking anything. Given the calibration status tag is clicked while acquisition runs, then the modal calibration dialog opens and acquisition is paused until it closes. |
 | AC-TT1 | Tooltip | Given hover for 500 ms or keyboard focus, then the tooltip shows the control's unit and range (APP-2) and disappears on `Esc`. |
 | AC-CH1 | Channel row | Given a disabled channel, then the row keeps its height and position and the row layout does not change when enabled. |
 | AC-T1 | Tokens | Given any component's CSS, then it contains no raw colour, size or font literal (lint). |
@@ -462,7 +463,7 @@ Zoom is always in instrument steps; there is no free zoom.
 
 ### 10.3 Modality and errors
 
-- **No modal dialog while acquisition runs.** Needs during acquisition use TaskPanel, Menu, Banner or Toast. A modal action stays available but the app never stops acquisition by itself: it asks the user to Stop first (the control is disabled, tooltip "Stop acquisition first"). Native file pickers are allowed.
+- **No modal dialog while acquisition runs, with one exception.** Needs during acquisition use TaskPanel, Menu, Banner or Toast. A modal action stays available but the app never stops acquisition by itself: it asks the user to Stop first (the control is disabled, tooltip "Stop acquisition first"). Native file pickers are allowed. **Exception (M4, approved): the zero `CalibrationDialog` is modal, opens while acquisition runs and pauses it itself** (toolbar chip `Paused (calibration)`), restoring the previous run state on close; the user cannot lose data because the dialog is the only way to change the stored offsets and Cancel stores nothing.
 - Error presentation: recoverable and device-lost errors use Banner with an action; informational results use Toast; fatal errors use a full-width Banner with `Copy diagnostics`. The taxonomy is architecture section 10.1. A command error shows next to its control (red border and message) and never moves the layout.
 
 ### 10.4 Keyboard
@@ -499,7 +500,7 @@ Tab order follows the front panel: toolbar, scope screen, scale strip, Vertical,
 | AC-I8 | Given a stepper at a non-default value, when its value is double-clicked, then it resets to the fixed default of Q-E9; the double-click on the trigger marker does nothing. |
 | AC-I9 | Given cursors on the screen, when a cursor is double-clicked or focused and Delete is pressed, then it disappears and its readout shows `-`. |
 | AC-I10 | Given the graph is empty, when the user presses `C` or right-clicks, then cursor items are disabled with the reason "No waveform". |
-| AC-I11 | Given acquisition running, when the user triggers a modal-only action, then no dialog opens and the control shows "Stop acquisition first". |
+| AC-I11 | Given acquisition running, when the user triggers a modal-only action other than calibration, then no dialog opens and the control shows "Stop acquisition first". Calibration is the approved exception (10.3). |
 | AC-I12 | Given the keyboard only, when the user presses Tab from the toolbar, then focus visits regions in the order of 10.4 and every control in section 9 can be operated without a pointer. |
 | AC-I13 | Given a Segmented choice with a disabled option (for example Video), when it receives focus, then the tooltip shows why it is unavailable. |
 
