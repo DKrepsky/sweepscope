@@ -111,23 +111,12 @@ fn given_a_stored_channel_when_the_tooltip_is_built_then_each_range_shows_its_of
     assert_eq!(ch1.len(), 12);
     assert_eq!(
         ch1[0],
-        [
-            "+0.66 mV at 2 mV/div",
-            "+6.60 mV at 20 mV/div",
-            "+66.0 mV at 200 mV/div"
-        ]
+        ["+0.66 mV at 2 mV/div", "+6.6 mV at 20 mV/div", "+66 mV at 200 mV/div"]
     );
-    assert_eq!(
-        ch1[1],
-        [
-            "+0.00 mV at 5 mV/div",
-            "+0.00 mV at 50 mV/div",
-            "+0.00 mV at 500 mV/div"
-        ]
-    );
+    assert_eq!(ch1[1], ["0 mV at 5 mV/div", "0 mV at 50 mV/div", "0 mV at 500 mV/div"]);
     assert_eq!(
         ch1[11],
-        ["+10.0 mV at 10 V/div", "+100 mV at 100 V/div", "+1000 mV at 1 kV/div"]
+        ["+10 mV at 10 V/div", "+100 mV at 100 V/div", "+1000 mV at 1 kV/div"]
     );
 }
 
@@ -157,7 +146,7 @@ fn given_a_channel_without_stored_offsets_when_the_tooltip_is_built_then_every_c
     assert_eq!(ch4.len(), 12);
     assert_eq!(
         ch4[0],
-        ["+1.00 mV at 2 mV/div", "+10.0 mV at 20 mV/div", "+100 mV at 200 mV/div"]
+        ["+1 mV at 2 mV/div", "+10 mV at 20 mV/div", "+100 mV at 200 mV/div"]
     );
     assert!(ch4[1..].iter().all(|cell| cell.iter().all(|text| text == "-")));
 }
