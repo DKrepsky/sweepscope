@@ -3,7 +3,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use super::signal::SignalKind;
+use super::signal::{SignalKind, SignalSpec};
 use crate::{CatalogEvent, DeviceId};
 
 pub const DEVICE_ID: &str = "simulated-6254bc";
@@ -17,7 +17,7 @@ struct State {
     /// Counts unplugs; a device opened in an earlier generation stays disconnected.
     generation: u64,
     overrun_pending: bool,
-    signals: [SignalKind; 4],
+    signals: [SignalSpec; 4],
 }
 
 struct Shared {
@@ -46,7 +46,7 @@ impl SimulatorControl {
                     plugged: true,
                     generation: 0,
                     overrun_pending: false,
-                    signals: [SignalKind::Sine; 4],
+                    signals: [SignalSpec::new(SignalKind::Sine); 4],
                 }),
                 listeners: Mutex::new(Vec::new()),
             }),
@@ -72,9 +72,9 @@ impl SimulatorControl {
     }
 
     /// Channels beyond the fourth are ignored.
-    pub fn set_signal(&self, channel: usize, kind: SignalKind) {
+    pub fn set_signal(&self, channel: usize, signal: impl Into<SignalSpec>) {
         if let Some(slot) = self.state().signals.get_mut(channel) {
-            *slot = kind;
+            *slot = signal.into();
         }
     }
 
@@ -96,8 +96,12 @@ impl SimulatorControl {
         std::mem::take(&mut self.state().overrun_pending)
     }
 
-    pub(super) fn signal(&self, channel: usize) -> SignalKind {
-        self.state().signals.get(channel).copied().unwrap_or(SignalKind::Sine)
+    pub(super) fn signal(&self, channel: usize) -> SignalSpec {
+        self.state()
+            .signals
+            .get(channel)
+            .copied()
+            .unwrap_or_else(|| SignalSpec::new(SignalKind::Sine))
     }
 
     pub(super) fn subscribe(&self) -> Receiver<CatalogEvent> {
@@ -185,8 +189,21 @@ mod tests {
 
         control.set_signal(2, SignalKind::Square);
 
-        assert_eq!(control.signal(2), SignalKind::Square);
-        assert_eq!(control.signal(0), SignalKind::Sine);
+        assert_eq!(control.signal(2), SignalSpec::new(SignalKind::Square));
+        assert_eq!(control.signal(0), SignalSpec::new(SignalKind::Sine));
+    }
+
+    #[test]
+    fn given_a_full_spec_set_on_a_channel_when_read_then_frequency_amplitude_and_offset_are_kept() {
+        let control = SimulatorControl::new();
+        let spec = SignalSpec::new(SignalKind::Triangle)
+            .with_frequency(50.0)
+            .with_amplitude(0.3)
+            .with_offset(-0.2);
+
+        control.set_signal(1, spec);
+
+        assert_eq!(control.signal(1), spec);
     }
 
     #[test]

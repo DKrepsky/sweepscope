@@ -59,7 +59,7 @@ pub fn record_start(crossing: f64, trigger_index: usize, sample_interval_s: f64)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulator::signal::{clean, SignalKind};
+    use crate::simulator::signal::{clean, SignalKind, SignalSpec};
 
     fn ramp(t: f64) -> f64 {
         t * 1000.0
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn given_a_sine_when_the_falling_zero_crossing_is_searched_then_it_is_at_half_a_period() {
         let t = find_crossing(
-            |t| clean(SignalKind::Sine, t),
+            |t| clean(&SignalSpec::new(SignalKind::Sine), t),
             0.0,
             Direction::Falling,
             0.0,
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn given_a_start_after_the_first_crossing_when_searched_then_the_next_crossing_is_returned() {
         let t = find_crossing(
-            |t| clean(SignalKind::Sine, t),
+            |t| clean(&SignalSpec::new(SignalKind::Sine), t),
             0.0,
             Direction::Rising,
             0.0001,
@@ -111,7 +111,14 @@ mod tests {
     #[test]
     fn given_a_level_above_the_signal_when_searched_then_none_is_found() {
         assert_eq!(
-            find_crossing(|t| clean(SignalKind::Sine, t), 5.0, Direction::Rising, 0.0, 0.01, 1e-5),
+            find_crossing(
+                |t| clean(&SignalSpec::new(SignalKind::Sine), t),
+                5.0,
+                Direction::Rising,
+                0.0,
+                0.01,
+                1e-5
+            ),
             None
         );
     }
