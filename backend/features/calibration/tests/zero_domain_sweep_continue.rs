@@ -105,6 +105,21 @@ fn given_a_clipped_gate_reading_when_rejected_then_it_is_not_continuable() {
 }
 
 #[test]
+fn given_a_clipped_reading_off_zero_at_two_millivolts_when_rejected_then_it_is_continuable() {
+    let mut codes = flat(128 + 36);
+    codes[3] = 0;
+    let mut sweep = ZeroSweep::new(RANGES.to_vec());
+    sweep.next(None);
+    sweep.next(Some(&level(0)));
+
+    let found = rejection(sweep.next(Some(&reading(&codes))));
+
+    assert_eq!(found.kind, RejectionKind::LevelOffZero);
+    assert_eq!(found.range_index, 0);
+    assert!(found.continuable);
+}
+
+#[test]
 fn given_a_noisy_unclipped_gate_reading_when_rejected_then_it_is_continuable() {
     let mut sweep = ZeroSweep::new(RANGES.to_vec());
     sweep.next(None);
