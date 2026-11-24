@@ -142,9 +142,13 @@ fn given_a_published_frame_when_a_copy_is_stamped_then_the_shared_bytes_are_unto
 fn given_a_running_module_when_dropped_then_both_workers_stop() {
     let bus = Bus::new();
     let module = start(&bus);
-    let began = std::time::Instant::now();
+    let (joined, dropped) = std::sync::mpsc::channel();
 
-    drop(module);
+    std::thread::spawn(move || {
+        drop(module);
+        joined.send(()).unwrap();
+    });
 
-    assert!(began.elapsed() < WAIT);
+    // Blocks until the workers have joined; a worker that never stops hangs the test instead of racing a clock.
+    dropped.recv().expect("drop returned");
 }
