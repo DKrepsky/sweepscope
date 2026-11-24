@@ -28,12 +28,6 @@
   <Readout value={horizontal.window}>
     {#snippet label()}Window{/snippet}
   </Readout>
-  <Badge
-    kind="warning"
-    tooltip="Layout scaffold. Every number on this page is a placeholder, not a hardware statement."
-  >
-    Illustrative numbers (placeholders)
-  </Badge>
   <span class="grow"></span>
   {#if showOverview}
     <span class="ss-caps">Record</span>

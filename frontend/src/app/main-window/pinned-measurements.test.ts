@@ -61,3 +61,12 @@ describe('pinned measurements', () => {
     expect(get(pinned)).toContain('vmax');
   });
 });
+
+describe('default pins', () => {
+  it('given a first run, when loaded, then all twelve measurements are pinned', async () => {
+    const { pinned } = setup();
+    await pinned.load();
+    expect(get(pinned)).toHaveLength(12);
+    expect(new Set(get(pinned)).size).toBe(12);
+  });
+});

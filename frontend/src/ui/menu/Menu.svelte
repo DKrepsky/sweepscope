@@ -16,6 +16,19 @@
   const { items, onselect, open, onclose, anchor, item }: Props = $props();
 
   let buttons: HTMLButtonElement[] = $state([]);
+  let menu: HTMLElement | undefined = $state();
+  let position = $state<{ x: number; y: number } | null>(null);
+
+  const fitted = (start: number, size: number, room: number) => Math.max(0, Math.min(start, room - size));
+
+  $effect(() => {
+    if (!open || !menu) return;
+    const { width, height } = menu.getBoundingClientRect();
+    position = {
+      x: fitted(anchor.x, width, window.innerWidth),
+      y: fitted(anchor.y, height, window.innerHeight),
+    };
+  });
 
   $effect(() => {
     if (!open) return;
@@ -66,7 +79,15 @@
 
 {#if open}
   <div class="scrim" role="presentation" onpointerdown={onclose}></div>
-  <div class="menu" role="menu" tabindex="-1" style:left="{anchor.x}px" style:top="{anchor.y}px" {onkeydown}>
+  <div
+    bind:this={menu}
+    class="menu"
+    role="menu"
+    tabindex="-1"
+    style:left="{(position ?? anchor).x}px"
+    style:top="{(position ?? anchor).y}px"
+    {onkeydown}
+  >
     {#each items as entry, index (entry.id)}
       {#if entry.disabled && entry.disabledReason}
         <Tooltip text={entry.disabledReason}>{@render row(entry, index)}</Tooltip>

@@ -98,7 +98,7 @@
       ariaLabel="Trigger sweep"
     />
   </div>
-  <div class="note" title="Trigger position accuracy statement, wording TBD">{trigger.accuracyNote}</div>
+  {#if trigger.accuracyNote}<div class="note">{trigger.accuracyNote}</div>{/if}
 </DockGroup>
 
 <style>

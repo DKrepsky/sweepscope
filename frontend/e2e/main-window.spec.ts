@@ -55,9 +55,9 @@ test.describe('main window shell', () => {
       .toEqual([{ command: 'set_running', args: { running: false } }]);
   });
 
-  test('given the shell, when checked, then the placeholder note is visible', async ({ page }) => {
+  test('given the shell, when checked, then no placeholder note is shown', async ({ page }) => {
     await openMain(page);
-    await expect(page.getByText('Illustrative numbers (placeholders)')).toBeVisible();
+    await expect(page.getByText('Illustrative numbers (placeholders)')).toHaveCount(0);
   });
 
   test('given the Video trigger option, when focused with the keyboard, then it is disabled and its reason shows', async ({
