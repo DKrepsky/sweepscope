@@ -44,6 +44,15 @@ fn three_millivolts_at_two_millivolts(_channel: usize, range_index: usize) -> Ve
     vec![if range_index == 0 { 128 + 36 } else { 129 }; 300]
 }
 
+/// 36 codes (2.98 mV) at 2 mV/div with one sample at code 0: routine clipping at that range.
+fn clipped_off_zero_at_two_millivolts(_channel: usize, range_index: usize) -> Vec<u8> {
+    let mut codes = three_millivolts_at_two_millivolts(0, range_index);
+    if range_index == 0 {
+        codes[3] = 0;
+    }
+    codes
+}
+
 fn clipped_at_the_gate(_channel: usize, range_index: usize) -> Vec<u8> {
     let mut codes = vec![128; 300];
     if range_index == usize::from(GATE_RANGE_INDEX) {
@@ -170,6 +179,19 @@ fn given_a_clipped_later_range_when_continued_then_the_channel_is_still_accepted
 
     assert_eq!(session.overridden, [true, false, false, false]);
     assert_eq!(session.done_channels, [true, false, false, false]);
+}
+
+#[test]
+fn given_a_clipped_rejection_at_two_millivolts_when_measured_then_continue_is_offered_and_works() {
+    let rig = connected_rig();
+    rig.set_signal(clipped_off_zero_at_two_millivolts);
+    rejected_at_channel_one(&rig);
+
+    assert!(rig.state().session.unwrap().can_continue);
+    rig.continue_channel().unwrap();
+    let session = rig.until_step(ZeroStep::Channel).session.unwrap();
+
+    assert_eq!(session.overridden, [true, false, false, false]);
 }
 
 #[test]

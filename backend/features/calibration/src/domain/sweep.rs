@@ -25,7 +25,7 @@ pub struct Rejection {
     pub kind: RejectionKind,
     pub range_index: usize,
     pub line: String,
-    /// False when the reading clipped: its offset would be wrong by an unknown amount.
+    /// False for a clipped gate reading: the input is far from zero. Clipping is routine at the sensitive ranges.
     pub continuable: bool,
 }
 
@@ -127,7 +127,7 @@ impl ZeroSweep {
             kind,
             range_index: index,
             line,
-            continuable: !reading.stats.clipped,
+            continuable: !(self.gate == Some(index) && reading.stats.clipped),
         })
     }
 }

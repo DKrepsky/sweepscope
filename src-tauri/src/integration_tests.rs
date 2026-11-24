@@ -2,7 +2,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use sweepscope_acquisition::{Phase, SetRunning, SettingTarget, StartAutoset, StepSetting};
+use sweepscope_acquisition::{
+    ChannelPatch, ChannelState, GetInstrument, Phase, SetChannel, SetRunning, SettingTarget, StartAutoset, StepSetting,
+};
 use sweepscope_calibration::domain::offsets::OffsetFile;
 use sweepscope_calibration::{
     CloseZeroCalibration, ContinueZeroChannel, GetZeroCalibration, MeasureZeroChannel, OpenZeroCalibration,
@@ -149,7 +151,6 @@ const CHANNELS: usize = 4;
 const MEAN_TOLERANCE_CODES: f64 = 3.0;
 const TWO_MILLIVOLT_STEPS_FROM_ONE_VOLT: usize = 8;
 const TWO_MILLIVOLT_RANGE_INDEX: usize = 0;
-/// Simulator noise at 2 mV/div (24 codes) can clip a sample, which forbids Continue; 5 mV/div is quieter.
 const FIVE_MILLIVOLT_RANGE_INDEX: usize = 1;
 /// Simulator zero error of channel 1 on 2 mV/div, 0.66 mV, in codes at 24.15 codes per division.
 const CHANNEL_ONE_ZERO_ERROR_CODES: f64 = 0.66e-3 / 2.0e-3 * 24.15;
@@ -354,7 +355,7 @@ fn given_a_zero_error_above_the_limit_when_continue_is_sent_then_the_session_com
     assert!(
         (offsets[FIVE_MILLIVOLT_RANGE_INDEX] - 6.0e-3).abs() < 0.5e-3,
         "stored {}",
-        offsets[0]
+        offsets[FIVE_MILLIVOLT_RANGE_INDEX]
     );
     bus.request(CloseZeroCalibration).expect("close");
     let captured = frame_at_two_millivolts(bus);
@@ -388,4 +389,94 @@ fn given_a_clipped_gate_reading_when_continue_is_sent_then_it_is_refused_and_the
     assert!(!zero_state(bus).session.expect("session").can_continue);
     assert!(result.is_err());
     assert!(zero_state(bus).session.is_some_and(|s| s.step == ZeroStep::NotShorted));
+}
+
+#[test]
+fn given_a_zero_error_above_the_limit_at_two_millivolts_when_continue_is_sent_then_the_offset_is_stored_and_applied() {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    rig.control.set_zero_error_volts(0, TWO_MILLIVOLT_RANGE_INDEX, 3.0e-3);
+    open_and_measure_channel_one(bus);
+    wait_for_step(bus, ZeroStep::NotShorted);
+    let rejected = zero_state(bus).session.expect("session");
+    assert!(rejected.can_continue, "{:?}", rejected);
+
+    bus.request(ContinueZeroChannel).expect("continue");
+    for channel in 2..=4 {
+        wait_for_channel(bus, channel);
+        bus.request(MeasureZeroChannel).expect("measure");
+    }
+    wait_for_step(bus, ZeroStep::Done);
+
+    let offsets = stored_offsets(&rig.storage).expect("stored offsets");
+    assert!(
+        (offsets[TWO_MILLIVOLT_RANGE_INDEX] - 3.0e-3).abs() < 0.5e-3,
+        "stored {}",
+        offsets[TWO_MILLIVOLT_RANGE_INDEX]
+    );
+    assert_eq!(
+        zero_state(bus).session.expect("session").overridden,
+        [true, false, false, false]
+    );
+}
+
+fn channel_one(bus: &Bus) -> ChannelState {
+    let snapshot = bus.request(GetInstrument).expect("instrument");
+    snapshot.instrument.expect("instrument slice").channels.remove(0)
+}
+
+fn range_label(channel: &ChannelState) -> String {
+    format!("{} {}", channel.range.label.text, channel.range.label.unit)
+}
+
+fn assert_tooltip_matches_instrument(bus: &Bus, probe_slot: usize) {
+    let channel = channel_one(bus);
+    let tooltip = zero_state(bus).unit.expect("unit").tooltip;
+    let cell = &tooltip.channels[0].cells[usize::from(channel.range.index)][probe_slot];
+    assert!(
+        cell.ends_with(&format!(" at {}", range_label(&channel))),
+        "range index {}: cell {cell:?}, instrument {}",
+        channel.range.index,
+        range_label(&channel)
+    );
+}
+
+fn walk_every_range(bus: &Bus, probe_slot: usize) {
+    for _ in 0..12 {
+        assert_tooltip_matches_instrument(bus, probe_slot);
+        bus.request(StepSetting {
+            target: SettingTarget::Range { channel: 1 },
+            direction: -1,
+        })
+        .expect("step range");
+    }
+    for _ in 0..12 {
+        assert_tooltip_matches_instrument(bus, probe_slot);
+        bus.request(StepSetting {
+            target: SettingTarget::Range { channel: 1 },
+            direction: 1,
+        })
+        .expect("step range");
+    }
+}
+
+#[test]
+fn given_every_range_of_channel_one_when_the_probe_is_1x_or_10x_then_the_instrument_index_selects_the_tooltip_cell_with_the_shown_range(
+) {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    assert!(eventually(WAIT, || bus
+        .request(GetInstrument)
+        .is_ok_and(|snapshot| snapshot.instrument.is_some())));
+
+    walk_every_range(bus, 0);
+    bus.request(SetChannel {
+        channel: 1,
+        patch: ChannelPatch {
+            probe: Some(10.0),
+            ..ChannelPatch::default()
+        },
+    })
+    .expect("probe");
+    walk_every_range(bus, 1);
 }
