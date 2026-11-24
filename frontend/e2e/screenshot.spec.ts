@@ -46,7 +46,8 @@ async function composeAndScan(page: import('@playwright/test').Page): Promise<De
     ctx.drawImage(bitmap, 0, 0);
 
     const spec = compose.buildScreenshotSpec(model);
-    const content = { header: spec.header, tableRows: spec.table.rows.length, footnotes: spec.footnotes.length };
+    const noteLines = layout.noteLineCount(layout.screenshotNotes(spec.footnotes, spec.accuracyNote));
+    const content = { header: spec.header, tableRows: spec.table.rows.length, noteLines };
     const size = layout.screenshotSize(content);
     const { graph } = layout.screenshotLayout(content);
     const graphLeft = Math.round(graph.x * ratio);
