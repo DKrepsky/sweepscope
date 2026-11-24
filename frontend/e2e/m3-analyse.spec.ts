@@ -37,6 +37,11 @@ async function openMain(page: Page, options: StubOptions = scripted()): Promise<
   await expect.poll(async () => (await ipcLog(page)).some((call) => call.command === 'open_frame_stream')).toBe(true);
 }
 
+const intersects = (a: Box | null, b: Box | null) => {
+  if (!a || !b) throw new Error('A box is missing');
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+};
+type Box = { x: number; y: number; width: number; height: number };
 const calls = async (page: Page, name: string) => (await ipcLog(page)).filter((call) => call.command === name);
 const toolbar = (page: Page) => page.locator('[data-region="toolbar"]');
 const button = (page: Page, name: string | RegExp) =>
@@ -515,6 +520,55 @@ test.describe('#30 math row', () => {
       math: { ...base.math, enabled: true, status: { kind: 'unavailable', reason: 'CH2 is off' } },
     });
     await expect(page.getByText(/M\s+A−B\s+unavailable: CH2 is off/)).toBeVisible();
+  });
+
+  const windows: [number, number][] = [
+    [1024, 720],
+    [1280, 720],
+    [1440, 900],
+  ];
+  for (const [width, height] of windows) {
+    test(`given math unavailable at ${width}x${height}, when the M row is read, then its status badge overlaps no control`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page);
+      const base = instrumentState({ revision: 102 });
+      await emit(page, 'instrument_changed', {
+        ...base,
+        math: { ...base.math, enabled: true, status: { kind: 'unavailable', reason: 'CH2 is off' } },
+      });
+      const tabs = page.getByRole('group', { name: 'Channel tabs' });
+      if (await tabs.isVisible()) await tabs.getByRole('button', { name: 'M', exact: true }).click();
+      await expect(page.locator('[data-math-status]')).toBeVisible();
+      const status = await page.locator('[data-math-status]').boundingBox();
+      for (const control of [
+        page.getByRole('button', { name: /math source B/ }),
+        page.locator('[data-math] .badge.sw'),
+      ]) {
+        const other = await control.boundingBox();
+        expect(intersects(status, other)).toBe(false);
+      }
+    });
+  }
+
+  test('given math unavailable in roll with a long reason, when the strip is read, then the chip stays inside the window and keeps the full text as tooltip', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 720 });
+    await openMain(page);
+    const reason = 'XY, FFT, persistence, math and cursors need a captured record; not available in roll mode.';
+    const base = rollState();
+    await emit(page, 'instrument_changed', {
+      ...base,
+      math: { ...base.math, enabled: true, status: { kind: 'unavailable', reason } },
+    });
+    const chip = page.locator('[data-math-chip]');
+    await expect(chip).toBeVisible();
+    const box = await chip.boundingBox();
+    expect(box!.x + box!.width).toBeLessThanOrEqual(1024);
+    await expect(chip).toHaveAttribute('title', new RegExp(`unavailable: ${reason}`));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);
   });
 
   test('given sources on different scales, when math is on, then the Mixed badge shows with the explicit scale', async ({

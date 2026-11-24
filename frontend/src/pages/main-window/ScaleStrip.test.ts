@@ -63,6 +63,15 @@ describe('ScaleStrip', () => {
     expect(container.querySelector('[data-math-chip]')).toHaveClass('unavailable');
   });
 
+  it('given a long unavailable reason, when rendered, then the full text is the chip tooltip', () => {
+    const chip = 'M  A−B  unavailable: Roll mode has no captured record to compute from';
+    const math = { chip, row: { status: 'unavailable' } } as MathModel;
+
+    const { container } = render(ScaleStrip, { props: { channels: mockChannels(), cursorSource: 1, math } });
+
+    expect(container.querySelector('[data-math-chip]')).toHaveAttribute('title', chip);
+  });
+
   it('given math is off, when rendered, then there is no M chip', () => {
     const math = { chip: '', row: { status: 'ok' } } as MathModel;
 
