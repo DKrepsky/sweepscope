@@ -282,7 +282,7 @@ describe('CalibrationDialog not shorted', () => {
 });
 
 describe('CalibrationDialog done', () => {
-  const done: Partial<Session> = { step: 'done', channel: 4, doneChannels: [true, true, true, true], table };
+  const done: Partial<Session> = { step: 'done', channel: null, doneChannels: [true, true, true, true], table };
 
   it('given the done step, when shown, then the success note and the only button Done are shown', () => {
     setup(done);

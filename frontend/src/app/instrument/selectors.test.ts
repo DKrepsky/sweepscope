@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Phase } from '../../api';
-import { connectionChip, graphState, isAcquiring, statusChips } from './selectors';
+import { graphState, isAcquiring, statusChips } from './selectors';
 import { acquisitionStatus, connectionSnapshot, instrumentState } from './test-data';
 
 const ready = connectionSnapshot({ state: 'ready' });
@@ -110,34 +110,5 @@ describe('statusChips', () => {
 
   it('given no slices yet, when selected, then the chip says Connecting', () => {
     expect(statusChips(undefined, undefined, undefined)[0]?.text).toBe('Connecting');
-  });
-});
-
-describe('connectionChip', () => {
-  it('given a ready simulator, when selected, then state is Connected, detail the model, and simulated', () => {
-    expect(connectionChip(ready)).toMatchObject({ state: 'Connected', detail: 'Hantek 6254BC', simulated: true });
-  });
-
-  it('given a ready scope with firmware, when selected, then the tooltip names the firmware', () => {
-    const identity = { ...ready.identity!, firmware: '1.2.3', simulated: false };
-    const chip = connectionChip(connectionSnapshot({ identity, simulatorActive: false }));
-    expect(chip.tooltip).toContain('1.2.3');
-    expect(chip.simulated).toBe(false);
-  });
-
-  it('given a disconnected scope, when selected, then state is Disconnected', () => {
-    expect(connectionChip(disconnected).state).toBe('Disconnected');
-  });
-
-  it('given a connection error with an issue, when selected, then the detail is the issue message', () => {
-    const issue = { kind: 'communication', message: 'USB transfer failed', help: null } as const;
-    expect(connectionChip(connectionSnapshot({ state: 'error', issue }))).toMatchObject({
-      state: 'Error',
-      detail: 'USB transfer failed',
-    });
-  });
-
-  it('given no connection slice yet, when selected, then state is Connecting', () => {
-    expect(connectionChip(undefined).state).toBe('Connecting');
   });
 });

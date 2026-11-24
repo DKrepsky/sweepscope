@@ -32,7 +32,7 @@
   let stepRoot: HTMLElement;
 
   const channel = $derived(dialog.channel ?? 1);
-  const showChips = $derived(dialog.step !== 'intro' && dialog.channel !== null);
+  const showChips = $derived(dialog.step !== 'intro');
   const stepKey = $derived(`${dialog.step}:${dialog.channel}`);
 
   function chipState(number: number): StepChipProps['state'] {

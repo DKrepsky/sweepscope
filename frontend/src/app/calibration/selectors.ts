@@ -2,6 +2,7 @@ import type { ConnectionSnapshot, RecordingState, ZeroCalibrationState } from '.
 import { formatStoredDate } from './format-date';
 import { CALIBRATION_STEPS, type CalibrationDialogModel, type CalibrationTagModel } from './types';
 
+/** Deliberate UI-only guard (PM ruling): the backend does not refuse calibration while recording; the tag and the shortcut do. */
 export const STOP_RECORDING_FIRST = 'Stop recording first';
 export const NO_DEVICE = 'No device';
 

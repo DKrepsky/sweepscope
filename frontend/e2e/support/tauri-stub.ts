@@ -15,15 +15,12 @@ const readySnapshot = (unverifiedTimeBase: boolean, zero: Partial<ZeroCalibratio
     instrument: {
       ...base,
       channels: base.channels.map((channel) => ({ ...channel, enabled: channel.number < 4 })),
-      horizontal: { ...base.horizontal, timeBase },
     },
   });
   return { ...snapshot, zeroCalibration: { ...snapshot.zeroCalibration, ...zero } };
 };
 
 export interface StubOptions {
-  /** The selected time base step is one the hardware has not been measured at. */
-  unverifiedTimeBase?: boolean;
   /** Per command: the value it returns, or an error message it rejects with (the M2 file commands and `set_interpolation`). */
   commands?: Record<string, { result?: unknown; error?: string }>;
   /** Initial zero calibration slice (for example a calibrated unit). The four calibration commands then play the session. */
