@@ -51,27 +51,35 @@ fn worst_error(seconds_per_div: f64, noise_counts: f64) -> (f64, f64) {
     (worst, sum / (200 - invalid).max(1) as f64)
 }
 
+fn assert_worst_within(name: &str, per_div: f64, noise: f64, bound: f64) {
+    let (worst, mean) = worst_error(per_div, noise);
+    println!(
+        "R2 {name}/div noise {noise} counts: worst {:.4} %, mean {:.4} %",
+        worst * 100.0,
+        mean * 100.0
+    );
+    assert!(
+        worst <= bound,
+        "{name}: worst error {:.4} % exceeds {:.2} %",
+        worst * 100.0,
+        bound * 100.0
+    );
+}
+
 #[test]
-fn given_the_calibrator_when_the_phase_sweeps_then_the_frequency_error_figures_are_printed_and_bounded() {
-    for (name, per_div) in [
-        ("100 us", 100e-6),
-        ("200 us", 200e-6),
-        ("500 us", 500e-6),
-        ("1 ms", 1e-3),
-        ("2 ms", 2e-3),
-    ] {
+fn given_the_calibrator_at_500_us_and_slower_when_the_phase_sweeps_then_frequency_is_within_0_01_percent() {
+    for (name, per_div) in [("500 us", 500e-6), ("1 ms", 1e-3), ("2 ms", 2e-3)] {
         for noise in [0.0, 0.4] {
-            let (worst, mean) = worst_error(per_div, noise);
-            println!(
-                "QA R2 {name}/div noise {noise} counts: worst {:.4} %, mean {:.4} %",
-                worst * 100.0,
-                mean * 100.0
-            );
-            assert!(
-                worst < 0.001,
-                "{name}: worst error {:.4} % exceeds 0.1 %",
-                worst * 100.0
-            );
+            assert_worst_within(name, per_div, noise, 1e-4);
+        }
+    }
+}
+
+#[test]
+fn given_the_calibrator_at_faster_time_bases_when_the_phase_sweeps_then_frequency_is_within_0_02_percent() {
+    for (name, per_div) in [("100 us", 100e-6), ("200 us", 200e-6)] {
+        for noise in [0.0, 0.4] {
+            assert_worst_within(name, per_div, noise, 2e-4);
         }
     }
 }

@@ -88,7 +88,7 @@ pub fn measure(volts: &[f64], sample_interval_s: f64, volts_per_count: f64) -> M
         vrms: Ok(vrms),
         rise_time: edges.rise,
         fall_time: edges.fall,
-        ..timing(&crossings, &rising, sample_interval_s)
+        ..timing(&crossings, sample_interval_s)
     }
 }
 
@@ -100,14 +100,12 @@ fn whole_periods<'a>(volts: &'a [f64], rising: &[f64]) -> &'a [f64] {
 }
 
 /// Period, frequency, widths and duty cycle; the other fields are placeholders for the caller to replace.
-fn timing(crossings: &[Crossing], rising: &[f64], sample_interval_s: f64) -> Measured {
+fn timing(crossings: &[Crossing], sample_interval_s: f64) -> Measured {
     let mut measured = Measured::all_invalid(0.0, 0.0, Invalid::FewerThanOnePeriod);
-    if let (Some(first), Some(last)) = (rising.first(), rising.last()) {
-        if rising.len() >= 2 {
-            let period = (last - first) / (rising.len() - 1) as f64 * sample_interval_s;
-            measured.period = Ok(period);
-            measured.frequency = Ok(1.0 / period);
-        }
+    if let Some(samples) = crossings::fitted_period(crossings) {
+        let period = samples * sample_interval_s;
+        measured.period = Ok(period);
+        measured.frequency = Ok(1.0 / period);
     }
     let width = |starts_rising| {
         crossings::mean_pulse_width(crossings, starts_rising)

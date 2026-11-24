@@ -69,3 +69,29 @@ pub(crate) fn mean_pulse_width(crossings: &[Crossing], starts_rising: bool) -> O
         .collect();
     (!widths.is_empty()).then(|| widths.iter().sum::<f64>() / widths.len() as f64)
 }
+
+/// Period in samples: one slope shared by both edge types, each with its own intercept, fitted by least squares.
+/// Needs two rising crossings; crossings alternate, so the cycle number counts the rising ones seen so far.
+pub(crate) fn fitted_period(crossings: &[Crossing]) -> Option<f64> {
+    if crossings.iter().filter(|c| c.rising).count() < 2 {
+        return None;
+    }
+    let mut cycle = -1.0;
+    let mut points = [Vec::new(), Vec::new()];
+    for crossing in crossings {
+        if crossing.rising {
+            cycle += 1.0;
+        }
+        points[usize::from(crossing.rising)].push((cycle, crossing.position));
+    }
+    let (mut covariance, mut variance) = (0.0, 0.0);
+    for group in &points {
+        let n = group.len() as f64;
+        let (mean_x, mean_y) = group.iter().fold((0.0, 0.0), |(x, y), p| (x + p.0 / n, y + p.1 / n));
+        for &(x, y) in group {
+            covariance += (x - mean_x) * (y - mean_y);
+            variance += (x - mean_x) * (x - mean_x);
+        }
+    }
+    (variance > 0.0).then(|| covariance / variance)
+}

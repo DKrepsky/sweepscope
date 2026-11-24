@@ -131,7 +131,7 @@ fn given_calibrator_frames_at_200_us_per_div_when_measured_then_frequency_and_vp
     assert_eq!(channel.channel, 1);
     assert_eq!(channel.measurements.len(), 12);
     assert_eq!(cell(&channel, MeasurementId::Frequency).0.as_deref(), Some("1.000 kHz"));
-    assert_eq!(cell(&channel, MeasurementId::Period).0.as_deref(), Some("999.8 us"));
+    assert_eq!(cell(&channel, MeasurementId::Period).0.as_deref(), Some("1.000 ms"));
     assert_eq!(cell(&channel, MeasurementId::Vpp).0.as_deref(), Some("1.91 V"));
 }
 
