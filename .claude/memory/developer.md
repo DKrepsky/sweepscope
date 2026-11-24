@@ -395,3 +395,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Revision guard has one owner: the generic `createSlice` in `app/instrument/stores.ts`; new backend slices are a ninth slice there, not a second store. `ModelInputs` gains the slice; `MainWindowModel.calibration = { tag, dialog }`.
 - Fake client now emulates the zero calibration session (`client.zeroCalibration.leaveUnshorted/loseDevice/state`); the four commands are pre-registered.
 - Wire new use cases in `live-app.ts` (real composition) and assert the full path in `live-app.test.ts`, not only in unit tests with stubs.
+
+## WP16 status bar (developer-13)
+- BUG-1 class: `pages/main-window/test-support.ts` `NAMES` must list every action, else a missing spy is `undefined` and a click silently does nothing; add new actions there.
+- Playwright ports are fixed (vite `strictPort` 5173); for a spare port use an untracked temp config running `npx vite --port N --strictPort` (delete it afterwards).
+- `StatusBarItem.end` puts an item last in the first row without divider; priority <= 1 never wraps and survives `essentialOnly`.
+- No check icon in the icon set (test-locked list); the calibrated tag inlines the prototype check path.

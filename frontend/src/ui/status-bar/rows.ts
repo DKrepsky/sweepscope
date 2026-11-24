@@ -2,7 +2,9 @@ import type { StatusBarItem } from './types';
 
 const NEVER_WRAPPED_BELOW = 2;
 
-const byPriority = (a: StatusBarItem, b: StatusBarItem) => a.priority - b.priority;
+/** Items marked `end` close the row, whatever their priority. */
+const byPriority = (a: StatusBarItem, b: StatusBarItem) =>
+  Number(a.end ?? false) - Number(b.end ?? false) || a.priority - b.priority;
 
 const wraps = (item: StatusBarItem, threshold: number) =>
   item.priority >= NEVER_WRAPPED_BELOW && item.priority >= threshold;

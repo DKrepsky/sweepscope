@@ -116,10 +116,12 @@ test.describe('layout per width tier', () => {
     expect((await tiers(page)).width).toBe('w3');
     for (const item of ['connection', 'sample-rate']) await expect(page.locator(`[data-item="${item}"]`)).toBeVisible();
     const first = await box(page, '[data-item="connection"]');
-    const wrapped = await box(page, '[data-item="accuracy"]');
+    const wrapped = await box(page, '[data-item="renderer"]');
     expect(wrapped.y).toBeGreaterThan(first.y + first.height - 1);
+    const tag = await box(page, '[data-item="calibration"]');
+    expect(tag.y).toBeLessThan(first.y + first.height);
     const viewport = page.viewportSize()!;
-    for (const item of ['connection', 'sample-rate', 'record', 'capture', 'renderer', 'accuracy']) {
+    for (const item of ['connection', 'sample-rate', 'record', 'capture', 'renderer', 'calibration']) {
       const b = await box(page, `[data-item="${item}"]`);
       expect(b.x + b.width).toBeLessThanOrEqual(viewport.width + 1);
     }
