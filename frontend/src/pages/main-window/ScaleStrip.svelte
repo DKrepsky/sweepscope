@@ -58,8 +58,8 @@
     </button>
   {/each}
   {#if math?.chip}
-    <span class="chip math" class:unavailable={math.row.status === 'unavailable'} data-math-chip>
-      <span class="ss-num">{math.chip}</span>
+    <span class="chip math" class:unavailable={math.row.status === 'unavailable'} title={math.chip} data-math-chip>
+      <span class="ss-num text">{math.chip}</span>
       {#if math.row.status === 'mixed' && math.row.statusDetail}
         <Badge kind="warning" tooltip={math.row.statusDetail}>Mixed</Badge>
       {/if}
@@ -76,6 +76,7 @@
 <style>
   .strip {
     display: flex;
+    min-inline-size: 0;
     align-items: center;
     gap: var(--ss-space-3);
     padding: var(--ss-space-3) var(--ss-space-4);
@@ -120,7 +121,13 @@
     border-radius: var(--ss-radius-sm);
   }
   .chip.math {
+    min-inline-size: 0;
     border-color: var(--ss-color-math);
+  }
+  .chip.math .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .chip.math.unavailable {
     color: var(--ss-color-text-secondary);
@@ -130,6 +137,7 @@
     flex: 1;
   }
   .note {
+    flex: none;
     font-size: var(--ss-font-size-xs);
     color: var(--ss-color-text-secondary);
   }

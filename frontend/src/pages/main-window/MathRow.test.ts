@@ -9,8 +9,10 @@ import { spyActions } from './test-support';
 function setup(change: Partial<MathModel['row']> = {}) {
   const { math, channels } = get(createMockMainWindow());
   const actions = spyActions();
-  render(MathRow, { props: { math: { ...math, row: { ...math.row, ...change } }, channels, actions } });
-  return { actions, user: userEvent.setup() };
+  const { container } = render(MathRow, {
+    props: { math: { ...math, row: { ...math.row, ...change } }, channels, actions },
+  });
+  return { actions, container, user: userEvent.setup() };
 }
 
 describe('MathRow', () => {
@@ -67,6 +69,18 @@ describe('MathRow', () => {
     setup({ status: 'unavailable', statusDetail: 'CH2 is off' });
 
     expect(screen.getByText('Unavailable')).toBeInTheDocument();
+  });
+
+  it('given an ok status, when rendered, then there is no status line', () => {
+    const { container } = setup();
+
+    expect(container.querySelector('[data-math-status]')).toBeNull();
+  });
+
+  it('given an unavailable status, when rendered, then the badge sits in its own status line', () => {
+    const { container } = setup({ status: 'unavailable', statusDetail: 'CH2 is off' });
+
+    expect(container.querySelector('[data-math-status]')).toHaveTextContent('Unavailable');
   });
 
   it('given a position typed into the field, when committed, then the position is sent in divisions', async () => {

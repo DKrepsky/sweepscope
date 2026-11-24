@@ -126,11 +126,11 @@
   {@render picker('a', `A ${row.sourceA}`, `A ${row.sourceA}, math source A`, blocked, row.sourceA)}
   {@render picker('b', sourceBText, `${sourceBText}, math source B`, blocked || !needsB, row.sourceB)}
   <Badge kind="software" tooltip="Computed in software">SW</Badge>
-  <span class="status">
-    {#if row.status !== 'ok'}
+  {#if row.status !== 'ok'}
+    <span class="status" data-math-status>
       <Badge kind="warning" tooltip={row.statusDetail ?? statusText}>{statusText}</Badge>
-    {/if}
-  </span>
+    </span>
+  {/if}
 </div>
 
 {#if open}
@@ -166,7 +166,10 @@
   .host {
     display: inline-flex;
   }
+  /* A line of its own: the badge column is as narrow as the dock, so beside the controls it would paint over them. */
   .status {
-    justify-self: end;
+    grid-column: 2 / -1;
+    justify-self: start;
+    min-inline-size: 0;
   }
 </style>

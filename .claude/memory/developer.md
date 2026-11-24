@@ -366,3 +366,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - New real stream feeds open on first model subscription, so e2e stubs must acknowledge open/close roll and spectrum streams (added to `e2e/support/tauri-stub.ts`).
 - NumberField `errorText="external"` = invalid state only, caller draws the text. Backend units are ASCII `us`; message text converts to `µs`.
 - Fresh worktrees have no node_modules: `npm ci` in frontend. The graph.spec 33 ms probe is flaky under load (webkit).
+
+## M3 fix round 2 (developer-8)
+- M row status badge now sits on its own subgrid line (`grid-column: 2 / -1`, `[data-math-status]`); a badge in the 1fr column paints over its neighbours when the dock is narrow. Roll chip text truncates with ellipsis and `title` carries the full text.
+- Dock at 720 px height uses channel tabs: e2e must click the `M` tab in the `Channel tabs` group before reading the M row.
+- `e2e/capability.spec.ts` (Node fs allowed there, not in `src`, and vite `?raw` of files outside the frontend is denied) checks `COMMANDS` and the stub's exported `ACKNOWLEDGED_COMMANDS` against `src-tauri/capabilities/main.json`.
