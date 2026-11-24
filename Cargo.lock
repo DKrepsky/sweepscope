@@ -3323,8 +3323,8 @@ version = "0.1.0"
 dependencies = [
  "autoset",
  "engineering-format",
- "measurements",
  "math-channel",
+ "measurements",
  "serde",
  "serde_json",
  "sweepscope-kernel",

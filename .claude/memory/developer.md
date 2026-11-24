@@ -345,3 +345,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - XY: a division on X is a tenth of the width, so the X ground marker uses `xFractionFromGround` / `divisionsFromXFraction`. `formatFrequency` gives four digits (`300.0 Hz`).
 - `Menu` only has `checked` (role `menuitemcheckbox`), no radio role. Segmented segments cannot carry their own aria-label (name is the visible text).
 - Tests: `app/main-window/test-inputs.ts` builds `ModelInputs` from `app/instrument/test-data`. Playwright with a temp config copy: ports 5173/4173 are often taken by other agents, pick unusual ones and set `E2E_PREVIEW_PORT`.
+## M3 B8 math and F6 toolbar (developer-10)
+- Math lives in `Model.math: MathSetting` (domain/math.rs); every math edit goes through `Instrument::edit` so it stays all-or-nothing. `math::state(caps, model, gate)` and `reset(caps, ...)` gained `caps` (hooks only had the model). Math unit text: ScaleChoice label for `A×B` reads `0.1 V²/div` (V² never takes a prefix). `Instrument::derive_math(frame)` is the single entry used by `derive_trace`.
+- Worktree shell refuses python heredocs, `cd X && ...`, `git -C`, and chained rm/git commands: use Write/Edit tools and one plain command per call.
+- Frontend: segmented buttons have role `button` with aria-pressed (not radio); Menu radio items are `menuitemradio` (added `radio` and `separatorBefore` to MenuItem); Button tone `record` added; Toast takes an `actions` snippet; `NotificationRequest.action` {label, run}.
+- e2e for temporary Playwright: temp config with `npm run dev -- --port 5373 --strictPort`, `reuseExistingServer: false`, chromium only, delete afterwards.
+- A Single armed state is not published by the backend: UI infers `waitingForTrigger && sweep auto` (Normal sweep also waits). Ask for a backend flag if it matters.

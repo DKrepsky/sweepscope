@@ -1,8 +1,8 @@
 import type { MainWindowActions } from '../../app/main-window';
 
-type ShortcutAction = 'toggleCursors' | 'saveSetup' | 'exportCsv' | 'saveScreenshot';
+type ShortcutAction = 'toggleCursors' | 'startAutoset' | 'saveSetup' | 'exportCsv' | 'saveScreenshot';
 
-const PLAIN: Record<string, ShortcutAction> = { c: 'toggleCursors' };
+const PLAIN: Record<string, ShortcutAction> = { c: 'toggleCursors', a: 'startAutoset' };
 const WITH_COMMAND: Record<string, ShortcutAction> = { s: 'saveSetup', e: 'exportCsv', p: 'saveScreenshot' };
 
 const TEXT_FIELDS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);

@@ -6,7 +6,7 @@ import { createTauriClient } from './api';
 import { createCopyText } from './app/clipboard';
 import { createLayoutTierStore, createResizeObserverViewport } from './app/layout';
 import { createLiveApp } from './app/main-window';
-import { createNotifications } from './app/notifications';
+import { createNotifications, type NotificationAction } from './app/notifications';
 import { chooseTextScale, createTextScaleStore } from './app/text-scale';
 import { consoleReport, createFrameBudgetProbe, type FrameBudgetProbe } from './app/waveform';
 import { composeScreenshot } from './pages/main-window/compose-screenshot';
@@ -31,7 +31,8 @@ async function start(): Promise<void> {
     textScale,
   });
   const notifications = createNotifications();
-  const notify = (kind: 'info' | 'warning' | 'error', text: string) => notifications.notify({ kind, text });
+  const notify = (kind: 'info' | 'warning' | 'error', text: string, action?: NotificationAction) =>
+    notifications.notify({ kind, text, action });
   const app = createLiveApp({
     client,
     notify,
