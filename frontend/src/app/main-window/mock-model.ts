@@ -1,4 +1,4 @@
-import type { ChannelModel, MainWindowModel, MeasurementsModel, ScaleQuantity } from './types';
+import type { ChannelModel, MainWindowModel, MeasurementsModel, PersistenceModel, ScaleQuantity } from './types';
 import { sineWave, squareWave, triangleWave } from './mock-signals';
 
 /** Illustrative placeholders from the design prototype; not hardware statements. */
@@ -111,4 +111,66 @@ export const mockGraph = (): MainWindowModel['graph'] => ({
   ],
   summary:
     'Yt display, 10 by 8 divisions. CH1 square wave 1.91 V peak to peak at 500 mV per division, CH2 sine 32 mV peak to peak at 20 mV per division, CH3 triangle at 2 V per division. Triggered on CH1 rising edge at 900 mV.',
+});
+
+type Analysis = Pick<MainWindowModel, 'views' | 'persistence' | 'peak' | 'roll' | 'recording' | 'autoset' | 'math'>;
+
+const PERSISTENCE_OPTIONS: PersistenceModel['options'] = [
+  { value: 'off', label: 'Off' },
+  { value: '500ms', label: '0.5 s' },
+  { value: '1s', label: '1 s' },
+  { value: '2s', label: '2 s' },
+  { value: 'infinite', label: 'Infinite' },
+];
+
+const channelOptions = (enabled: number[]) =>
+  ([1, 2, 3, 4] as const).map((channel) => ({ channel, availability: { enabled: enabled.includes(channel) } }));
+
+const mockViews = (): Analysis['views'] => ({
+  tab: 'yt',
+  tabAvailability: { yt: { enabled: true }, xy: { enabled: true }, fft: { enabled: true } },
+  xy: { x: 1, y: 2, xOptions: channelOptions([1, 2, 3]), yOptions: channelOptions([1, 2, 3]) },
+  fft: {
+    window: 'hann',
+    scale: 'dbv',
+    available: { enabled: true },
+    ticksX: [],
+    ticksY: [],
+    readout: { span: '0 to 25 kHz', binSpacing: '12.21 Hz', topLabel: '+10 dBV' },
+  },
+});
+
+const mockMath = (): Analysis['math'] => ({
+  row: {
+    enabled: false,
+    operation: 'subtract',
+    sourceA: 1,
+    sourceB: 2,
+    scale: { value: '1', unit: 'V/div' },
+    position: { value: '0.00', unit: 'div' },
+    label: 'A−B',
+    status: 'ok',
+    availability: { enabled: true },
+  },
+  chip: '',
+});
+
+/** The analysis part of the mock: every feature available, nothing recording, no gaps. */
+export const mockAnalysis = (): Analysis => ({
+  views: mockViews(),
+  persistence: {
+    value: 'off',
+    options: PERSISTENCE_OPTIONS,
+    tag: '',
+    available: { enabled: true },
+    epoch: 0,
+  },
+  peak: { mode: 'auto', channel: 1, bin: 0, frequency: '1.001 kHz', level: '−6.9 dBV', available: { enabled: true } },
+  roll: { active: false, window: '', gaps: [], gapCount: 0 },
+  recording: {
+    active: false,
+    available: { enabled: false, reason: 'Recording needs roll mode (500 ms/div or slower)' },
+  },
+  autoset: { busy: false, noSignal: false, available: { enabled: true } },
+  math: mockMath(),
 });

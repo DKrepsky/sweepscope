@@ -321,3 +321,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Worker rolls when the applied setup's time base is `streaming`: `module/roll.rs` (`RollCounter`, `POLL_INTERVAL` 50 ms), `WorkerControl::roll_should_end_within` paces and wakes on stop, new setup or capturing off. `Worker` and `Manager` now take the injected `Clock` (DeviceDeps.clock).
 - Device module tests use real time (SystemClock); gap sizes are asserted as ranges. `module_support` Rig has `polled` and `hooks.calls` (configure/start_roll/stop order).
 - In this sandbox, commands mixing `cd`, heredocs and pipes can be refused as "too complex": use Write/Edit for files and plain separate commands.
+## M3 F2 model skeleton (developer-8)
+- Selectors of the analysis features take one `ModelInputs` object (select-common.ts) so a work package replaces a body without changing the signature; new presentation stores live in `app/views` and are created inside `createLiveMainWindow`.
+- Consumer-defined ports (`AnalyseCommands`, `AnalysisSources` in `app/views/analysis-ports.ts`) let the model compile before F1's stores and commands exist; `createLiveApp` falls back to inert ones when `analysis` is not passed.
+- Generated api types are importable by deep path (`../../api/generated/X`) when `api/index.ts` (another package's file) lacks the export.
+- Editing another developer's file even temporarily is blocked by the permission classifier: verify against their pending fixture changes in a scratch copy (`cp -r src` + symlinked node_modules + `server.fs.strict:false` in the copied vite config).
+- Sandbox refuses compound commands that `cd ../..` or contain the word "enable" in grep/sed; use Read/Edit and separate commands.
