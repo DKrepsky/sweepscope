@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ChannelModel, ChannelNumber } from '../../app/main-window';
+  import type { ChannelModel, ChannelNumber, MathModel } from '../../app/main-window';
   import Badge from '../../ui/badge/Badge.svelte';
   import { channelStyle } from './channel-style';
 
@@ -8,20 +8,26 @@
     cursorSource: ChannelNumber;
     /** Shown while the dock hides the Trigger group (h4), so the trigger state stays at a glance. */
     triggerSummary?: string;
+    math?: MathModel;
+    /** Persistence is drawing: say where its update rate is. */
+    persistenceNote?: boolean;
   }
 
   const CLIP_TIP =
     'The signal reaches the converter limits; amplitude measurements are not valid. Increase volts per division.';
-  const { channels, cursorSource, triggerSummary }: Props = $props();
+  const PERSISTENCE_NOTE = 'Persistence builds from successive frames; the update rate is in the status bar.';
+  const { channels, cursorSource, triggerSummary, math, persistenceNote }: Props = $props();
 
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
   const shownText = (channel: ChannelModel) => (channel.enabled ? summary(channel) : 'off');
   const unverified = (channel: ChannelModel) => (channel.enabled && channel.unverified ? ' Unverified' : '');
   const clip = (channel: ChannelModel) => (channel.enabled && channel.clipped ? ' Clip' : '');
+  const role = (channel: ChannelModel) => (channel.enabled && channel.role ? ` ${channel.role.toUpperCase()}` : '');
+  const alias = (channel: ChannelModel) => (channel.enabled && channel.alias ? ' Alias' : '');
   /** WCAG 2.5.3: the name starts with the visible text. */
   const accessibleName = (channel: ChannelModel) =>
-    `${channel.number} ${shownText(channel)}${unverified(channel)}${clip(channel)}, channel ${channel.number} scale`;
+    `${channel.number} ${shownText(channel)}${role(channel)}${alias(channel)}${unverified(channel)}${clip(channel)}, channel ${channel.number} scale`;
 </script>
 
 <div class="strip" data-region="scale-strip" role="group" aria-label="Channel scales">
@@ -40,12 +46,27 @@
       {#if channel.enabled && channel.unverified}
         <Badge kind="warning" tooltip={channel.unverified}>Unverified</Badge>
       {/if}
+      {#if channel.enabled && channel.role}
+        <span class="role" data-role={channel.role}>{channel.role.toUpperCase()}</span>
+      {/if}
+      {#if channel.enabled && channel.alias}
+        <Badge kind="warning" tooltip={channel.alias.message}>Alias</Badge>
+      {/if}
       {#if channel.enabled && channel.clipped}
         <Badge kind="error" tooltip={CLIP_TIP}>Clip</Badge>
       {/if}
     </button>
   {/each}
+  {#if math?.chip}
+    <span class="chip math" class:unavailable={math.row.status === 'unavailable'} title={math.chip} data-math-chip>
+      <span class="ss-num text">{math.chip}</span>
+      {#if math.row.status === 'mixed' && math.row.statusDetail}
+        <Badge kind="warning" tooltip={math.row.statusDetail}>Mixed</Badge>
+      {/if}
+    </span>
+  {/if}
   <span class="grow"></span>
+  {#if persistenceNote}<span class="note" data-persistence-note>{PERSISTENCE_NOTE}</span>{/if}
   {#if triggerSummary}<span class="note" data-trigger-summary>{triggerSummary}</span>{/if}
   <span class="note">
     Cursor values follow <b class="ss-num" style={channelStyle(cursorSource)}>CH{cursorSource}</b>
@@ -55,6 +76,7 @@
 <style>
   .strip {
     display: flex;
+    min-inline-size: 0;
     align-items: center;
     gap: var(--ss-space-3);
     padding: var(--ss-space-3) var(--ss-space-4);
@@ -90,10 +112,32 @@
     background: transparent;
     border: var(--ss-border-width) solid var(--ss-color-border-subtle);
   }
+  .role {
+    padding: 0 var(--ss-space-2);
+    font-family: var(--ss-font-mono);
+    font-size: var(--ss-font-size-2xs);
+    font-weight: var(--ss-font-weight-bold);
+    border: var(--ss-border-width) solid currentColor;
+    border-radius: var(--ss-radius-sm);
+  }
+  .chip.math {
+    min-inline-size: 0;
+    border-color: var(--ss-color-math);
+  }
+  .chip.math .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chip.math.unavailable {
+    color: var(--ss-color-text-secondary);
+    border-style: dashed;
+  }
   .grow {
     flex: 1;
   }
   .note {
+    flex: none;
     font-size: var(--ss-font-size-xs);
     color: var(--ss-color-text-secondary);
   }

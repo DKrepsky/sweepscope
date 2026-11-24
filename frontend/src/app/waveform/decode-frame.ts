@@ -1,10 +1,9 @@
-import type { ChannelNumber } from '../main-window/types';
+import { channelsInMask, type TraceChannel } from './trace-channel';
 
 const MAGIC = 0x31465353;
 const HEADER_BYTES = 48;
 const FLAG_TRIGGERED = 1;
 const FLAG_AUTO = 2;
-const CHANNELS: ChannelNumber[] = [1, 2, 3, 4];
 
 export interface DecodedFrame {
   sequence: number;
@@ -18,7 +17,7 @@ export interface DecodedFrame {
   triggerIndex: number | undefined;
   setupRevision: number;
   /** Divisions from the top edge, views of the received buffer. */
-  channels: { channel: ChannelNumber; samples: Float32Array }[];
+  channels: { channel: TraceChannel; samples: Float32Array }[];
 }
 
 /** Layout of ADR 0011 (little endian). The sample arrays are 4-byte aligned by the 48-byte header. */
@@ -29,7 +28,7 @@ export function decodeFrame(buffer: ArrayBuffer): DecodedFrame {
   const mask = view.getUint8(24);
   const flags = view.getUint8(25);
   const samplesPerChannel = view.getUint32(28, true);
-  const present = CHANNELS.filter((_, bit) => (mask & (1 << bit)) !== 0);
+  const present = channelsInMask(mask);
   if (buffer.byteLength !== HEADER_BYTES + 4 * samplesPerChannel * present.length) {
     throw new Error('Frame length does not match its sample count');
   }

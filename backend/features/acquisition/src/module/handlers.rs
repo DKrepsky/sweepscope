@@ -8,8 +8,8 @@ use super::effects::Effects;
 use super::setup_files::SetupFiles;
 use super::shared::Shared;
 use crate::{
-    ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
-    SetTriggerLevel, SetTriggerPosition, StepSetting,
+    ArmSingle, ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetMath, SetRunning,
+    SetTrigger, SetTriggerLevel, SetTriggerPosition, StartAutoset, StepSetting,
 };
 
 /// Registers every request of this feature. The handlers hold the module state weakly: the bus lives as long as the
@@ -21,6 +21,8 @@ pub fn register(bus: &Bus, shared: &Arc<Shared>, files: SetupFiles) -> Result<()
         core.set_running(r.running, fx, now)
     })?;
     on(bus, weak, |core, _: ForceTriggerNow, fx, _| core.force_trigger(fx))?;
+    on(bus, weak, |core, _: ArmSingle, fx, now| core.arm_single(fx, now))?;
+    on(bus, weak, |core, _: StartAutoset, fx, now| core.start_autoset(fx, now))?;
     on(bus, weak, |core, r: SetChannel, fx, now| {
         core.edit(fx, now, |i| i.set_channel(r.channel, r.patch))
     })?;
@@ -35,6 +37,9 @@ pub fn register(bus: &Bus, shared: &Arc<Shared>, files: SetupFiles) -> Result<()
     })?;
     on(bus, weak, |core, r: SetTriggerLevel, fx, now| {
         core.edit(fx, now, |i| i.set_trigger_level(r.divisions))
+    })?;
+    on(bus, weak, |core, r: SetMath, fx, now| {
+        core.edit(fx, now, |i| i.set_math(r.patch))
     })?;
     on(bus, weak, |core, r: SetTrigger, fx, now| {
         core.edit(fx, now, |i| i.set_trigger(r.patch))

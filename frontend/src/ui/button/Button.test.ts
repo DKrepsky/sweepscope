@@ -82,4 +82,25 @@ describe('Button', () => {
     render(Button, { children: label, 'data-testid': 'trigger' });
     expect(screen.getByTestId('trigger')).toBe(screen.getByRole('button'));
   });
+
+  it('given busy, when rendered, then aria-busy is true and a spinner and its static fallback are present', () => {
+    render(Button, { children: label, busy: true });
+    const button = screen.getByRole('button');
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button.querySelector('.spinner')).not.toBeNull();
+    expect(button.querySelector('.dots')).toHaveTextContent('...');
+  });
+
+  it('given not busy, when rendered, then aria-busy is absent and no spinner shows', () => {
+    render(Button, { children: label });
+    const button = screen.getByRole('button');
+    expect(button).not.toHaveAttribute('aria-busy');
+    expect(button.querySelector('.spinner')).toBeNull();
+  });
+
+  it('given busy and a right snippet, when rendered, then the spinner replaces it', () => {
+    const right = createRawSnippet(() => ({ render: () => '<span>Right</span>' }));
+    render(Button, { children: label, right, busy: true });
+    expect(screen.queryByText('Right')).toBeNull();
+  });
 });

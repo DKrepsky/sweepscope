@@ -131,3 +131,25 @@ fn given_a_negligible_record_when_the_dead_time_is_read_then_it_is_at_most_100_p
 
     assert_eq!(meter.dead_time_percent(clock.now(), 0.0), Some(100.0));
 }
+
+#[test]
+fn given_a_stopped_scope_when_a_single_is_armed_then_the_phase_waits_for_a_trigger() {
+    assert_eq!(
+        next_status(Phase::Stopped, StatusEvent::ArmSingle),
+        Phase::WaitingForTrigger
+    );
+}
+
+#[test]
+fn given_a_waiting_single_when_it_is_done_then_the_phase_is_done() {
+    assert_eq!(
+        next_status(Phase::WaitingForTrigger, StatusEvent::SingleDone),
+        Phase::Done
+    );
+}
+
+#[test]
+fn given_a_done_single_when_run_or_stop_then_the_phase_is_armed_or_stopped() {
+    assert_eq!(next_status(Phase::Done, StatusEvent::Run), Phase::Armed);
+    assert_eq!(next_status(Phase::Done, StatusEvent::Stop), Phase::Stopped);
+}

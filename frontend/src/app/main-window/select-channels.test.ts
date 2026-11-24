@@ -25,6 +25,7 @@ const instrument = {
 const slice = (clippedChannel: number): MeasurementsState => ({
   revision: 1,
   accuracyNote: '',
+  warnings: [],
   channels: [1, 2].map((number) => ({
     channel: number,
     clipped: number === clippedChannel,

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use sweepscope_device::{
     AcquisitionSetup, CatalogEvent, ChannelSetup, Coupling, DeviceCatalog, HantekCatalog, ScopeDevice, Slope, Sweep,
-    TriggerSetup,
+    TriggerKind, TriggerSetup,
 };
 
 const ATTACH_WAIT: Duration = Duration::from_secs(10);
@@ -40,6 +40,7 @@ fn setup(enabled_channels: usize) -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep: Sweep::Auto,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
     }
 }

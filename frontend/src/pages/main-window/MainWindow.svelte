@@ -78,6 +78,10 @@
   >
     <Toolbar
       toolbar={model.toolbar}
+      views={model.views}
+      persistence={model.persistence}
+      autoset={model.autoset}
+      recording={model.recording}
       toolLabels={tier.width === 'w1'}
       runLabels={!compact}
       drawerButton={compact}
@@ -85,6 +89,14 @@
       {textScale}
       ontogglerun={windowActions.toggleRun}
       onforce={windowActions.forceTrigger}
+      onarmsingle={windowActions.armSingle}
+      onautoset={windowActions.startAutoset}
+      onsetview={windowActions.setView}
+      onsetpersistence={windowActions.setPersistence}
+      onclearpersistence={windowActions.clearPersistence}
+      ontogglemath={() => windowActions.setMathEnabled(!model.toolbar.tools.math)}
+      onstartrecording={windowActions.startRecording}
+      onstoprecording={windowActions.stopRecording}
       ontogglecursors={windowActions.toggleCursors}
       ontoggledrawer={() => (drawerRequested = !drawerRequested)}
       {ontextscale}
@@ -104,13 +116,23 @@
       <div class="floor">
         <div class="body">
           <main class="left">
-            <HorizontalReadout horizontal={model.horizontal} showOverview={collapse.recordOverview} />
+            <HorizontalReadout
+              horizontal={model.horizontal}
+              views={model.views}
+              roll={model.roll}
+              persistence={model.persistence}
+              recording={model.recording}
+              showOverview={collapse.recordOverview}
+            />
             <ScopeStage
               rootFontPx={tier.rootFontPx}
               graph={model.graph}
               channels={model.channels}
               trigger={model.trigger}
               cursors={model.cursors}
+              views={model.views}
+              peak={model.peak}
+              roll={model.roll}
               dots={model.horizontal.interpolation === 'dots'}
               interpolation={model.horizontal.interpolation}
               actions={windowActions}
@@ -118,12 +140,16 @@
             <ScaleStrip
               channels={model.channels}
               cursorSource={model.cursors.source}
+              math={model.math}
+              persistenceNote={model.graph.persistence !== undefined}
               triggerSummary={collapse.groupTabs ? triggerSummary : undefined}
             />
             <FrontPanelDock
               channels={model.channels}
               horizontal={model.horizontal}
+              views={model.views}
               trigger={model.trigger}
+              math={model.math}
               actions={windowActions}
               wrapped={compact}
               smallRows={collapse.smallRows}
@@ -134,10 +160,13 @@
           {#if !compact}
             <div class="slot">
               <Sidebar
+                view={model.views.tab}
                 cursors={model.cursors}
                 measurements={model.measurements}
+                peak={model.peak}
                 onclearcursors={windowActions.clearCursors}
                 onpin={windowActions.setMeasurementPinned}
+                onpeakmode={windowActions.setPeakMode}
               />
             </div>
           {:else if drawerOpen}
@@ -149,10 +178,13 @@
               role="region"
             >
               <Sidebar
+                view={model.views.tab}
                 cursors={model.cursors}
                 measurements={model.measurements}
+                peak={model.peak}
                 onclearcursors={windowActions.clearCursors}
                 onpin={windowActions.setMeasurementPinned}
+                onpeakmode={windowActions.setPeakMode}
               />
             </div>
           {/if}
@@ -166,6 +198,19 @@
       {#each notifications as notification (notification.id)}
         <Toast kind={notification.kind} ondismiss={() => onnotificationdismiss(notification.id)}>
           {#snippet text()}{notification.text}{/snippet}
+          {#snippet actions()}
+            {@const action = notification.action}
+            {#if action}
+              <Button
+                onclick={() => {
+                  action.run();
+                  onnotificationdismiss(notification.id);
+                }}
+              >
+                {action.label}
+              </Button>
+            {/if}
+          {/snippet}
         </Toast>
       {/each}
     </div>

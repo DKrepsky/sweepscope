@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use sweepscope_device::{
     AcquisitionSetup, ChannelSetup, Coupling, ScopeDevice, SimulatedCatalog, SimulatedDevice, SimulatorControl, Slope,
-    Sweep, TriggerSetup,
+    Sweep, TriggerKind, TriggerSetup,
 };
 use sweepscope_kernel::testing::FakeClock;
 use sweepscope_kernel::Clock;
@@ -52,6 +52,7 @@ pub fn setup(enabled: [bool; 4], time_base_index: u8) -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep: Sweep::Auto,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
     }
 }

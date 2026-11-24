@@ -5,7 +5,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use sweepscope_kernel::contracts::{ConnectionIssue, ConnectionIssueKind, ConnectionState, DeviceSource};
-use sweepscope_kernel::Bus;
+use sweepscope_kernel::{Bus, Clock};
 
 use super::connection::{ConnectionStore, Status};
 use super::control::WorkerControl;
@@ -93,11 +93,19 @@ pub struct Manager {
     store: ConnectionStore,
     slot: SessionSlot,
     bus: Bus,
+    clock: Arc<dyn Clock>,
     inbox: Sender<Msg>,
 }
 
 impl Manager {
-    pub fn new(catalogs: Catalogs, store: ConnectionStore, slot: SessionSlot, bus: Bus, inbox: Sender<Msg>) -> Self {
+    pub fn new(
+        catalogs: Catalogs,
+        store: ConnectionStore,
+        slot: SessionSlot,
+        bus: Bus,
+        clock: Arc<dyn Clock>,
+        inbox: Sender<Msg>,
+    ) -> Self {
         Self {
             catalogs,
             attached: Attached::default(),
@@ -107,6 +115,7 @@ impl Manager {
             store,
             slot,
             bus,
+            clock,
             inbox,
         }
     }
@@ -246,6 +255,7 @@ impl Manager {
             device,
             control: Arc::new(WorkerControl::new()),
             bus: self.bus.clone(),
+            clock: Arc::clone(&self.clock),
             report: Box::new(move |end| {
                 let _ = inbox.send(Msg::Worker {
                     session: session_id,

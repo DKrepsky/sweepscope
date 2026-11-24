@@ -66,6 +66,7 @@ fn frame() -> FrameCaptured {
             range_verified: [true, true, false, true],
             seconds_per_div: 1e-6,
         },
+        derived: None,
     }
 }
 

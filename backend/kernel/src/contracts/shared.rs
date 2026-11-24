@@ -18,3 +18,12 @@ pub struct FormattedValue {
 pub struct SavedFile {
     pub file_name: String,
 }
+
+/// A control that may be disabled, with the reason text the UI shows. Shared so feature crates need not import each other.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Availability {
+    pub enabled: bool,
+    pub reason: Option<String>,
+}

@@ -6,6 +6,7 @@ mod connection;
 mod control;
 mod issue;
 mod manager;
+mod roll;
 mod session;
 mod timeout;
 mod worker;
@@ -30,7 +31,7 @@ pub struct SimulatorSource {
 
 pub struct DeviceDeps {
     pub bus: Bus,
-    /// Not used by the module itself: devices and catalogs carry their own clock.
+    /// Times the roll polls; devices and catalogs carry their own clock.
     pub clock: Arc<dyn Clock>,
     pub hardware: Option<Box<dyn DeviceCatalog>>,
     pub simulator: Option<SimulatorSource>,
@@ -64,7 +65,7 @@ impl DeviceModule {
     pub fn new(deps: DeviceDeps) -> Result<Self, KernelError> {
         let DeviceDeps {
             bus,
-            clock: _,
+            clock,
             hardware,
             simulator,
         } = deps;
@@ -92,7 +93,7 @@ impl DeviceModule {
             hardware,
             simulator: simulator_catalog,
         };
-        let manager = Manager::new(catalogs, store, slot, bus, inbox.clone());
+        let manager = Manager::new(catalogs, store, slot, bus, clock, inbox.clone());
         let manager = std::thread::Builder::new()
             .name("device-manager".to_owned())
             .spawn(move || manager.run(messages))

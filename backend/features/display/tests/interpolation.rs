@@ -44,6 +44,7 @@ fn flat(window_len: usize, trigger: TriggerOutcome) -> FrameCaptured {
     FrameCaptured {
         frame: one_channel(vec![128; window_len + 10], trigger),
         context: context(5, window_len),
+        derived: None,
     }
 }
 
@@ -240,6 +241,7 @@ fn calibrator_frame(window_len: usize) -> FrameCaptured {
     FrameCaptured {
         frame: std::sync::Arc::new(frame),
         context: context(centre - window_len / 2, window_len),
+        derived: None,
     }
 }
 

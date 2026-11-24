@@ -1,4 +1,5 @@
 use std::sync::{Condvar, Mutex, MutexGuard};
+use std::time::Duration;
 
 use crate::AcquisitionSetup;
 
@@ -6,6 +7,8 @@ use crate::AcquisitionSetup;
 struct Intent {
     stop: bool,
     capturing: bool,
+    /// Counts every change of `capturing`, so a roll can tell that its session ended even if capturing is on again.
+    session: u64,
     force: bool,
     pending: Option<(u64, AcquisitionSetup)>,
 }
@@ -44,6 +47,7 @@ impl WorkerControl {
 
     pub fn set_capturing(&self, on: bool) {
         self.update(|intent| {
+            intent.session += u64::from(intent.capturing != on);
             intent.capturing = on;
             intent.force &= on;
         });
@@ -86,6 +90,25 @@ impl WorkerControl {
         }
     }
 
+    /// The capturing session now running; pass it to `roll_should_end_within` when a roll starts.
+    pub fn session(&self) -> u64 {
+        self.lock().session
+    }
+
+    /// Sleeps one roll poll interval. Returns true as soon as the roll of `session` must end: stop, a new setup,
+    /// capturing off, or capturing restarted since the roll began.
+    pub fn roll_should_end_within(&self, session: u64, interval: Duration) -> bool {
+        let (intent, _) = self
+            .wake
+            .wait_timeout_while(self.lock(), interval, |intent| !Self::ends_roll(intent, session))
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        Self::ends_roll(&intent, session)
+    }
+
+    fn ends_roll(intent: &Intent, session: u64) -> bool {
+        intent.stop || intent.pending.is_some() || !intent.capturing || intent.session != session
+    }
+
     fn update(&self, change: impl FnOnce(&mut Intent)) {
         change(&mut self.lock());
         self.wake.notify_all();
@@ -101,7 +124,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::{ChannelSetup, Coupling, Slope, Sweep, TriggerSetup};
+    use crate::{ChannelSetup, Coupling, Slope, Sweep, TriggerKind, TriggerSetup};
 
     fn setup(time_base_index: u8) -> AcquisitionSetup {
         let channel = ChannelSetup {
@@ -120,8 +143,48 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: TriggerKind::Edge,
             },
         }
+    }
+
+    #[test]
+    fn given_a_new_setup_when_a_roll_waits_then_it_ends_at_once() {
+        let control = WorkerControl::new();
+        control.set_capturing(true);
+        control.apply_setup(1, setup(0));
+
+        assert!(control.roll_should_end_within(control.session(), Duration::from_secs(60)));
+    }
+
+    #[test]
+    fn given_capturing_without_news_when_a_roll_waits_then_it_continues_after_the_interval() {
+        let control = WorkerControl::new();
+        control.set_capturing(true);
+
+        assert!(!control.roll_should_end_within(control.session(), Duration::from_millis(1)));
+    }
+
+    #[test]
+    fn given_a_roll_when_capturing_stops_and_restarts_before_the_next_poll_then_the_old_roll_ends() {
+        let control = WorkerControl::new();
+        control.set_capturing(true);
+        let rolling = control.session();
+
+        control.set_capturing(false);
+        control.set_capturing(true);
+
+        assert!(control.roll_should_end_within(rolling, Duration::from_secs(60)));
+        assert!(!control.roll_should_end_within(control.session(), Duration::from_millis(1)));
+    }
+
+    #[test]
+    fn given_capturing_off_or_stop_when_a_roll_waits_then_it_ends() {
+        let control = WorkerControl::new();
+        assert!(control.roll_should_end_within(control.session(), Duration::from_secs(60)));
+        control.set_capturing(true);
+        control.stop();
+        assert!(control.roll_should_end_within(control.session(), Duration::from_secs(60)));
     }
 
     #[test]

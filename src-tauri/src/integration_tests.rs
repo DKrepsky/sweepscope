@@ -9,13 +9,14 @@ use sweepscope_export::{ExportFormat, ExportFrame, SaveScreenshot};
 use sweepscope_kernel::contracts::ConnectionState;
 use sweepscope_kernel::testing::{eventually, MemoryStorage, ScriptedPicker};
 use sweepscope_kernel::{Bus, SystemClock};
+use sweepscope_recording::OsRecordFiles;
 
 use crate::composition::{compose, simulator_source, unix_time_us, Backend, Wiring};
 use crate::ipc::snapshot_with;
 
 const WAIT: Duration = Duration::from_secs(10);
 
-fn simulated_backend() -> (Backend, SimulatorControl) {
+pub(crate) fn simulated_backend() -> (Backend, SimulatorControl) {
     simulated_backend_with(Arc::new(ScriptedPicker::default()))
 }
 
@@ -26,6 +27,7 @@ fn simulated_backend_with(picker: Arc<ScriptedPicker>) -> (Backend, SimulatorCon
     let backend = compose(Wiring {
         storage: Arc::new(MemoryStorage::default()),
         picker,
+        record_files: Arc::new(OsRecordFiles),
         clock,
         hardware: None,
         simulator: Some(source),

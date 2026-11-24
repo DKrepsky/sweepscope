@@ -1,8 +1,8 @@
 mod commands;
 pub mod events;
-pub mod frames;
 pub mod picker;
 mod snapshot;
+pub mod streams;
 
 pub use commands::install;
 #[cfg(test)]

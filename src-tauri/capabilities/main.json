@@ -24,6 +24,17 @@
     "allow-retry-connection",
     "allow-open-frame-stream",
     "allow-close-frame-stream",
+    "allow-arm-single",
+    "allow-start-autoset",
+    "allow-set-math",
+    "allow-set-persistence",
+    "allow-set-spectrum",
+    "allow-start-recording",
+    "allow-stop-recording",
+    "allow-open-roll-stream",
+    "allow-close-roll-stream",
+    "allow-open-spectrum-stream",
+    "allow-close-spectrum-stream",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

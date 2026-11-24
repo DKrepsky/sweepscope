@@ -5,6 +5,8 @@ use sweepscope_display::{DisplayState, GetDisplay};
 use sweepscope_kernel::contracts::ConnectionSnapshot;
 use sweepscope_kernel::{Bus, KernelError};
 use sweepscope_measurement::{GetMeasurements, MeasurementsState};
+use sweepscope_recording::{GetRecording, RecordingState};
+use sweepscope_spectrum::{GetSpectrum, SpectrumState};
 
 /// What `get_snapshot` returns; the shell assembles it from the slice owners and holds no state of its own.
 /// Its TypeScript type is rendered by `manifest::render_state_snapshot_ts`, because ts-rs cannot place a file of the
@@ -18,6 +20,8 @@ pub struct StateSnapshot {
     pub facts: InstrumentFacts,
     pub display: DisplayState,
     pub measurements: MeasurementsState,
+    pub spectrum: SpectrumState,
+    pub recording: RecordingState,
 }
 
 pub fn snapshot_with(bus: &Bus) -> Result<StateSnapshot, KernelError> {
@@ -34,6 +38,8 @@ pub fn snapshot_with(bus: &Bus) -> Result<StateSnapshot, KernelError> {
         facts,
         display: bus.request(GetDisplay)?,
         measurements: bus.request(GetMeasurements)?,
+        spectrum: bus.request(GetSpectrum)?,
+        recording: bus.request(GetRecording)?,
     })
 }
 
@@ -55,6 +61,7 @@ mod tests {
         compose(Wiring {
             storage: Arc::new(MemoryStorage::default()),
             picker: Arc::new(ScriptedPicker::default()),
+            record_files: Arc::new(sweepscope_recording::OsRecordFiles),
             clock: clock.clone(),
             hardware: None,
             simulator: Some(simulator_source(clock, true)),
@@ -112,6 +119,8 @@ mod tests {
             facts,
             display,
             measurements,
+            spectrum,
+            recording,
         } = snapshot_with(&backend.bus).expect("snapshot");
 
         let actual = [
@@ -121,6 +130,8 @@ mod tests {
             ("facts", ts_expression(&facts)),
             ("display", ts_expression(&display)),
             ("measurements", ts_expression(&measurements)),
+            ("spectrum", ts_expression(&spectrum)),
+            ("recording", ts_expression(&recording)),
         ];
 
         let listed: Vec<(&str, String)> = SNAPSHOT_FIELDS
@@ -131,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn given_the_composed_app_with_the_simulator_when_a_snapshot_is_requested_then_it_carries_all_six_slices() {
+    fn given_the_composed_app_with_the_simulator_when_a_snapshot_is_requested_then_it_carries_all_eight_slices() {
         let backend = compose_quiet();
         assert!(eventually(Duration::from_secs(5), || {
             snapshot_with(&backend.bus).is_ok_and(|s| s.connection.state == ConnectionState::Ready)
@@ -143,5 +154,7 @@ mod tests {
         assert!(snapshot.display.automatic);
         assert_eq!(snapshot.display.interpolation, InterpolationMode::Linear);
         assert!(snapshot.measurements.channels.is_empty());
+        assert!(!snapshot.spectrum.active);
+        assert!(!snapshot.recording.active);
     }
 }

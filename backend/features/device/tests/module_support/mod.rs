@@ -8,15 +8,18 @@ use std::time::Duration;
 use sweepscope_device::{
     AcquisitionSetup, CatalogEvent, ChannelSetup, Coupling, DeviceCatalog, DeviceDeps, DeviceError, DeviceId,
     DeviceModule, GetConnection, ScopeDevice, SimulatedCatalog, SimulatorControl, SimulatorSource, Slope, Sweep,
-    TriggerSetup,
+    TriggerKind, TriggerSetup,
 };
 use sweepscope_device::{Capabilities, DeviceIdentity, Frame};
-use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged, ConnectionSnapshot, ConnectionState};
+use sweepscope_kernel::contracts::{
+    CaptureCompleted, ConnectionChanged, ConnectionSnapshot, ConnectionState, RollPolled,
+};
 use sweepscope_kernel::testing::{eventually, EventRecorder};
 use sweepscope_kernel::{Bus, Subscription, SystemClock};
 
 pub const WAIT: Duration = Duration::from_secs(3);
 pub const TB_200US: u8 = 15;
+pub const TB_500MS: u8 = 25;
 pub const RANGE_1V: u8 = 8;
 
 /// Test hooks shared by a catalog and the devices it opened.
@@ -28,6 +31,8 @@ pub struct Hooks {
     pub live_devices: AtomicUsize,
     pub opened: AtomicUsize,
     pub configures: AtomicUsize,
+    /// Order of `configure`, `start_roll` and `stop` calls that reached the device.
+    pub calls: Mutex<Vec<&'static str>>,
 }
 
 /// Blocks `capture` until released; `entered` fires once the worker is inside the call.
@@ -83,6 +88,7 @@ impl ScopeDevice for TrackedDevice {
     fn configure(&mut self, setup: &AcquisitionSetup) -> Result<(), DeviceError> {
         self.inner.configure(setup)?;
         self.hooks.configures.fetch_add(1, Ordering::SeqCst);
+        self.hooks.calls.lock().unwrap().push("configure");
         Ok(())
     }
 
@@ -102,6 +108,7 @@ impl ScopeDevice for TrackedDevice {
     }
 
     fn start_roll(&mut self) -> Result<(), DeviceError> {
+        self.hooks.calls.lock().unwrap().push("start_roll");
         self.inner.start_roll()
     }
 
@@ -110,6 +117,7 @@ impl ScopeDevice for TrackedDevice {
     }
 
     fn stop(&mut self) -> Result<(), DeviceError> {
+        self.hooks.calls.lock().unwrap().push("stop");
         self.inner.stop()
     }
 }
@@ -157,6 +165,7 @@ pub struct Rig {
     pub bus: Bus,
     pub connection: EventRecorder<ConnectionChanged>,
     pub completed: Subscription<CaptureCompleted>,
+    pub polled: Subscription<RollPolled>,
     pub module: DeviceModule,
 }
 
@@ -165,6 +174,7 @@ pub fn rig(hardware: Option<&mut Source>, simulator: Option<&mut Source>) -> Rig
     let bus = Bus::new();
     let connection = EventRecorder::new(&bus);
     let completed = bus.subscribe();
+    let polled = bus.subscribe();
     let module = DeviceModule::new(DeviceDeps {
         bus: bus.clone(),
         clock: Arc::new(SystemClock),
@@ -179,6 +189,7 @@ pub fn rig(hardware: Option<&mut Source>, simulator: Option<&mut Source>) -> Rig
         bus,
         connection,
         completed,
+        polled,
         module,
     }
 }
@@ -225,6 +236,14 @@ pub fn setup(sweep: Sweep, level_volts: f64) -> AcquisitionSetup {
             slope: Slope::Rising,
             sweep,
             horizontal_position_percent: 50.0,
+            kind: TriggerKind::Edge,
         },
+    }
+}
+
+pub fn roll_setup(time_base_index: u8) -> AcquisitionSetup {
+    AcquisitionSetup {
+        time_base_index,
+        ..setup(Sweep::Auto, 0.0)
     }
 }

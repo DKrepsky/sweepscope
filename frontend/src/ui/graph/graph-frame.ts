@@ -11,6 +11,31 @@ export interface ChannelTrace extends Trace {
   channel: ChannelNumber;
 }
 
+/** A label inside the frame; `at` runs 0 to 1 from the left (X) or from the bottom (Y), like a Marker position. */
+export interface Tick {
+  at: number;
+  text: string;
+}
+
+/** XY pair: X and Y use the Yt convention, divisions from the top edge with 4 at the centre. */
+export interface XyTrace {
+  x: ArrayLike<number>;
+  y: ArrayLike<number>;
+  xChannel: ChannelNumber;
+  yChannel: ChannelNumber;
+}
+
+/**
+ * Ghosts of past frames in Yt. `epoch` and `revision` clear them when they change; `now` is the only clock, so a
+ * caller that holds it still (stopped) pauses the ageing.
+ */
+export interface PersistenceOptions {
+  decayMs: number | 'infinite';
+  epoch: number;
+  revision?: number;
+  now: () => number;
+}
+
 /** Plain data, already scaled to screen divisions, as the backend display module produces it. */
 export interface GraphFrame {
   state: GraphState;
@@ -19,6 +44,10 @@ export interface GraphFrame {
   math?: Trace;
   selected?: ChannelNumber;
   dots?: boolean;
+  ticksX?: readonly Tick[];
+  ticksY?: readonly Tick[];
+  xy?: XyTrace;
+  persistence?: PersistenceOptions;
 }
 
 /** CSS pixel size of the screen and the device pixel ratio it is drawn at. */

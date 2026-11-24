@@ -9,9 +9,11 @@
     frozenLabel?: 'Frozen' | 'Offline';
     footnotes: MeasurementFootnote[];
     cell?: Snippet<[MeasurementCell]>;
+    /** Rendered after the label inside the column header, for example an alias badge. */
+    columnHeader?: Snippet<[MeasurementColumn]>;
   }
 
-  const { columns, rows, frozenLabel, footnotes, cell }: Props = $props();
+  const { columns, rows, frozenLabel, footnotes, cell, columnHeader }: Props = $props();
 
   const isMuted = (c: MeasurementCell) => frozenLabel !== undefined || c.state === 'invalid' || c.state === 'stale';
   const shownText = (c: MeasurementCell) => (c.state === 'invalid' ? '-' : c.text);
@@ -33,7 +35,9 @@
     <tr>
       <th scope="col" class="corner">{frozenLabel ?? ''}</th>
       {#each columns as column (column.id)}
-        <th scope="col" class="ss-num channel" style:--column-colour="var(--ss-{column.color})">{column.label}</th>
+        <th scope="col" class="ss-num channel" style:--column-colour="var(--ss-{column.color})">
+          {column.label}{@render columnHeader?.(column)}
+        </th>
       {/each}
     </tr>
   </thead>
@@ -43,7 +47,7 @@
         <th scope="row">{row.label}</th>
         {#each columns as column (column.id)}
           {@const c = row.cells[column.id]}
-          <td class={c ? [c.state, isMuted(c) && 'muted'] : 'empty'}>
+          <td class={c ? [c.state, c.warning && 'warning', isMuted(c) && 'muted'] : 'empty'}>
             {#if c?.tooltip}
               <Tooltip text={c.tooltip}>
                 <!-- Keyboard users need focus to read the tooltip. -->
@@ -102,7 +106,8 @@
   td.muted {
     color: var(--ss-color-text-muted);
   }
-  td.unverified {
+  td.unverified,
+  td.warning {
     box-shadow: inset var(--ss-space-1) 0 0 var(--ss-color-status-warning);
   }
   .mark,

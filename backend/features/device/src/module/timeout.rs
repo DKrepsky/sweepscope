@@ -5,10 +5,15 @@ use crate::{AcquisitionSetup, Capabilities};
 const MINIMUM: Duration = Duration::from_millis(250);
 const RECORD_MARGIN: f64 = 1.5;
 
+/// Seconds between two samples of the setup, for the enabled channel count.
+pub fn sample_interval_s(capabilities: &Capabilities, setup: &AcquisitionSetup) -> f64 {
+    let enabled = setup.channels.iter().filter(|channel| channel.enabled).count();
+    capabilities.sample_interval_s(u8::try_from(enabled).unwrap_or(u8::MAX), setup.time_base_index)
+}
+
 /// `max(250 ms, 1.5 x record duration)` (ADR 0007 decision 8): long enough for a full record, short enough to notice a dead device.
 pub fn capture_timeout(capabilities: &Capabilities, setup: &AcquisitionSetup) -> Duration {
-    let enabled = setup.channels.iter().filter(|channel| channel.enabled).count();
-    let interval = capabilities.sample_interval_s(u8::try_from(enabled).unwrap_or(u8::MAX), setup.time_base_index);
+    let interval = sample_interval_s(capabilities, setup);
     let record = Duration::try_from_secs_f64(interval * f64::from(capabilities.record_len)).unwrap_or(MINIMUM);
     record.mul_f64(RECORD_MARGIN).max(MINIMUM)
 }
@@ -16,7 +21,7 @@ pub fn capture_timeout(capabilities: &Capabilities, setup: &AcquisitionSetup) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ChannelSetup, Coupling, Slope, Sweep, TimeBaseStep, TriggerSetup};
+    use crate::{ChannelSetup, Coupling, Slope, Sweep, TimeBaseStep, TriggerKind, TriggerSetup};
 
     fn capabilities() -> Capabilities {
         let step = |seconds_per_div| TimeBaseStep {
@@ -51,6 +56,7 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: TriggerKind::Edge,
             },
         }
     }

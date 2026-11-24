@@ -3,11 +3,12 @@
 use engineering_format::{format, Quantity};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sweepscope_kernel::contracts::{Capabilities, Coupling, Slope, Sweep};
+use sweepscope_kernel::contracts::{Capabilities, Coupling, PulseCondition, Slope, Sweep, TriggerKind};
 use sweepscope_kernel::KernelError;
 
 use super::instrument::{PROBES, SCREEN_HALF_HEIGHT_DIVS};
 use super::model::{Model, CHANNELS};
+use super::pulse;
 
 pub const FORMAT: &str = "sweepscope-setup";
 pub const VERSION: u64 = 1;
@@ -42,6 +43,15 @@ struct TriggerEntry {
     sweep: Sweep,
     level_volts: f64,
     position_percent: f64,
+    /// Absent in files written before the pulse trigger existed, and while the trigger is an edge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pulse: Option<PulseEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct PulseEntry {
+    width_s: f64,
+    condition: PulseCondition,
 }
 
 impl SetupFile {
@@ -63,6 +73,7 @@ impl SetupFile {
                 sweep: trigger.sweep,
                 level_volts: trigger.level_volts,
                 position_percent: round6(model.trigger_fraction * 100.0),
+                pulse: pulse_entry(trigger.kind),
             },
         })
     }
@@ -133,6 +144,14 @@ impl SetupFile {
             && self.time_base_s_per_div.is_finite()
             && self.trigger.level_volts.is_finite()
             && self.trigger.position_percent.is_finite()
+            && self.trigger.pulse.as_ref().is_none_or(|p| p.width_s.is_finite())
+    }
+}
+
+fn pulse_entry(kind: TriggerKind) -> Option<PulseEntry> {
+    match kind {
+        TriggerKind::Edge => None,
+        TriggerKind::Pulse { width_s, condition } => Some(PulseEntry { width_s, condition }),
     }
 }
 
@@ -201,11 +220,8 @@ fn apply_range(entry: &ChannelEntry, caps: &Capabilities, model: &mut Model, war
 }
 
 fn apply_time_base(seconds_per_div: f64, caps: &Capabilities, model: &mut Model, warnings: &mut Vec<String>) {
-    let usable = caps
-        .time_bases
-        .iter()
-        .map(|t| if t.streaming { f64::NAN } else { t.seconds_per_div });
-    match matching_index(usable, seconds_per_div) {
+    let available = caps.time_bases.iter().map(|t| t.seconds_per_div);
+    match matching_index(available, seconds_per_div) {
         Some(index) => model.setup.time_base_index = index,
         None => {
             let kept = caps
@@ -239,7 +255,26 @@ fn apply_trigger(entry: &TriggerEntry, caps: &Capabilities, model: &mut Model, w
         model.set_level_divisions(caps, limited);
         warnings.push("Trigger level is off the screen; limited to the screen edge".to_owned());
     }
+    apply_pulse(entry.pulse.as_ref(), model, warnings);
     model.settle(caps);
+}
+
+fn apply_pulse(entry: Option<&PulseEntry>, model: &mut Model, warnings: &mut Vec<String>) {
+    let Some(entry) = entry else {
+        model.set_pulse(false);
+        return;
+    };
+    if !pulse::width_in_range(entry.width_s) {
+        warnings.push(format!(
+            "Pulse width {} is not available; the trigger stays an edge",
+            shown(entry.width_s, Quantity::Seconds)
+        ));
+        model.set_pulse(false);
+        return;
+    }
+    model.pulse_width_s = entry.width_s;
+    model.pulse_condition = entry.condition;
+    model.set_pulse(true);
 }
 
 fn matching_index(values: impl Iterator<Item = f64>, wanted: f64) -> Option<u8> {

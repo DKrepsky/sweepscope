@@ -85,4 +85,31 @@ describe('createMockMainWindow', () => {
     expect(model.trigger).toMatchObject({ source: 3, slope: 'falling', sweep: 'normal' });
     expect(model.horizontal.interpolation).toBe('dots');
   });
+
+  it('given the mock, when the view, XY axis, persistence and peak mode are chosen, then the model shows them', () => {
+    const mock = createMockMainWindow();
+
+    mock.setView('xy');
+    mock.setXyAxis('y', 3);
+    mock.setPersistence('2s');
+    mock.setPeakMode('manual');
+
+    const model = get(mock);
+    expect(model.views.tab).toBe('xy');
+    expect(model.views.xy.y).toBe(3);
+    expect(model.persistence.value).toBe('2s');
+    expect(model.peak.mode).toBe('manual');
+  });
+
+  it('given the mock, when persistence is cleared and math switched on, then the epoch advances and the row is enabled', () => {
+    const mock = createMockMainWindow();
+    const before = get(mock).persistence.epoch;
+
+    mock.clearPersistence();
+    mock.setMathEnabled(true);
+
+    const model = get(mock);
+    expect(model.persistence.epoch).toBe(before + 1);
+    expect(model.math.row.enabled).toBe(true);
+  });
 });

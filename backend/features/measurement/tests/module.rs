@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use sweepscope_kernel::contracts::{ChannelData, Frame, FrameCaptured, FrameContext, TriggerOutcome};
+use sweepscope_kernel::contracts::{
+    ChannelData, DerivedTrace, DerivedUnit, Frame, FrameCaptured, FrameContext, TriggerOutcome,
+};
 use sweepscope_kernel::testing::FakeClock;
 use sweepscope_kernel::Bus;
 use sweepscope_measurement::{
@@ -94,6 +96,7 @@ fn captured(wave: &Wave, seconds_per_div: f64, offset_s: f64) -> FrameCaptured {
     FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(seconds_per_div),
+        derived: None,
     }
 }
 
@@ -196,6 +199,7 @@ fn given_a_record_with_a_rail_code_when_measured_then_amplitudes_are_clipped_and
     bus.publish(FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(200e-6),
+        derived: None,
     });
 
     let channel = first_channel(&bus, &changes);
@@ -254,6 +258,7 @@ fn given_a_disabled_channel_when_measured_then_it_is_absent_and_enabled_ones_asc
     bus.publish(FrameCaptured {
         frame: Arc::new(frame_of(channels, wave.interval_s)),
         context: context(200e-6),
+        derived: None,
     });
 
     let state = changes.recv_timeout(WAIT).unwrap().0;
@@ -314,4 +319,65 @@ fn given_the_module_is_dropped_when_a_frame_is_published_then_no_event_follows()
     bus.publish(captured(&calibrator_at(200e-6), 200e-6, 0.1e-3));
 
     assert!(changes.recv_timeout(Duration::from_millis(200)).is_none());
+}
+
+fn derived_trace(volts: Vec<f64>) -> Arc<DerivedTrace> {
+    Arc::new(DerivedTrace {
+        volts,
+        unit: DerivedUnit::Volts,
+        volts_per_div: 1.0,
+        position_divs: 0.0,
+    })
+}
+
+#[test]
+fn given_a_derived_trace_when_measured_then_column_5_has_twelve_rows_and_no_clip_flag() {
+    let bus = Bus::new();
+    let changes = bus.subscribe::<MeasurementsChanged>();
+    let (_module, _clock) = start(&bus);
+    let wave = calibrator_at(200e-6);
+    let volts = (0..RECORD)
+        .map(|i| wave.level(0.1e-3 + i as f64 * wave.interval_s))
+        .collect();
+    let mut frame = captured(&wave, 200e-6, 0.1e-3);
+    frame.derived = Some(derived_trace(volts));
+
+    bus.publish(frame);
+
+    let state = changes.recv_timeout(WAIT).expect("measurements changed").0;
+    let math = state.channels.iter().find(|c| c.channel == 5).expect("column M");
+    assert_eq!(math.measurements.len(), 12);
+    assert!(!math.clipped);
+    assert_eq!(cell(math, MeasurementId::Vpp).0.as_deref(), Some("1.91 V"));
+}
+
+#[test]
+fn given_no_derived_trace_when_measured_then_there_is_no_column_5() {
+    let bus = Bus::new();
+    let changes = bus.subscribe::<MeasurementsChanged>();
+    let (_module, _clock) = start(&bus);
+
+    bus.publish(captured(&calibrator_at(200e-6), 200e-6, 0.1e-3));
+
+    let state = changes.recv_timeout(WAIT).expect("measurements changed").0;
+    assert!(state.channels.iter().all(|c| c.channel != 5));
+}
+
+#[test]
+fn given_a_frame_above_a_fifth_of_the_sample_rate_when_measured_then_the_slice_carries_the_alias_warning() {
+    let bus = Bus::new();
+    let changes = bus.subscribe::<MeasurementsChanged>();
+    let (_module, _clock) = start(&bus);
+    let wave = Wave {
+        interval_s: 1.0 / 250e6,
+        period_s: 16e-9,
+        edge_s: 1e-9,
+    };
+
+    bus.publish(captured(&wave, 1e-6, 0.0));
+
+    let state = changes.recv_timeout(WAIT).expect("measurements changed").0;
+    assert_eq!(bus.request(GetMeasurements).unwrap(), state);
+    let ids: Vec<&str> = state.warnings.iter().map(|w| w.id.as_str()).collect();
+    assert_eq!(ids, vec!["alias-ch1"]);
 }

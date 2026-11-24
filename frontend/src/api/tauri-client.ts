@@ -23,11 +23,20 @@ export const tauriCommandNames: Record<CommandName, string> = {
   save_screenshot: 'save_screenshot',
   save_setup: 'save_setup',
   load_setup: 'load_setup',
+  arm_single: 'arm_single',
+  start_autoset: 'start_autoset',
+  set_math: 'set_math',
+  set_persistence: 'set_persistence',
+  set_spectrum: 'set_spectrum',
+  start_recording: 'start_recording',
+  stop_recording: 'stop_recording',
 };
 
 /** Rust commands that open and close each backend stream. Exhaustive, like the command names. */
 export const tauriStreamCommands: Record<StreamKind, { open: string; close: string }> = {
   frames: { open: 'open_frame_stream', close: 'close_frame_stream' },
+  roll: { open: 'open_roll_stream', close: 'close_roll_stream' },
+  spectrum: { open: 'open_spectrum_stream', close: 'close_spectrum_stream' },
 };
 
 export interface TauriTransport {

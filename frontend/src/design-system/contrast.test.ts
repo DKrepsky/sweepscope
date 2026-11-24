@@ -34,6 +34,13 @@ describe('contrast (AC-T2)', () => {
     },
   );
 
+  it.each(['bg-panel', 'bg-inset'])(
+    'given status-record on %s, when contrast is computed, then it is at least 4.5',
+    (bg) => {
+      expect(contrastRatio(colour('status-record'), colour(bg))).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
   it('given the decorative borders on bg-panel, when contrast is computed, then they are below 3 because they are exempt', () => {
     for (const name of ['border-subtle', 'border', 'border-strong']) {
       expect(contrastRatio(colour(name), colour('bg-panel'))).toBeLessThan(3);

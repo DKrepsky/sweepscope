@@ -17,6 +17,8 @@ export type FakeClient = BackendClient & {
   emit<E extends EventName>(name: E, payload: EventPayload[E]): void;
   /** Delivers a binary message to every open stream of that kind. */
   pushStream(kind: StreamKind, data: ArrayBuffer): void;
+  /** Queues messages that a stream of that kind receives, in order, the moment it opens; replaces an earlier script. */
+  scriptStream(kind: StreamKind, messages: ArrayBuffer[]): void;
   openStreamCount(kind: StreamKind): number;
   readonly calls: Call[];
 };
@@ -26,24 +28,21 @@ export function createFakeClient(): FakeClient {
   const listeners = new Map<EventName, Set<Listener>>();
   const calls: Call[] = [];
   const streams = new Map<StreamKind, Set<(data: ArrayBuffer) => void>>();
+  const scripts = new Map<StreamKind, ArrayBuffer[]>();
   const openOf = (kind: StreamKind) => streams.get(kind) ?? new Set<(data: ArrayBuffer) => void>();
+
+  const run = async (name: CommandName, args: CommandArgs[CommandName]) => {
+    calls.push({ name, args });
+    const handler = handlers.get(name);
+    if (!handler) throw new Error(`No fake response registered for ${name}`);
+    return handler(args as never);
+  };
 
   return {
     calls,
     respond: (name, handler) => void handlers.set(name, handler as unknown as Handler<CommandName>),
-    send: async (name, args) => {
-      calls.push({ name, args });
-      const handler = handlers.get(name);
-      if (!handler) throw new Error(`No fake response registered for ${name}`);
-      return (await handler(args)) as CommandResult[typeof name];
-    },
-    sendBytes: async <R>(command: string, bytes: Uint8Array) => {
-      const name = command as CommandName;
-      calls.push({ name, args: bytes });
-      const handler = handlers.get(name);
-      if (!handler) throw new Error(`No fake response registered for ${command}`);
-      return (await handler(bytes as never)) as R;
-    },
+    send: (name, args) => run(name, args) as Promise<CommandResult[typeof name]>,
+    sendBytes: <R>(command: string, bytes: Uint8Array) => run(command as CommandName, bytes as never) as Promise<R>,
     subscribe: (name, listener) => {
       const set = listeners.get(name) ?? new Set<Listener>();
       set.add(listener as Listener);
@@ -55,9 +54,11 @@ export function createFakeClient(): FakeClient {
       const open = openOf(kind);
       open.add(onMessage);
       streams.set(kind, open);
+      scripts.get(kind)?.forEach((message) => onMessage(message));
       return { close: () => void open.delete(onMessage) };
     },
     pushStream: (kind, data) => openOf(kind).forEach((onMessage) => onMessage(data)),
+    scriptStream: (kind, messages) => void scripts.set(kind, messages),
     openStreamCount: (kind) => openOf(kind).size,
   };
 }

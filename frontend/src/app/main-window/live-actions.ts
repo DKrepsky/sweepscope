@@ -3,6 +3,7 @@ import type { CursorsStore } from '../cursors';
 import type { FileActions } from '../files';
 import type { InstrumentCommands } from '../instrument';
 import type { MainWindowActions } from './actions';
+import type { AnalyseActions } from './analyse-actions';
 import type { BannerActionId, ChannelNumber } from './types';
 
 type ChannelState = InstrumentState['channels'][number];
@@ -18,6 +19,8 @@ interface Deps {
   canToggleCursors: () => boolean;
   pinned: { set(id: string, pinned: boolean): Promise<void> };
   files: FileActions;
+  /** Hides the banner of the recording failure that is showing. */
+  dismissRecordingFailure: () => void;
 }
 
 const PROBES = [1, 10, 100];
@@ -77,12 +80,21 @@ function horizontalAndTriggerActions(commands: Commands) {
   };
 }
 
-function bannerAction({ commands, read, copyText }: Deps, id: BannerActionId) {
-  if (id === 'retry') commands.retryConnection();
-  else if (id === 'use-simulator') commands.useSimulator(true);
-  else {
-    const command = read().connection?.issue?.help?.installCommand;
-    if (command) copyText(command);
+function bannerAction({ commands, read, copyText, dismissRecordingFailure }: Deps, id: BannerActionId) {
+  switch (id) {
+    case 'retry':
+      return commands.retryConnection();
+    case 'use-simulator':
+      return commands.useSimulator(true);
+    case 'choose-new-file':
+      dismissRecordingFailure();
+      return commands.startRecording();
+    case 'dismiss':
+      return dismissRecordingFailure();
+    case 'copy-command': {
+      const command = read().connection?.issue?.help?.installCommand;
+      if (command) copyText(command);
+    }
   }
 }
 
@@ -111,7 +123,8 @@ function fileActions({ files, notify }: Deps) {
   };
 }
 
-export function createLiveActions(deps: Deps): MainWindowActions {
+/** The analysis actions need the presentation stores; the window composes them in. */
+export function createLiveActions(deps: Deps): Omit<MainWindowActions, keyof AnalyseActions> {
   const { commands, read, copyText } = deps;
   return {
     toggleRun: () => {

@@ -5,6 +5,8 @@
     value: string;
     commit: (text: string) => void;
     error?: string;
+    /** 'external': the caller shows the error text itself, the field only turns invalid. */
+    errorText?: 'inline' | 'external';
     disabled?: boolean;
     disabledReason?: string;
     ariaLabel: string;
@@ -16,9 +18,20 @@
 <script lang="ts">
   import Tooltip from '../tooltip/Tooltip.svelte';
 
-  let { value, commit, error, disabled = false, disabledReason, ariaLabel, left, unit }: NumberFieldProps = $props();
+  let {
+    value,
+    commit,
+    error,
+    errorText = 'inline',
+    disabled = false,
+    disabledReason,
+    ariaLabel,
+    left,
+    unit,
+  }: NumberFieldProps = $props();
 
   const messageId = $props.id();
+  const inline = $derived(errorText === 'inline');
   let draft = $state<string | null>(null);
   const shown = $derived(draft ?? value);
   const tip = $derived(disabled ? disabledReason : undefined);
@@ -55,7 +68,7 @@
       spellcheck="false"
       aria-label={ariaLabel}
       aria-invalid={error ? 'true' : undefined}
-      aria-describedby={messageId}
+      aria-describedby={inline ? messageId : undefined}
       aria-disabled={disabled ? 'true' : undefined}
       readonly={disabled}
       value={shown}
@@ -73,7 +86,7 @@
   {:else}
     {@render control()}
   {/if}
-  <span class="msg" id={messageId} aria-live="polite">{error ?? ''}</span>
+  {#if inline}<span class="msg" id={messageId} aria-live="polite">{error ?? ''}</span>{/if}
 </span>
 
 <style>

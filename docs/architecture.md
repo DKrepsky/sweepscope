@@ -79,15 +79,18 @@ sweepscope/
 ├── backend/
 │   ├── kernel/                   # shared kernel (crate `sweepscope-kernel`): bus, Clock, Storage, errors
 │   ├── libs/                     # feature-free crates, created by the first story that needs one
-│   │   ├── engineering-format/ measurements/   # created by M1 and M2
-│   └── (fft, decimation ... created by their stories)
+│   │   ├── engineering-format/ measurements/ interpolation/   # created by M1 and M2
+│   ├── fft/ math-channel/ autoset/                         # created by M3
+│   └── (decimation ... created by its story)
 │   └── features/
 │       ├── settings/             # opaque UI-state blobs in settings.json (cursors, measurement pins)
 │       ├── device/  acquisition/ # device sessions; setup, run state and setup files (setup JSON, last-setup)
 │       ├── display/              # wire frame, interpolation mode (domain state)
 │       ├── measurement/          # twelve measurements per channel, accuracy note
 │       ├── export/               # CSV, raw SSR1 frame files
-│       └── (channels, timebase-trigger, spectrum, math-channels ... created by their stories)
+│       ├── spectrum/             # FFT frames on their own stream (ADR 0018)
+│       ├── recording/            # roll data to .ssroll files (ADR 0017)
+│       └── (channels, timebase-trigger ... created by their stories)
 └── frontend/
     ├── package.json  vite.config.ts  svelte.config.js  tsconfig.json  eslint.config.js  .stylelintrc.json
     ├── index.html  gallery.html  # app entry; component gallery entry (not in production builds)
@@ -293,6 +296,7 @@ device (thread) ──▶ acquisition ──RollChunk stream (ordered, gap-marke
   window exists, closed with the same request that stops roll mode.
 - Data rate is low (about 1.2 k samples per second per channel at 200 ms/div, less at slower bases), so the stream is
   about ordering and loss visibility, not throughput.
+- M3 (ADR 0017): roll is a run mode of `acquisition` derived from the time base. Items carry absolute sample indices; a consumer that sees an index jump inserts a gap, so a lagging consumer never splices silently. `display` encodes `SSL1` items on a second Channel, the frontend keeps only the visible window, and the backend keeps no history. `recording` writes `.ssroll` files from the same items. ADR 0009 item 6 is superseded by ADR 0017 item 5.
 
 ## 5. Frontend
 
@@ -553,6 +557,10 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | Architecture enforcement tooling | Decided (ADR 0004) |
 | Layout tiers and screen fit computed in code | Decided (ADR 0005) |
 | Graph renderer: Canvas 2D first behind an interface | Decided (ADR 0006); WebGL2 after M0 spike |
+| Roll run mode, roll items, `recording` feature | Decided (ADR 0017) |
+| `spectrum` feature, `libs/fft` without external dependency | Decided (ADR 0018) |
+| Math as derived trace in `acquisition`, XY in the frontend | Decided (ADR 0019) |
+| Auto-setup as `libs/autoset` driven by `acquisition` | Decided (ADR 0020) |
 | Items not yet defined | See section 10 |
 
 Tension to watch: P1 (backend does all domain processing) means features that look like display logic (persistence
@@ -588,7 +596,7 @@ section 8.4). Still open, to be decided in the story that first needs them:
 | ID | Answer | Status |
 |---|---|---|
 | Q-E1 | The backend publishes `InstrumentFacts` as domain state (acquisition slice): effective sample rate and interval, record length in points per channel, capture rate in waveforms per second, dead time as a fraction of time. Each value travels as a number in SI base units plus the backend-formatted text (`FormattedValue { text, value, unit }`); one value and one unit per slot. Update rate at most 4 per second; changes highlight for one `motion-normal`. | Decided; implemented by the acquisition story |
-| Q-E2 | The backend decides. Aliasing and similar warnings are backend state (`Warnings` list with id, severity, message) that the UI only displays and that clears when the backend clears it. | Decided |
+| Q-E2 | The backend decides. Aliasing and similar warnings are backend state (`warnings` list with id, severity, channel, short text, message in the measurement slice; alias raised above Fs/5, cleared at 0.95 of it) that the UI only displays and that clears when the backend clears it. | Decided; implemented in M3 |
 | Q-E3 | The backend sends every selectable scale as `ScaleOption { value, text, verified }`; the UI never knows the table. Out-of-region values carry `verified: false`. | Decided |
 | Q-E4 | The accuracy note is one backend constant in `measurement`, published in the measurement slice; the frontend only shows it. Wording decided by the PM in M2 (D9): "Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit." The README quotes the same sentence until the M4 accuracy page exists. | Decided (PM, M2) |
 | Q-E5 | Formatting is one implementation in Rust (`libs/engineering-format`), 3 significant digits by default (1.91 V, 500 µs), prefix rules per quantity; the digit count belongs to the `Quantity` (measured frequency and period use 4: `Quantity::Frequency`, `Quantity::Period`). Domain values arrive pre-formatted. Cursor readouts are frontend state and are formatted in the browser by a small TypeScript port of three quantities (volts, seconds, hertz) checked against shared golden vectors (`golden.tsv`, read by the Rust and the TypeScript tests). A backend round trip per cursor move cannot meet the same-frame feedback of #14 AC1. Four-digit rows live in a Rust-only golden file. | Decided (M2, ADR 0014) |
@@ -597,7 +605,7 @@ section 8.4). Still open, to be decided in the story that first needs them:
 | Q-E8 | A channel is clipped when any sample code of the whole record is 0 or 255 (the converter rails). Clipping invalidates the amplitude-dependent quantities (Vmax, Vmin, Vpp, Vmean, Vrms, rise time, fall time) with reason `Clipped`; frequency, period, widths and duty cycle stay valid, because clipping leaves the mid-level crossings in place. Invalid values carry a reason code plus backend text (shown as `-` with a numbered footnote); the slice carries `clipped` per channel for the Clip badge. | Decided (M2, ADR 0014 item 4) |
 | Q-E9 | Ground marker 0 div; steppers to their documented default (a value in the backend scale table marked default); pan centred. | Decided (PM) |
 | Q-E10 | Wheel zoom anchors at the pointer position. | Decided (PM) |
-| Q-E11 | Persistence presets: Off, 0.5 s, 1 s, 2 s, infinite (US-07). | Decided (PM) |
+| Q-E11 | Persistence presets: Off, 0.5 s, 1 s, 2 s, infinite (US-07). Setting in `display`; ghosts accumulate in 8 age buckets in `ui/graph`. | Decided (PM, M3) |
 | Q-E12 | Default text scale 100 %, stored in the app settings file through the opaque UI-state blob (presentation state, rule 4.5.3). | Decided (PM, implemented in the scaffold) |
 | Q-E13 | Canvas 2D first behind `TraceRenderer` (ADR 0006), device-pixel snapping in code, redraw on `devicePixelRatio` change. Marker ghosts are DOM overlays reconciled by the `app` layer: ghost on drag, `pending` prop after 250 ms, confirmed value from the store. WebGL2, persistence and budget measurement after the M0 spike. | Partly decided |
 | Q-E14 | Window minimum 1024 x 720 logical px in `tauri.conf.json` (human decision D-L1; content floor 64 x 45 rem, design 3.2); tiers and screen fit computed in TypeScript, no rem media queries or container units (ADR 0005). | Decided |

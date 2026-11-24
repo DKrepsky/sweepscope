@@ -21,6 +21,13 @@ function setup(
     useSimulator: vi.fn(),
     retryConnection: vi.fn(),
     setInterpolation: vi.fn(),
+    armSingle: vi.fn(),
+    startAutoset: vi.fn(),
+    setMath: vi.fn(),
+    setPersistence: vi.fn(),
+    setSpectrum: vi.fn(),
+    startRecording: vi.fn(),
+    stopRecording: vi.fn(),
   };
   const copyText = vi.fn();
   const notify = vi.fn();
@@ -44,6 +51,7 @@ function setup(
     canToggleCursors: () => canToggleCursors,
     pinned,
     files,
+    dismissRecordingFailure: vi.fn(),
   });
   return { actions, commands, copyText, notify, select, cursors, pinned, files };
 }

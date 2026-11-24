@@ -3,4 +3,4 @@
 /**
  * What `step_setting` and `reset_setting` act on.
  */
-export type SettingTarget = { "kind": "range", channel: number, } | { "kind": "timeBase" } | { "kind": "triggerPosition" } | { "kind": "triggerLevel" };
+export type SettingTarget = { "kind": "range", channel: number, } | { "kind": "timeBase" } | { "kind": "triggerPosition" } | { "kind": "triggerLevel" } | { "kind": "mathScale" } | { "kind": "mathPosition" };

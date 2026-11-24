@@ -300,3 +300,77 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
 - Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
 - Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
+
+## M3 B1 contracts facts
+- Worktree-isolated agents: multi-line bash with heredocs or `cd` plus pipes can be refused as "too complex". Write helper scripts with the Write tool into the scratchpad and run `python3 -I script.py`.
+- `Availability` now lives in `kernel::contracts` (feature crates must not import each other, `spectrum` needs it); `acquisition` re-exports it.
+- `device` re-exports selected kernel contract types in `lib.rs`; `hantek/convert.rs` also imports the driver's `TriggerKind`, so the kernel one must be qualified there.
+- A new field on a generated state type breaks `npm run typecheck` in frontend test data (`app/instrument/test-data.ts`, `selectors.ts`, main-window tests) but not vitest; the frontend packages fix those.
+- cargo fmt rewrites `AutosetRun::default()` on a unit struct only after clippy objects: write `AutosetRun` directly.
+## M3 B3 lessons
+- Worktree-isolated shell refuses compound commands that mix git with other pipes; run one simple command per call. Fresh worktrees lack `frontend/node_modules`: `npm ci --prefer-offline` works.
+- Shared golden vectors: `engineering-format/tests/golden*.tsv` (value, quantity, text, unit); TS reads `golden.tsv` and `golden_analyse.tsv` in `frontend/tools/formatting-golden.test.ts`. Rust negative values that round to zero print no minus.
+## Autoset lib facts (B4)
+- `libs/autoset` budget: 3 probes per rung (1us, 100us, 20ms), 2 vertical retries, 1 period correction => at most 13 probes; `with_probe_limit` is cfg(test) for the budget test. Range fit must also check that the DC offset is reachable by the position (else a 3 V offset clips).
+- Harness in `libs/autoset/tests/harness` mirrors the 6254BC tables (2 mV..10 V, roll from index 25, 25 counts/div, centre code 128). Bash with heredocs plus `cd` is refused in worktrees; use Write and python3 edits.
+- Fresh worktrees have no `frontend/node_modules`: `cp -al /home/kr/workspace/sweepscope/frontend/node_modules frontend/node_modules` (a symlink breaks vitest `/@fs`); remove it before finishing (it is gitignored).
+- New design tokens go in three places: `frontend/src/design-system/tokens.css`, `docs/design-prototype/tokens.css` (a test compares them) and `node frontend/tools/gen-tokens.mjs` to regenerate `tokens.generated.ts`.
+- Heredocs that write many files in one Bash call can be refused in worktrees; use the Write tool.
+
+## Device roll loop (M3 B6)
+- Worker rolls when the applied setup's time base is `streaming`: `module/roll.rs` (`RollCounter`, `POLL_INTERVAL` 50 ms), `WorkerControl::roll_should_end_within` paces and wakes on stop, new setup or capturing off. `Worker` and `Manager` now take the injected `Clock` (DeviceDeps.clock).
+- Device module tests use real time (SystemClock); gap sizes are asserted as ranges. `module_support` Rig has `polled` and `hooks.calls` (configure/start_roll/stop order).
+- In this sandbox, commands mixing `cd`, heredocs and pipes can be refused as "too complex": use Write/Edit for files and plain separate commands.
+## M3 F2 model skeleton (developer-8)
+- Selectors of the analysis features take one `ModelInputs` object (select-common.ts) so a work package replaces a body without changing the signature; new presentation stores live in `app/views` and are created inside `createLiveMainWindow`.
+- Consumer-defined ports (`AnalyseCommands`, `AnalysisSources` in `app/views/analysis-ports.ts`) let the model compile before F1's stores and commands exist; `createLiveApp` falls back to inert ones when `analysis` is not passed.
+- Generated api types are importable by deep path (`../../api/generated/X`) when `api/index.ts` (another package's file) lacks the export.
+- Editing another developer's file even temporarily is blocked by the permission classifier: verify against their pending fixture changes in a scratch copy (`cp -r src` + symlinked node_modules + `server.fs.strict:false` in the copied vite config).
+- Sandbox refuses compound commands that `cd ../..` or contain the word "enable" in grep/sed; use Read/Edit and separate commands.
+## M3 acquisition core (B7)
+- Roll sessions live in `acquisition/src/module/roll.rs` (`RollSessions::sync` after every state change; compares a `RollKey` of device setup, invert and probes). A Single keeps `Model.single`; the device gets `Model::device_setup()` (sweep Normal), the published sweep is untouched. Every path that ends a Single re-sends the setup.
+- Backend value units are ASCII (`us`); error texts that the spec fixes with `µs` convert the unit in the message only.
+- Module tests cannot flush the consumer thread for "nothing published" cases; use an ordered sentinel on the same subscription (stale poll then good poll) or an unplug as barrier.
+- Float traps: `50 * 1e-6 < 50e-6`; compare widths in rounded ns.
+- Tool calls with `cd` plus heredocs are refused in a worktree: write scripts to the scratchpad and run them with absolute paths.
+
+## Auto-setup adapter B9 (developer-4)
+- `acquisition` cannot use the device crate's `SimulatedDevice`; tests drive a synthetic input through `FakeDevice::respond_with` (answers each applied setup with a frame while capturing is on) in `tests/autoset_support`.
+- A local module named `autoset` shadows the lib crate of the same name inside `module/`; domain re-exports `Plan` and the lib is imported only in `domain/autoset_run.rs`.
+- `Capabilities` has no counts per division; adapter uses a nominal 23.0 (driver measured 21.1, 21.6, 24.15). engineering-format writes micro as `u` (`500 us/div`).
+- Setup edits are refused in `Instrument::edit` while the auto-setup lock is on; `autoset_apply` runs after the lock is released.
+## M3 F5 stage and views (developer-9)
+- `selectGraph(inputs, { views, persistence, roll })` is the one place that picks Yt, XY, FFT or roll data; `GraphModel` now carries `view`, `running`, `dimmed` (only disconnected dims; stopped is full intensity), `math`, ticks (graph convention: Y ticks count from the bottom, the backend counts from the top), `xy`, `persistence {decayMs, epoch, revision}` and `tags`.
+- Persistence ghosts age by an injected clock: `createPausableClock` (app/views) is held still while `graph.running` is false. Ghost opacities now come from `tokens['opacity-persist-*']`.
+- XY: a division on X is a tenth of the width, so the X ground marker uses `xFractionFromGround` / `divisionsFromXFraction`. `formatFrequency` gives four digits (`300.0 Hz`).
+- `Menu` only has `checked` (role `menuitemcheckbox`), no radio role. Segmented segments cannot carry their own aria-label (name is the visible text).
+- Tests: `app/main-window/test-inputs.ts` builds `ModelInputs` from `app/instrument/test-data`. Playwright with a temp config copy: ports 5173/4173 are often taken by other agents, pick unusual ones and set `E2E_PREVIEW_PORT`.
+## M3 B8 math and F6 toolbar (developer-10)
+- Math lives in `Model.math: MathSetting` (domain/math.rs); every math edit goes through `Instrument::edit` so it stays all-or-nothing. `math::state(caps, model, gate)` and `reset(caps, ...)` gained `caps` (hooks only had the model). Math unit text: ScaleChoice label for `A×B` reads `0.1 V²/div` (V² never takes a prefix). `Instrument::derive_math(frame)` is the single entry used by `derive_trace`.
+- Worktree shell refuses python heredocs, `cd X && ...`, `git -C`, and chained rm/git commands: use Write/Edit tools and one plain command per call.
+- Frontend: segmented buttons have role `button` with aria-pressed (not radio); Menu radio items are `menuitemradio` (added `radio` and `separatorBefore` to MenuItem); Button tone `record` added; Toast takes an `actions` snippet; `NotificationRequest.action` {label, run}.
+- e2e for temporary Playwright: temp config with `npm run dev -- --port 5373 --strictPort`, `reuseExistingServer: false`, chromium only, delete afterwards.
+- A Single armed state is not published by the backend: UI infers `waitingForTrigger && sweep auto` (Normal sweep also waits). Ask for a backend flag if it matters.
+
+## M3 shell B14 (developer-6)
+- Feature crates own their `COMMANDS` (spectrum, recording, display persistence, acquisition arm/autoset/math); the shell manifest concatenates them. Adding a command touches: feature COMMANDS, `ipc/commands.rs` (REGISTERED_COMMANDS + handler + generate_handler), `build.rs`, `capabilities/main.json`, autogenerated permission tomls (created by cargo build), then `UPDATE_GENERATED=1 cargo test -p sweepscope-app` for `commands.ts`.
+- `ipc/streams.rs`: `Streams<E: StreamEvent>` (ordered = `subscribe`, latest-wins = `subscribe_latest`, per-event stamp); Channel arg is `on_frame` (webview `onFrame`).
+- Clippy `too_many_lines` (40) bites `compose`; group consumers in a struct helper.
+- Bash tool refuses long `python3 - <<EOF` + chained commands in a worktree; write the script with Write into the scratchpad and run `python3 -I file`.
+## M3 fix round (developer-10)
+- Toolbar fit: roll adds a Roll chip (75 px); the brand is hidden by a container query below 100 rem toolbar width. e2e measures overflow at 1024/1280/1440 in Yt and roll. Frontend formatBytes is binary (KiB) like the backend readout.
+- Playwright from a scratchpad config needs `E2E_PREVIEW_PORT` for csp.spec (hardcoded 4173 otherwise).
+
+## M3 fix round wiring (developer-8)
+- `createLiveApp` now builds the analysis sources itself (stores.spectrum/recording + `createRollFeed`/`createSpectrumFeed`) and passes `commands` as `analyseCommands`; no optional dependency, no inert fallbacks, so main.ts cannot forget them. `live-app.test.ts` "analysis wiring" composes the real thing against the fake client.
+- New real stream feeds open on first model subscription, so e2e stubs must acknowledge open/close roll and spectrum streams (added to `e2e/support/tauri-stub.ts`).
+- NumberField `errorText="external"` = invalid state only, caller draws the text. Backend units are ASCII `us`; message text converts to `µs`.
+- Fresh worktrees have no node_modules: `npm ci` in frontend. The graph.spec 33 ms probe is flaky under load (webkit).
+
+## M3 fix round 2 (developer-8)
+- M row status badge now sits on its own subgrid line (`grid-column: 2 / -1`, `[data-math-status]`); a badge in the 1fr column paints over its neighbours when the dock is narrow. Roll chip text truncates with ellipsis and `title` carries the full text.
+- Dock at 720 px height uses channel tabs: e2e must click the `M` tab in the `Channel tabs` group before reading the M row.
+- `e2e/capability.spec.ts` (Node fs allowed there, not in `src`, and vite `?raw` of files outside the frontend is denied) checks `COMMANDS` and the stub's exported `ACKNOWLEDGED_COMMANDS` against `src-tauri/capabilities/main.json`.
+## M3 fix round 2 (developer-10)
+- Core keeps a `HeldFrame` (frame, setup revision, derived); `rederive_held` in `after_change` re-publishes `FrameCaptured` when stopped and the derived trace differs (same setup revision only).
+- Roll toolbar at 1024: trigger phase chip is dropped in roll (it was 170 px when "Waiting for trigger"); scrollWidth alone hides a squeezed spacer, also assert drawer button right edge <= Settings left.

@@ -67,6 +67,33 @@ describe('statusChips', () => {
     expect(chips('stopped', false)).toEqual([{ id: 'state', kind: 'stop', text: 'Stop' }]);
   });
 
+  it('given a finished single capture, when selected, then the chips are Stop and Done', () => {
+    expect(chips('done', false).map((c) => c.text)).toEqual(['Stop', 'Done']);
+  });
+
+  it('given a finished single capture, when selected, then the Done chip is the full-intensity trigger kind', () => {
+    expect(chips('done', false)[1]).toMatchObject({ kind: 'triggered' });
+    expect(chips('done', false)[1]).not.toHaveProperty('dim');
+  });
+
+  it('given a running instrument in roll mode, when selected, then a Roll chip follows the Run chip and no trigger chip appears', () => {
+    const roll = instrumentState({ running: true, horizontal: { ...instrumentState().horizontal, roll: true } });
+    const texts = statusChips(ready, roll, acquisitionStatus({ phase: 'auto' })).map((c) => [c.kind, c.text]);
+    expect(texts).toEqual([
+      ['run', 'Run'],
+      ['roll', 'Roll'],
+    ]);
+  });
+
+  it('given a stopped instrument in roll mode, when selected, then there is no Roll chip', () => {
+    const roll = instrumentState({ running: false, horizontal: { ...instrumentState().horizontal, roll: true } });
+    expect(statusChips(ready, roll, acquisitionStatus({ phase: 'stopped' })).map((c) => c.text)).toEqual(['Stop']);
+  });
+
+  it('given a stopped instrument in a phase other than done, when selected, then the phase chip is not shown', () => {
+    expect(chips('armed', false).map((c) => c.text)).toEqual(['Stop']);
+  });
+
   it('given a disconnected scope, when selected, then the only chip is Offline', () => {
     expect(chips('armed', true, disconnected)).toEqual([{ id: 'state', kind: 'offline', text: 'Offline' }]);
   });

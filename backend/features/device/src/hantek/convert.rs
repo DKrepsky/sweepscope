@@ -3,15 +3,22 @@
 use hantek6xx4_lib::protocol::channel_mode;
 use hantek6xx4_lib::{
     counts_per_div, zero_code_for_position, Channel, ChannelConfig, Config, Coupling as DriverCoupling,
-    Error as DriverError, Frame as DriverFrame, Slope as DriverSlope, Sweep as DriverSweep, TimeBase, TriggerConfig,
-    TriggerKind, VoltsPerDiv, MAX_CHANNELS,
+    Error as DriverError, Frame as DriverFrame, PulseCondition as DriverPulseCondition, Slope as DriverSlope,
+    Sweep as DriverSweep, TimeBase, TriggerConfig, TriggerKind as DriverTriggerKind, VoltsPerDiv, MAX_CHANNELS,
 };
 
 use crate::profile::RECORD_LEN;
-use crate::{AcquisitionSetup, ChannelData, ChannelSetup, Coupling, DeviceError, Frame, Slope, Sweep, TriggerOutcome};
+use crate::{
+    AcquisitionSetup, ChannelData, ChannelSetup, Coupling, DeviceError, Frame, PulseCondition, Slope, Sweep,
+    TriggerKind, TriggerOutcome,
+};
 
 /// ADC code of the screen centre (zero volts at position 0).
 const CENTRE_CODE: f64 = 128.0;
+/// Pulse width limits of the driver, in nanoseconds.
+const MIN_PULSE_NS: f64 = 10.0;
+const MAX_PULSE_NS: f64 = 10e9;
+
 /// Highest trigger level code the driver accepts.
 const MAX_TRIGGER_CODE: f64 = 228.0;
 
@@ -71,7 +78,7 @@ fn trigger_config(
     let source = Channel::from_index(usize::from(trigger.source)).map_err(device_error)?;
     Ok(TriggerConfig {
         source,
-        kind: TriggerKind::Edge,
+        kind: trigger_kind(trigger.kind)?,
         slope: match trigger.slope {
             Slope::Rising => DriverSlope::Rising,
             Slope::Falling => DriverSlope::Falling,
@@ -80,6 +87,34 @@ fn trigger_config(
         level: trigger_code(trigger.level_volts, &channels[source.index()], mode),
         horizontal_position_percent: trigger.horizontal_position_percent,
     })
+}
+
+fn trigger_kind(kind: TriggerKind) -> Result<DriverTriggerKind, DeviceError> {
+    match kind {
+        TriggerKind::Edge => Ok(DriverTriggerKind::Edge),
+        TriggerKind::Pulse { width_s, condition } => Ok(DriverTriggerKind::Pulse {
+            width_ns: pulse_width_ns(width_s)?,
+            condition: pulse_condition(condition),
+        }),
+    }
+}
+
+fn pulse_width_ns(width_s: f64) -> Result<u64, DeviceError> {
+    if !width_s.is_finite() {
+        return Err(DeviceError::InvalidSetting(
+            "pulse width must be a finite number".to_owned(),
+        ));
+    }
+    Ok((width_s * 1e9).round().clamp(MIN_PULSE_NS, MAX_PULSE_NS) as u64)
+}
+
+fn pulse_condition(condition: PulseCondition) -> DriverPulseCondition {
+    match condition {
+        PulseCondition::Equal => DriverPulseCondition::Equal,
+        PulseCondition::NotEqual => DriverPulseCondition::NotEqual,
+        PulseCondition::Greater => DriverPulseCondition::Greater,
+        PulseCondition::Less => DriverPulseCondition::Less,
+    }
 }
 
 fn sweep(sweep: Sweep) -> DriverSweep {
@@ -171,6 +206,7 @@ mod tests {
                 slope: Slope::Rising,
                 sweep: Sweep::Auto,
                 horizontal_position_percent: 50.0,
+                kind: sweepscope_kernel::contracts::TriggerKind::Edge,
             },
         }
     }
@@ -243,6 +279,95 @@ mod tests {
         assert_eq!(config.trigger.sweep, DriverSweep::Normal);
         assert_eq!(config.trigger.horizontal_position_percent, 25.0);
         assert!(config.validate().is_ok());
+    }
+
+    fn pulse_config(width_s: f64, condition: PulseCondition) -> Result<Config, DeviceError> {
+        let mut setup = setup();
+        setup.trigger.kind = TriggerKind::Pulse { width_s, condition };
+        config_from_setup(&setup)
+    }
+
+    #[test]
+    fn given_a_pulse_of_half_a_millisecond_when_converted_then_the_driver_gets_500000_ns() {
+        let config = pulse_config(0.0005, PulseCondition::Greater).unwrap();
+
+        assert_eq!(
+            config.trigger.kind,
+            DriverTriggerKind::Pulse {
+                width_ns: 500_000,
+                condition: DriverPulseCondition::Greater
+            }
+        );
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn given_each_pulse_condition_when_converted_then_it_is_the_driver_condition() {
+        let pairs = [
+            (PulseCondition::Equal, DriverPulseCondition::Equal),
+            (PulseCondition::NotEqual, DriverPulseCondition::NotEqual),
+            (PulseCondition::Greater, DriverPulseCondition::Greater),
+            (PulseCondition::Less, DriverPulseCondition::Less),
+        ];
+        for (ours, theirs) in pairs {
+            let kind = pulse_config(1e-3, ours).unwrap().trigger.kind;
+            assert_eq!(
+                kind,
+                DriverTriggerKind::Pulse {
+                    width_ns: 1_000_000,
+                    condition: theirs
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn given_a_width_with_sub_nanosecond_digits_when_converted_then_it_is_rounded_to_a_nanosecond() {
+        let kind = pulse_config(1.4e-8 + 0.6e-9, PulseCondition::Equal)
+            .unwrap()
+            .trigger
+            .kind;
+
+        assert_eq!(
+            kind,
+            DriverTriggerKind::Pulse {
+                width_ns: 15,
+                condition: DriverPulseCondition::Equal
+            }
+        );
+    }
+
+    #[test]
+    fn given_widths_outside_the_driver_range_when_converted_then_they_clamp_to_10_ns_and_10_s() {
+        let width = |width_s| match pulse_config(width_s, PulseCondition::Equal).unwrap().trigger.kind {
+            DriverTriggerKind::Pulse { width_ns, .. } => width_ns,
+            other => panic!("{other:?}"),
+        };
+
+        assert_eq!(width(1e-12), 10);
+        assert_eq!(width(0.0), 10);
+        assert_eq!(width(-1.0), 10);
+        assert_eq!(width(60.0), 10_000_000_000);
+    }
+
+    #[test]
+    fn given_a_non_finite_pulse_width_when_converted_then_the_setting_is_invalid() {
+        assert!(matches!(
+            pulse_config(f64::NAN, PulseCondition::Equal),
+            Err(DeviceError::InvalidSetting(_))
+        ));
+        assert!(matches!(
+            pulse_config(f64::INFINITY, PulseCondition::Equal),
+            Err(DeviceError::InvalidSetting(_))
+        ));
+    }
+
+    #[test]
+    fn given_an_edge_setup_when_converted_then_the_driver_kind_is_edge() {
+        assert_eq!(
+            config_from_setup(&setup()).unwrap().trigger.kind,
+            DriverTriggerKind::Edge
+        );
     }
 
     #[test]

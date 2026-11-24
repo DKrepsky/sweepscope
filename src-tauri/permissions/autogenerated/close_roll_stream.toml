@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-roll-stream"
+description = "Enables the close_roll_stream command without any pre-configured scope."
+commands.allow = ["close_roll_stream"]
+
+[[permission]]
+identifier = "deny-close-roll-stream"
+description = "Denies the close_roll_stream command without any pre-configured scope."
+commands.deny = ["close_roll_stream"]

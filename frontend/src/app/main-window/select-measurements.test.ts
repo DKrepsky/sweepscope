@@ -48,6 +48,7 @@ const slice = (...channels: ReturnType<typeof channel>[]): MeasurementsState => 
   revision: 1,
   channels,
   accuracyNote: 'Volts accurate to 2 to 3 counts.',
+  warnings: [],
 });
 
 describe('selectMeasurements', () => {

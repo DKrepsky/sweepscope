@@ -1,4 +1,4 @@
-import type { ChannelModel, MainWindowModel, MeasurementsModel, ScaleQuantity } from './types';
+import type { ChannelModel, MainWindowModel, MeasurementsModel, PersistenceModel, ScaleQuantity } from './types';
 import { sineWave, squareWave, triangleWave } from './mock-signals';
 
 /** Illustrative placeholders from the design prototype; not hardware statements. */
@@ -103,6 +103,10 @@ export const mockMeasurements = (): MeasurementsModel => ({
 
 export const mockGraph = (): MainWindowModel['graph'] => ({
   state: 'live',
+  view: 'yt',
+  running: true,
+  dimmed: false,
+  tags: [],
   selected: 1,
   channels: [
     { channel: 3, samples: triangleWave() },
@@ -111,4 +115,91 @@ export const mockGraph = (): MainWindowModel['graph'] => ({
   ],
   summary:
     'Yt display, 10 by 8 divisions. CH1 square wave 1.91 V peak to peak at 500 mV per division, CH2 sine 32 mV peak to peak at 20 mV per division, CH3 triangle at 2 V per division. Triggered on CH1 rising edge at 900 mV.',
+});
+
+type Analysis = Pick<MainWindowModel, 'views' | 'persistence' | 'peak' | 'roll' | 'recording' | 'autoset' | 'math'>;
+
+const PERSISTENCE_OPTIONS: PersistenceModel['options'] = [
+  { value: 'off', label: 'Off' },
+  { value: '500ms', label: '0.5 s' },
+  { value: '1s', label: '1 s' },
+  { value: '2s', label: '2 s' },
+  { value: 'infinite', label: 'Infinite' },
+];
+
+const channelOptions = (enabled: number[]) =>
+  ([1, 2, 3, 4] as const).map((channel) => ({ channel, availability: { enabled: enabled.includes(channel) } }));
+
+const mockViews = (): Analysis['views'] => ({
+  tab: 'yt',
+  tabAvailability: { yt: { enabled: true }, xy: { enabled: true }, fft: { enabled: true } },
+  xy: {
+    x: 1,
+    y: 2,
+    xOptions: channelOptions([1, 2, 3]),
+    yOptions: channelOptions([1, 2, 3]),
+    scales: { x: 'CH1 500 mV/div', y: 'CH2 200 mV/div' },
+    readline: 'Fs 1.25 MS/s · straight segments',
+  },
+  fft: {
+    window: 'hann',
+    scale: 'dbv',
+    available: { enabled: true },
+    windows: [
+      { value: 'rectangular', label: 'Rectangular' },
+      { value: 'hann', label: 'Hann' },
+      { value: 'hamming', label: 'Hamming' },
+      { value: 'blackman', label: 'Blackman' },
+    ],
+    windowShort: 'Hann',
+    windowLabel: 'Hann',
+    ticksX: [],
+    ticksY: [],
+    readout: { span: '0 to 25 kHz', binSpacing: '12.21 Hz', topLabel: '+10 dBV', scale: '10 dB/div' },
+    readline: 'Fs 50 kS/s · bin 12.21 Hz (Fs / N)',
+  },
+});
+
+const mockMath = (): Analysis['math'] => ({
+  row: {
+    enabled: false,
+    operation: 'subtract',
+    sourceA: 1,
+    sourceB: 2,
+    scale: scale('1', 'V/div'),
+    position: { value: '0.00', unit: 'div' },
+    label: 'A−B',
+    status: 'ok',
+    availability: { enabled: true },
+  },
+  chip: '',
+});
+
+/** The analysis part of the mock: every feature available, nothing recording, no gaps. */
+export const mockAnalysis = (): Analysis => ({
+  views: mockViews(),
+  persistence: {
+    value: 'off',
+    options: PERSISTENCE_OPTIONS,
+    tag: '',
+    available: { enabled: true },
+    epoch: 0,
+  },
+  peak: {
+    mode: 'auto',
+    channel: 1,
+    bin: 0,
+    frequency: '1.001 kHz',
+    level: '−6.9 dBV',
+    available: { enabled: true },
+    note: '',
+    bins: 0,
+  },
+  roll: { active: false, window: '', gaps: [], gapCount: 0, announcement: '' },
+  recording: {
+    active: false,
+    available: { enabled: false, reason: 'Recording needs roll mode (500 ms/div or slower)' },
+  },
+  autoset: { busy: false, noSignal: false, available: { enabled: true } },
+  math: mockMath(),
 });

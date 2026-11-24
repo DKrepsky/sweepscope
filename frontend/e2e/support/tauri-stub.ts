@@ -26,6 +26,28 @@ export interface StubOptions {
   commands?: Record<string, { result?: unknown; error?: string }>;
 }
 
+/** Commands the stub acknowledges without a script; each must be one the main window's capability grants. */
+export const ACKNOWLEDGED_COMMANDS: string[] = [
+  'plugin:event|unlisten',
+  'open_frame_stream',
+  'close_frame_stream',
+  'open_roll_stream',
+  'close_roll_stream',
+  'open_spectrum_stream',
+  'close_spectrum_stream',
+  'set_running',
+  'force_trigger',
+  'set_channel',
+  'step_setting',
+  'reset_setting',
+  'set_trigger_position',
+  'set_trigger_level',
+  'set_trigger',
+  'use_simulator',
+  'retry_connection',
+  'set_interpolation',
+];
+
 /**
  * Replaces the Tauri IPC bridge in the page: a fixed ready snapshot, event listening and the frame stream accepted
  * (no frames arrive), and every other control command logged and acknowledged. The two settings commands work against
@@ -37,24 +59,9 @@ export async function stubTauri(
   options: StubOptions = {},
 ): Promise<void> {
   await page.addInitScript(
-    ([initial, snapshot, scripted]) => {
+    ([initial, snapshot, scripted, acknowledged]) => {
       const KEY = '__ss_settings';
-      const ACKNOWLEDGED = new Set([
-        'plugin:event|unlisten',
-        'open_frame_stream',
-        'close_frame_stream',
-        'set_running',
-        'force_trigger',
-        'set_channel',
-        'step_setting',
-        'reset_setting',
-        'set_trigger_position',
-        'set_trigger_level',
-        'set_trigger',
-        'use_simulator',
-        'retry_connection',
-        'set_interpolation',
-      ]);
+      const ACKNOWLEDGED = new Set(acknowledged);
       const commands = scripted as Record<string, { result?: unknown; error?: string }>;
       const log: { command: string; args: unknown }[] = [];
       (window as unknown as Record<string, unknown>).__ipcLog = log;
@@ -104,7 +111,12 @@ export async function stubTauri(
         },
       };
     },
-    [initialSettings, readySnapshot(options.unverifiedTimeBase ?? false), options.commands ?? {}] as const,
+    [
+      initialSettings,
+      readySnapshot(options.unverifiedTimeBase ?? false),
+      options.commands ?? {},
+      ACKNOWLEDGED_COMMANDS,
+    ] as const,
   );
 }
 

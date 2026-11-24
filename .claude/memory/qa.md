@@ -119,3 +119,27 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Native dialogs: never send keys before the dialog exists. Use `xdotool search --onlyvisible --name "Save File"`, `windowfocus`, then type; stray keys reach the main window (shortcuts open more dialogs; cancel at (957,798)). Overwrite prompt: Replace at (696,464).
 - Simulator sine+noise frequency error in the real window stays above the calibrator bounds (200 us +-0.029 %, 500 us +-0.02 %, 1 ms +-0.013 %); use the library sweep (`cargo test -p measurements --test qa_calibrator_frequency`) for the AC.
 - Package name of the measurement lib is `measurements`. Clean-tree check: `cargo test --workspace` then `git status --short` (ignore `.claude/memory`).
+
+## M3 Analyse lessons (real window, bridge, wiring)
+- BUG-1 class again: a feature can pass 1249 unit tests and still be dead in the real window because `main.ts` never passes `analysis` to `createLiveApp` (inert sources). Always check that each new control sends its IPC command in the real window, and that each new stream has a non-test caller (`grep` the feed creators).
+- Real-window REPL without clicking: a scratch vite config (outside the repo) imports `frontend/vite.config.ts`, adds a plugin that injects `/__qa/bridge.js` and serves `/__qa/job.js` (long poll, code runs as a script tag, so the Tauri CSP does not block it) and `/__qa/res` (results as chunked image GETs); `node ev.mjs -f job.js` posts code to `/__qa/exec`. Gives `window.__TAURI_INTERNALS__.invoke`, DOM queries and `button.click()` in the real window. A syntax error in a job makes it time out (90 s). A reload job never returns a result: fire it and wait.
+- Same config can hold a `transform` shim (QA_SHIM=1) that patches `src/main.ts` in memory to wire missing pieces; report those results as "with shim".
+- Open a stream by hand: `invoke('open_roll_stream', {onFrame: '__CHANNEL__:' + transformCallback(cb)})`; messages arrive as `{index, message}`. Frame header: count at 28, trigger index at 40 (int32), samples from 48.
+- Simulator facts: signal is a fixed 1 kHz sine; at 500 ms/div it aliases to a constant line; `SIGSTOP` of the app for 40 s produces a real gap item and a gap record in the `.ssroll` file (the simulator does report overruns). Single, Pulse (500 us pulse train = half period of the sine at level 0) and trigger position (edge 3 to 4 samples before the header index) can all be measured on it.
+- Native Save dialog under Xvfb: `xdotool search --onlyvisible --name "Save File"`, `windowfocus`, `ctrl+a`, type the path, Return (worked for Record).
+- Playwright `test.fail(true, 'BUG-n: ...')` inside the test; the list reporter shows an expected failure as a cross while the summary counts it as passed. Test-name checker wants `BUG-<digits>: reason` (no `M3-` prefix). Badge text includes its tooltip text: match with `^Exp\b`, not exact.
+- Real-time Toast timing tests (feedback.spec.ts, WebKit) flake with three workers plus other load; rerun alone with `--workers=1` before calling it a regression. The frame budget probe (33 ms) is also load sensitive.
+- Toolbar layout is the weak spot: check `[data-region=toolbar]` scrollWidth against clientWidth in roll, FFT, XY at 1440 and 1024 (`xdotool windowsize <id> 1024 720`) after any toolbar change.
+- Ports used for scratch runs: vite 5373 (app), 5273 and 4273 (Playwright). Kill by PID from `ss -ltnp`; remove `playwright.qa.config.ts` when done.
+
+## M3 final retest lessons
+- Real-window recipe still works with scratchpad `qa/` (env.sh, run-app.sh, vite.qa.config.mjs bridge, ev.mjs) without QA_SHIM; rebuild with `TAURI_CONFIG` devUrl 5373. Q helpers: click by text (`startsWith`); after a click wait >= 20 ms before querying the DOM (Svelte updates async). Tab buttons for Run/Stop switch label with state.
+- Roll gap on the simulator needs `SIGSTOP` longer than 0.95 x buffer span: 65536/channels x interval (4 ch at 2 ms = 32.8 s, 2 ch = 65 s). Do not call `close_*_stream` from devtools and then judge the view: the page does not reopen the stream (reload).
+- Markers: measure `getBoundingClientRect` centres of `Channel n ground`, `Trigger level`, `Trigger position` against the canvas centre; found 8 px offset (BUG-M3-9). M row badge overlap and math-while-stopped stale data are easy to miss without zoomed crops.
+- Settings popover text scale (100/125/150/200 %) is clickable in the real window; at 150 % the dock becomes tabs and the content scrolls.
+- Full Playwright run 4.2 min on default ports; the 33 ms frame budget probe can fail under load in chromium, passes alone.
+
+## M3 round 3 notes
+- Real-window recipe in the scratchpad `qa/` worked unchanged (Xvfb :77 1440x900, vite 5373, `unshare -rm run-app.sh`); `source env.sh` before `xdotool`/`import`. Never click by a prefix like "A" in a loop (it hit Autoset and re-acquired, leaving a stale error Toast); click by exact label and use aria-label for the math operation menu (`includes("math operation")`).
+- Roll quickly: Run, then 12x `step_setting timeBase +1` gives 5 s/div roll; Record button is icon-only at 1024 (aria-label "Record", stop by clicking it again).
+- Final full run: cargo 1000, vitest 1263, Playwright 598 pass; the webkit Toast timing test is the usual flake (passes alone).

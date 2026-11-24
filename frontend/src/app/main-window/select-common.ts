@@ -1,5 +1,43 @@
-import type { ConnectionSnapshot, InstrumentState } from '../../api';
-import type { Availability, ChannelNumber, Quantity } from './types';
+import type {
+  AcquisitionStatus,
+  ConnectionSnapshot,
+  DisplayState,
+  InstrumentFacts,
+  InstrumentState,
+  MeasurementsState,
+} from '../../api';
+import type { RecordingState } from '../../api/generated/RecordingState';
+import type { SpectrumState } from '../../api/generated/SpectrumState';
+import type { CursorsState } from '../cursors';
+import type { PeakMarker, RollInput, SpectrumFrameInput, XyAxes } from '../views';
+import type { DecodedFrame } from '../waveform';
+import type { Availability, ChannelNumber, Quantity, ViewTab } from './types';
+
+/** Everything the selectors read: one value per source, so a selector keeps its signature when it reads more. */
+export interface ModelInputs {
+  connection: ConnectionSnapshot | undefined;
+  instrument: InstrumentState | undefined;
+  status: AcquisitionStatus | undefined;
+  facts: InstrumentFacts | undefined;
+  display: DisplayState | undefined;
+  measurements: MeasurementsState | undefined;
+  frame: DecodedFrame | undefined;
+  selected: ChannelNumber;
+  cursors: CursorsState;
+  pinned: readonly string[];
+  renderer: string;
+  spectrum: SpectrumState | undefined;
+  spectrumFrame: SpectrumFrameInput | undefined;
+  recording: RecordingState | undefined;
+  roll: RollInput | undefined;
+  view: ViewTab;
+  xyAxes: XyAxes;
+  peak: PeakMarker;
+  persistenceEpoch: number;
+  pulseWidthRejected: boolean;
+  /** Id of the newest recording failure the user dismissed. */
+  dismissedRecordingFailure: number;
+}
 
 export type BackendAvailability = InstrumentState['controls']['run'];
 export type FormattedValue = InstrumentState['channels'][number]['position'];

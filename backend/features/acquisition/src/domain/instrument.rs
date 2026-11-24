@@ -1,15 +1,18 @@
 use std::cell::RefCell;
 use std::time::Instant;
 
-use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, FrameContext};
+use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, DerivedTrace, Frame, FrameContext, RollContext};
 use sweepscope_kernel::KernelError;
 
+use super::autoset_run::{self, Plan, Start};
 use super::defaults::Defaults;
+use super::math;
 use super::meter::CaptureMeter;
 use super::model::{nearest_index, Model, CHANNELS};
+use super::pulse;
 use super::setup_file::{self, SetupFile};
 use super::view::{self, LAST_CHANNEL, NO_SCOPE};
-use crate::{ChannelPatch, InstrumentFacts, InstrumentState, SettingTarget, SetupNotice, TriggerPatch};
+use crate::{ChannelPatch, InstrumentFacts, InstrumentState, MathPatch, SettingTarget, SetupNotice, TriggerPatch};
 
 const POSITION_STEP: f64 = 0.05;
 const LEVEL_STEP_DIVS: f64 = 0.2;
@@ -39,6 +42,15 @@ pub struct Instrument {
     /// The last setup, held until the first device is ready because the tables it must match are unknown before.
     pending_setup: Option<SetupFile>,
     notice: Option<SetupNotice>,
+    autoset_running: bool,
+}
+
+/// Everything that makes a roll session: when any part changes the screen history is void and a new session begins.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RollKey {
+    setup: AcquisitionSetup,
+    invert: [bool; CHANNELS],
+    probe: [f64; CHANNELS],
 }
 
 /// What a loaded setup could not do; each line names a value that kept its current setting.
@@ -59,6 +71,7 @@ impl Instrument {
             was_running: false,
             pending_setup: None,
             notice: None,
+            autoset_running: false,
         }
     }
 
@@ -132,11 +145,98 @@ impl Instrument {
         self.unavailable = Some(reason.to_owned());
     }
 
+    /// Run or Stop; either one ends an armed Single.
     pub fn set_running(&mut self, on: bool) -> Result<Change, KernelError> {
         self.edit(&move |_, model| {
             model.running = on;
+            model.single = false;
             Ok(())
         })
+    }
+
+    pub fn arm_single(&mut self) -> Result<Change, KernelError> {
+        self.edit(&|caps, model| {
+            if model.in_roll(caps) {
+                return Err(KernelError::recoverable(view::SINGLE_IN_ROLL));
+            }
+            model.running = true;
+            model.single = true;
+            Ok(())
+        })
+    }
+
+    pub fn single_armed(&self) -> bool {
+        self.model.as_ref().is_some_and(|m| m.single)
+    }
+
+    /// The first accepted frame of a Single ends the run.
+    pub fn finish_single(&mut self) -> Result<Change, KernelError> {
+        self.set_running(false)
+    }
+
+    /// Set by the auto-setup run; locks Run, Single, Force and Auto-setup with the reason.
+    /// Returns whether the lock changed, so the caller publishes only then. Edits are refused while it is on.
+    pub fn set_autoset_running(&mut self, running: bool) -> bool {
+        std::mem::replace(&mut self.autoset_running, running) != running
+    }
+
+    pub fn autoset_start(&self) -> Option<Start> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::start(caps, model))
+    }
+
+    pub fn autoset_probe_setup(&self, plan: &Plan) -> Option<AcquisitionSetup> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::probe_setup(caps, model, plan))
+    }
+
+    /// The end of a run: the plan becomes the user's setup and the run intent is Run. The lock must be off.
+    pub fn autoset_apply(&mut self, plan: &Plan) -> Result<Change, KernelError> {
+        self.edit(&|caps, model| {
+            autoset_run::apply_plan(caps, model, plan);
+            model.running = true;
+            model.single = false;
+            Ok(())
+        })
+    }
+
+    pub fn autoset_summary(&self) -> Option<String> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::summary(caps, model))
+    }
+
+    pub fn ready(&self) -> bool {
+        self.unavailable.is_none() && self.model.is_some()
+    }
+
+    pub fn in_roll(&self) -> bool {
+        self.caps
+            .as_ref()
+            .zip(self.model.as_ref())
+            .is_some_and(|(caps, model)| model.in_roll(caps))
+    }
+
+    pub fn roll_key(&self) -> Option<RollKey> {
+        let model = self.model.as_ref()?;
+        Some(RollKey {
+            setup: model.device_setup(),
+            invert: model.invert,
+            probe: model.probes,
+        })
+    }
+
+    pub fn roll_context(&self, session: u32) -> RollContext {
+        let model = self.model.as_ref();
+        let seconds_per_div = self.caps.as_ref().zip(model).and_then(|(caps, model)| {
+            let step = caps.time_bases.get(usize::from(model.setup.time_base_index));
+            step.map(|t| t.seconds_per_div)
+        });
+        RollContext {
+            session,
+            invert: model.map_or([false; CHANNELS], |m| m.invert),
+            probe: model.map_or([1.0; CHANNELS], |m| m.probes),
+            seconds_per_div: seconds_per_div.unwrap_or(0.0),
+        }
     }
 
     pub fn set_channel(&mut self, channel: u8, patch: ChannelPatch) -> Result<Change, KernelError> {
@@ -162,6 +262,7 @@ impl Instrument {
                     let divisions = model.level_divisions(caps) + f64::from(direction) * LEVEL_STEP_DIVS;
                     set_level(caps, model, divisions);
                 }
+                SettingTarget::MathScale | SettingTarget::MathPosition => math::step(model, target, direction),
             }
             Ok(())
         })
@@ -186,6 +287,7 @@ impl Instrument {
                 }
                 SettingTarget::TriggerPosition => model.trigger_fraction = defaults.trigger_fraction,
                 SettingTarget::TriggerLevel => model.setup.trigger.level_volts = 0.0,
+                SettingTarget::MathScale | SettingTarget::MathPosition => math::reset(caps, model, target),
             }
             Ok(())
         })
@@ -223,14 +325,28 @@ impl Instrument {
             }
             model.setup.trigger.slope = patch.slope.unwrap_or(model.setup.trigger.slope);
             model.setup.trigger.sweep = patch.sweep.unwrap_or(model.setup.trigger.sweep);
-            Ok(())
+            pulse::apply(model, &patch)
         })
+    }
+
+    pub fn set_math(&mut self, patch: MathPatch) -> Result<Change, KernelError> {
+        self.edit(&move |caps, model| math::apply(caps, model, &patch))
+    }
+
+    /// The math trace of a frame about to be published; `None` while math is off or unavailable.
+    pub fn derive_math(&self, frame: &Frame) -> Option<DerivedTrace> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        math::derive(caps, model, frame)
     }
 
     /// `None` until the first device became ready; afterwards the last state, with controls unavailable while no device is ready.
     pub fn state(&self, revision: u64) -> Option<InstrumentState> {
         let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
-        let mut state = view::instrument_state(caps, model, revision, self.unavailable.as_deref());
+        let locks = view::Locks {
+            connection: self.unavailable.as_deref(),
+            autoset_running: self.autoset_running,
+        };
+        let mut state = view::instrument_state(caps, model, revision, &locks);
         state.setup_notice.clone_from(&self.notice);
         Some(state)
     }
@@ -272,6 +388,11 @@ impl Instrument {
         self.model.as_ref().map(|m| &m.setup)
     }
 
+    /// What the device must be given: the user's setup, with the sweep a Single needs.
+    pub fn device_setup(&self) -> Option<AcquisitionSetup> {
+        self.model.as_ref().map(Model::device_setup)
+    }
+
     pub fn running(&self) -> bool {
         self.model.as_ref().is_some_and(|m| m.running)
     }
@@ -286,6 +407,9 @@ impl Instrument {
     fn edit(&mut self, change: Edit) -> Result<Change, KernelError> {
         if let Some(reason) = &self.unavailable {
             return Err(KernelError::recoverable(reason.clone()));
+        }
+        if self.autoset_running {
+            return Err(KernelError::recoverable(view::AUTOSET_RUNNING));
         }
         let (Some(caps), Some(model)) = (&self.caps, &mut self.model) else {
             return Err(KernelError::recoverable(NO_SCOPE));
@@ -361,11 +485,11 @@ fn step_range(caps: &Capabilities, model: &mut Model, number: usize, direction: 
     set_range(caps, model, number, next as u8);
 }
 
-/// Steps stop at the ends and never enter roll mode, which is not available yet.
+/// Steps stop at the ends; the slow steps are roll mode.
 fn step_time_base(caps: &Capabilities, model: &mut Model, direction: i8) {
     let current = usize::from(model.setup.time_base_index);
     let next = current.saturating_add_signed(isize::from(direction));
-    if caps.time_bases.get(next).is_some_and(|t| !t.streaming) {
+    if next < caps.time_bases.len() {
         model.setup.time_base_index = next as u8;
     }
 }

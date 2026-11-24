@@ -1,14 +1,10 @@
-import type { AcquisitionStatus, ConnectionSnapshot, InstrumentState } from '../../api';
+import type { ConnectionSnapshot, InstrumentState } from '../../api';
 import { isAcquiring, statusChips } from '../instrument';
-import { toAvailability, unavailableReason } from './select-common';
-import type { FilesAvailability, ToolbarModel } from './types';
+import { toAvailability, unavailableReason, type ModelInputs } from './select-common';
+import type { Availability, FilesAvailability, ToolbarModel } from './types';
 
-/** MOCK: the toolbar has no backend state for persistence, view or tools yet (later stories). */
-const PLACEHOLDERS = {
-  persistence: 'Persist: Off',
-  view: 'yt',
-  tools: { math: false, reference: false },
-} as const;
+/** MOCK: no backend state for a reference waveform yet (out of scope for M3). */
+const REFERENCE_OFF = false;
 
 const NO_WAVEFORM = { enabled: false, reason: 'No waveform' } as const;
 
@@ -30,21 +26,39 @@ export interface ToolbarExtras {
   cursorsOn: boolean;
 }
 
-export function selectToolbar(
-  connection: ConnectionSnapshot | undefined,
-  instrument: InstrumentState | undefined,
-  status: AcquisitionStatus | undefined,
-  { hasWaveform, cursorsOn }: ToolbarExtras,
-): ToolbarModel {
-  const unavailable = { enabled: false, reason: unavailableReason(connection) };
+/** With sweep Auto only a Single waits for a trigger; a Normal sweep waits too, so the pressed look is certain in Auto only. */
+function singleArmed({ instrument, status }: ModelInputs): boolean {
+  return instrument?.running === true && instrument.trigger.sweep === 'auto' && status?.phase === 'waitingForTrigger';
+}
+
+function controlAvailability(
+  { connection, instrument }: ModelInputs,
+  pick: (controls: InstrumentState['controls']) => InstrumentState['controls']['run'],
+): Availability {
+  return instrument
+    ? toAvailability(pick(instrument.controls))
+    : { enabled: false, reason: unavailableReason(connection) };
+}
+
+/** Cursors need a captured record: never in roll mode, whatever is drawn; an open set can always be closed. */
+function cursorsAvailability(inputs: ModelInputs, { hasWaveform, cursorsOn }: ToolbarExtras): Availability {
+  if (cursorsOn) return { enabled: true };
+  if (inputs.instrument?.horizontal.roll) return controlAvailability(inputs, (c) => c.frameViews);
+  return hasWaveform ? { enabled: true } : NO_WAVEFORM;
+}
+
+export function selectToolbar(inputs: ModelInputs, extras: ToolbarExtras): ToolbarModel {
+  const { hasWaveform, cursorsOn } = extras;
+  const { connection, instrument, status } = inputs;
   return {
     running: isAcquiring(connection, instrument),
     chips: statusChips(connection, instrument, status),
-    ...PLACEHOLDERS,
-    tools: { ...PLACEHOLDERS.tools, cursors: cursorsOn },
-    cursorsAvailability: hasWaveform || cursorsOn ? { enabled: true } : NO_WAVEFORM,
+    single: { armed: singleArmed(inputs), availability: controlAvailability(inputs, (c) => c.single) },
+    tools: { cursors: cursorsOn, math: instrument?.math.enabled ?? false, reference: REFERENCE_OFF },
+    mathAvailability: controlAvailability(inputs, (c) => c.frameViews),
+    cursorsAvailability: cursorsAvailability(inputs, extras),
     files: selectFiles(connection, instrument, hasWaveform),
-    availability: instrument ? toAvailability(instrument.controls.run) : unavailable,
-    force: instrument ? toAvailability(instrument.controls.force) : unavailable,
+    availability: controlAvailability(inputs, (c) => c.run),
+    force: controlAvailability(inputs, (c) => c.force),
   };
 }

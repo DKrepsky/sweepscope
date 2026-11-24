@@ -77,4 +77,21 @@ describe('MeasurementMatrix', () => {
     expect(screen.getByRole('cell')).toHaveTextContent('custom 1.20');
     expect(screen.getByRole('cell')).not.toHaveTextContent('V');
   });
+
+  it('given a columnHeader snippet, when rendered, then each column header keeps its text and shows the badge', () => {
+    const columnHeader = createRawSnippet<[typeof first]>((column) => ({
+      render: () => `<span data-badge>Alias ${column().id}</span>`,
+    }));
+    render(MeasurementMatrix, { columns, rows: [], footnotes: [], columnHeader });
+
+    const header = screen.getByRole('columnheader', { name: /^1/ });
+    expect(header).toHaveAttribute('scope', 'col');
+    expect(header).toHaveTextContent('1');
+    expect(header.querySelector('[data-badge]')).toHaveTextContent('Alias ch1');
+  });
+
+  it('given no columnHeader snippet, when rendered, then the header holds only the label', () => {
+    render(MeasurementMatrix, { columns, rows: [], footnotes: [] });
+    expect(screen.getByRole('columnheader', { name: '1' }).children).toHaveLength(0);
+  });
 });

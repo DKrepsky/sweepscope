@@ -5,12 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { formatQuantity } from '../src/app/formatting';
 import type { Quantity } from '../src/app/formatting';
 
-const GOLDEN = new URL('../../backend/libs/engineering-format/tests/golden.tsv', import.meta.url);
+const read = (name: string) =>
+  readFileSync(new URL(`../../backend/libs/engineering-format/tests/${name}`, import.meta.url), 'utf8')
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => line.split('\t'));
 
-const rows = readFileSync(GOLDEN, 'utf8')
-  .split('\n')
-  .filter((line) => line.length > 0)
-  .map((line) => line.split('\t'));
+const rows = [...read('golden.tsv'), ...read('golden_analyse.tsv')];
 
 describe('formatQuantity golden vectors shared with the Rust crate', () => {
   it('given the shared golden file, when it is read, then every row has four columns', () => {

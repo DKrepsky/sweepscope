@@ -62,3 +62,16 @@ describe('design tokens', () => {
     expect(sources.frontendCss).toMatch(/:root\[data-theme=["']dark["']\]\s*\{\s*color-scheme:\s*dark;/);
   });
 });
+
+describe('M3 tokens', () => {
+  it('given the persistence opacity tokens, when read, then they hold the graded design values', () => {
+    expect(tokens['opacity-persist-newest']).toBe('0.85');
+    expect(tokens['opacity-persist-hold']).toBe('0.6');
+    expect(tokens['opacity-persist-oldest']).toBe('0.3');
+  });
+
+  it('given the record and gap tokens, when read, then they hold the design values', () => {
+    expect(tokens['color-status-record']).toBe('#ff8fb1');
+    expect(tokens['color-gap-fill']).toBe('rgb(224 160 48 / 0.14)');
+  });
+});

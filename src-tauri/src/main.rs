@@ -11,8 +11,8 @@ mod manifest;
 use std::sync::Arc;
 
 use ipc::events::{EventEmitter, EventForwarders};
-use ipc::frames::FrameStreams;
 use ipc::picker::DialogPicker;
+use ipc::streams::{FrameStreams, RollStreams, SpectrumStreams};
 use tauri::Manager;
 
 fn main() {
@@ -25,6 +25,8 @@ fn main() {
             let emitter: Arc<dyn EventEmitter> = Arc::new(app.handle().clone());
             app.manage(EventForwarders::start(&backend.bus, &emitter)?);
             app.manage(FrameStreams::default());
+            app.manage(RollStreams::default());
+            app.manage(SpectrumStreams::default());
             app.manage(backend);
             Ok(())
         });

@@ -22,6 +22,7 @@
     'info',
     'offline',
     'ok',
+    'record',
   ];
 
   let tooltipHost: HTMLElement | undefined = $state();
@@ -48,6 +49,8 @@
       <StatusChip {kind}>{kind}</StatusChip>
     {/each}
     <StatusChip kind="triggered" filled>Trig'd</StatusChip>
+    <StatusChip kind="triggered">Done</StatusChip>
+    <StatusChip kind="record">Rec 01:23:45 &middot; 12.4 MB</StatusChip>
   </Row>
   <Row label="Dim">
     {#each kinds as kind (kind)}
@@ -71,7 +74,11 @@
   component="MeasurementMatrix"
   note="Cell states: valid, unverified, invalid, stale. CH4 is omitted from the second table (channel off)."
 >
-  <MeasurementMatrix columns={matrixColumns} rows={matrixRows} footnotes={matrixFootnotes} />
+  <MeasurementMatrix columns={matrixColumns} rows={matrixRows} footnotes={matrixFootnotes}>
+    {#snippet columnHeader(column)}
+      {#if column.id === 'ch1'}<Badge kind="warning" tooltip="Aliasing risk (illustrative)">Alias</Badge>{/if}
+    {/snippet}
+  </MeasurementMatrix>
   <MeasurementMatrix
     columns={matrixColumns.slice(0, 3)}
     rows={matrixRows.slice(0, 1)}

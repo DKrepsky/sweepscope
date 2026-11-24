@@ -6,12 +6,13 @@ use sweepscope_kernel::Clock;
 use super::control::SimulatorControl;
 use super::edge::{self, Direction};
 use super::profile;
+use super::pulse::{self, PulseSearch};
 use super::signal;
 use super::timing::{self, POLL_INTERVAL};
 use crate::profile::RECORD_LEN;
 use crate::{
     AcquisitionSetup, Capabilities, ChannelData, DeviceError, DeviceIdentity, Frame, ScopeDevice, Slope, Sweep,
-    TriggerOutcome,
+    TriggerKind, TriggerOutcome,
 };
 /// What `configure` derives once, so capture and roll do not recompute it.
 #[derive(Clone)]
@@ -105,6 +106,11 @@ impl SimulatedDevice {
         {
             return invalid("trigger source is not an enabled channel");
         }
+        if let TriggerKind::Pulse { width_s, .. } = setup.trigger.kind {
+            if !width_s.is_finite() || width_s <= 0.0 {
+                return invalid("pulse width must be a positive number");
+            }
+        }
         if !(0.0..=100.0).contains(&setup.trigger.horizontal_position_percent) {
             return invalid("horizontal position is outside 0 to 100 percent");
         }
@@ -122,26 +128,33 @@ impl SimulatedDevice {
         }
     }
 
-    /// Time of the first trigger edge in `[armed, armed + window]`, in simulated seconds.
+    /// Time of the first trigger event (edge, or leading edge of a matching pulse) in `[armed, armed + window]`,
+    /// in simulated seconds.
     fn find_edge(&self, plan: &Plan, armed: f64, window: Duration) -> Option<f64> {
         let trigger = &plan.setup.trigger;
-        let kind = self.control.signal(usize::from(trigger.source));
-        let period = 1.0 / signal::FREQUENCY_HZ;
-        // The waveform repeats, so an edge that exists shows up within two periods.
+        let spec = self.control.signal(usize::from(trigger.source));
+        let period = spec.period_s();
+        // The waveform repeats, so an event that exists shows up within two periods.
         let to = armed + window.as_secs_f64().min(2.0 * period);
         let step = plan.interval_s.min(period / 200.0).max(period / 100_000.0);
         let direction = match trigger.slope {
             Slope::Rising => Direction::Rising,
             Slope::Falling => Direction::Falling,
         };
-        edge::find_crossing(
-            |t| signal::clean(kind, t),
-            trigger.level_volts,
-            direction,
-            armed,
-            to,
-            step,
-        )
+        let value_at = |t| signal::clean(&spec, t);
+        match trigger.kind {
+            TriggerKind::Edge => edge::find_crossing(value_at, trigger.level_volts, direction, armed, to, step),
+            TriggerKind::Pulse { width_s, condition } => {
+                let accepts = |measured_s| pulse::width_matches(measured_s, width_s, condition);
+                let search = PulseSearch {
+                    level: trigger.level_volts,
+                    leading: direction,
+                    accepts_width: &accepts,
+                    step,
+                };
+                pulse::find_pulse(value_at, &search, armed, to, period)
+            }
+        }
     }
 
     fn render(&self, plan: &Plan, start: f64, count: usize, trigger: TriggerOutcome) -> Frame {
@@ -161,10 +174,10 @@ impl SimulatedDevice {
         let setup = &plan.setup.channels[channel];
         let volts_per_div = self.capabilities.vertical_ranges[usize::from(setup.range_index)].volts_per_div;
         let zero_code = profile::zero_code(setup.position_divs, plan.counts_per_div);
-        let kind = self.control.signal(channel);
+        let spec = self.control.signal(channel);
         let codes = (0..count)
             .map(|i| {
-                let volts = signal::sample(kind, start + i as f64 * plan.interval_s);
+                let volts = signal::sample(&spec, start + i as f64 * plan.interval_s);
                 to_code(volts, volts_per_div, zero_code, plan.counts_per_div)
             })
             .collect();

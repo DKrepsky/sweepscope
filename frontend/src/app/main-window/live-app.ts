@@ -1,14 +1,17 @@
 import type { BackendClient } from '../../api';
+import { followAutosetOutcomes } from '../autoset';
 import { createCursorsStore } from '../cursors';
 import { createFileActions } from '../files';
 import { createInstrumentCommands, createInstrumentStores, type InstrumentStores } from '../instrument';
-import { createFrameFeed, type FrameBudgetProbe } from '../waveform';
+import type { NotificationAction } from '../notifications';
+import type { AnalysisSources } from '../views';
+import { createFrameFeed, createRollFeed, createSpectrumFeed, type FrameBudgetProbe } from '../waveform';
 import { createLiveMainWindow, type LiveMainWindow } from './live-main-window';
 import { createPinnedMeasurements } from './pinned-measurements';
 
 interface Deps {
   client: BackendClient;
-  notify: (kind: 'info' | 'warning' | 'error', text: string) => void;
+  notify: (kind: 'info' | 'warning' | 'error', text: string, action?: NotificationAction) => void;
   /** PNG bytes of the window as it looks now. */
   composeScreenshot: () => Promise<Uint8Array>;
   copyText: (text: string) => void;
@@ -48,6 +51,22 @@ function followSetupNotices({ instrument }: InstrumentStores, notify: Deps['noti
     });
 }
 
+/** Every toast the backend state causes: setup notices and auto-setup outcomes. Returns the function that stops them. */
+function followBackendMessages(stores: InstrumentStores, notify: Deps['notify'], retryAutoset: () => void) {
+  const followNotices = followSetupNotices(stores, notify);
+  return () => {
+    const stops = [followNotices(), followAutosetOutcomes({ status: stores.status, notify, retry: retryAutoset })];
+    return () => stops.forEach((stop) => stop());
+  };
+}
+
+const analysisSources = (client: BackendClient, { spectrum, recording }: InstrumentStores): AnalysisSources => ({
+  spectrum,
+  recording,
+  roll: createRollFeed(client),
+  spectrumFrame: createSpectrumFeed(client),
+});
+
 export function createLiveApp(deps: Deps): LiveApp {
   const { client, notify, copyText, now, composeScreenshot } = deps;
   const stores = createInstrumentStores({ client });
@@ -56,11 +75,13 @@ export function createLiveApp(deps: Deps): LiveApp {
   const cursors = createCursorsStore();
   const pinned = createPinnedMeasurements({ client });
   const files = createFileActions({ client, notify, composeScreenshot });
-  const followNotices = followSetupNotices(stores, notify);
-  let stopNotices = () => {};
+  const followMessages = followBackendMessages(stores, notify, () => model.startAutoset());
+  let stopMessages = () => {};
   const model = createLiveMainWindow({
     stores,
+    analysis: analysisSources(client, stores),
     commands,
+    analyseCommands: commands,
     cursors,
     pinned,
     files,
@@ -74,14 +95,14 @@ export function createLiveApp(deps: Deps): LiveApp {
     model,
     start: async () => {
       feed.start();
-      stopNotices();
-      stopNotices = followNotices();
+      stopMessages();
+      stopMessages = followMessages();
       void pinned.load();
       await stores.start();
     },
     stop: () => {
       feed.stop();
-      stopNotices();
+      stopMessages();
       stores.stop();
     },
   };

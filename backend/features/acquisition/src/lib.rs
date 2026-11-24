@@ -11,11 +11,12 @@ pub use domain::{
     Instrument, Restore, SetupFile, SetupReport, StatusEvent,
 };
 pub use messages::{
-    AcquisitionStatus, Availability, ChannelPatch, ChannelState, ControlsAvailability, FactsChanged, ForceTriggerNow,
-    GetInstrument, HorizontalState, InstrumentChanged, InstrumentFacts, InstrumentSnapshot, InstrumentState, LoadSetup,
-    Phase, ResetSetting, SaveSetup, ScaleChoice, SetChannel, SetRunning, SetTrigger, SetTriggerLevel,
-    SetTriggerPosition, SettingTarget, SetupLoaded, SetupNotice, StatusChanged, StepSetting, TriggerPatch,
-    TriggerState,
+    AcquisitionStatus, ArmSingle, AutosetOutcome, AutosetOutcomeKind, AutosetStatus, ChannelPatch, ChannelState,
+    ControlsAvailability, FactsChanged, ForceTriggerNow, GetInstrument, HorizontalState, InstrumentChanged,
+    InstrumentFacts, InstrumentSnapshot, InstrumentState, LoadSetup, MathOperation, MathPatch, MathState, MathStatus,
+    Phase, PulseState, ResetSetting, SaveSetup, ScaleChoice, SetChannel, SetMath, SetRunning, SetTrigger,
+    SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, SetupNotice, StartAutoset, StatusChanged,
+    StepSetting, TriggerKindName, TriggerPatch, TriggerState,
 };
 pub use module::{AcquisitionDeps, AcquisitionModule, COMMANDS};
-pub use sweepscope_kernel::contracts::FormattedValue;
+pub use sweepscope_kernel::contracts::{Availability, FormattedValue};

@@ -141,7 +141,7 @@ test.describe('main window shell', () => {
       .click();
     await expect(page.getByRole('menu')).toBeVisible();
     await page.keyboard.press('ArrowDown');
-    await expect(page.getByRole('menuitem').nth(1)).toBeFocused();
+    await expect(page.getByRole('menuitemradio').nth(1)).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('menu')).toHaveCount(0);
   });

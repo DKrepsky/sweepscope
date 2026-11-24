@@ -133,6 +133,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "autoset"
+version = "0.1.0"
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -881,6 +885,10 @@ checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
 ]
+
+[[package]]
+name = "fft"
+version = "0.1.0"
 
 [[package]]
 name = "field-offset"
@@ -1991,6 +1999,10 @@ dependencies = [
  "tendril",
  "web_atoms 0.3.0",
 ]
+
+[[package]]
+name = "math-channel"
+version = "0.1.0"
 
 [[package]]
 name = "measurements"
@@ -3309,7 +3321,10 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 name = "sweepscope-acquisition"
 version = "0.1.0"
 dependencies = [
+ "autoset",
  "engineering-format",
+ "math-channel",
+ "measurements",
  "serde",
  "serde_json",
  "sweepscope-kernel",
@@ -3330,7 +3345,9 @@ dependencies = [
  "sweepscope-export",
  "sweepscope-kernel",
  "sweepscope-measurement",
+ "sweepscope-recording",
  "sweepscope-settings",
+ "sweepscope-spectrum",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -3351,6 +3368,7 @@ version = "0.1.0"
 dependencies = [
  "interpolation",
  "serde",
+ "serde_json",
  "sweepscope-kernel",
  "ts-rs",
 ]
@@ -3385,9 +3403,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "sweepscope-recording"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
 name = "sweepscope-settings"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
+name = "sweepscope-spectrum"
+version = "0.1.0"
+dependencies = [
+ "engineering-format",
+ "fft",
  "serde",
  "serde_json",
  "sweepscope-kernel",
