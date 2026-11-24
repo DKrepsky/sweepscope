@@ -20,6 +20,8 @@ export interface AnalyseDeps {
   /** Current values at the moment of the call. */
   enabledChannels: () => ChannelNumber[];
   binCount: () => number;
+  /** Whether the last typed pulse width was rejected. */
+  pulseWidthRejected: { set(rejected: boolean): void };
 }
 
 export type AnalyseActions = Pick<
@@ -27,6 +29,7 @@ export type AnalyseActions = Pick<
   | 'setTriggerKind'
   | 'setPulseCondition'
   | 'commitPulseWidth'
+  | 'clearPulseWidthError'
   | 'setView'
   | 'setXyAxis'
   | 'setSpectrumWindow'
@@ -49,11 +52,15 @@ export type AnalyseActions = Pick<
   | 'stopRecording'
 >;
 
-function triggerActions({ instrument }: AnalyseDeps) {
+function triggerActions({ instrument, pulseWidthRejected }: AnalyseDeps) {
   return {
     setTriggerKind: (kind: 'edge' | 'pulse') => instrument.setTrigger({ kind }),
     setPulseCondition: (condition: PulseCondition) => instrument.setTrigger({ condition }),
-    commitPulseWidth: (widthText: string) => instrument.setTrigger({ widthText }),
+    commitPulseWidth: (widthText: string) => {
+      pulseWidthRejected.set(false);
+      instrument.setTrigger({ widthText }, () => pulseWidthRejected.set(true));
+    },
+    clearPulseWidthError: () => pulseWidthRejected.set(false),
   };
 }
 

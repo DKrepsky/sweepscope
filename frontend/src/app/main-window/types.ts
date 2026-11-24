@@ -293,7 +293,7 @@ export interface MathRowModel {
   operation: MathOperationName;
   sourceA: ChannelNumber;
   sourceB?: ChannelNumber;
-  scale: Quantity;
+  scale: ScaleQuantity;
   position: Quantity;
   /** The backend label, such as `A−B`. */
   label: string;

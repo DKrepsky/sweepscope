@@ -34,6 +34,7 @@ export interface ModelInputs {
   xyAxes: XyAxes;
   peak: PeakMarker;
   persistenceEpoch: number;
+  pulseWidthRejected: boolean;
 }
 
 export type BackendAvailability = InstrumentState['controls']['run'];

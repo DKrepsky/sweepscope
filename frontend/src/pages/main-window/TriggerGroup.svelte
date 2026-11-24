@@ -1,7 +1,14 @@
 <script lang="ts">
-  import type { ChannelModel, ChannelNumber, MainWindowActions, TriggerModel } from '../../app/main-window';
+  import type {
+    ChannelModel,
+    ChannelNumber,
+    MainWindowActions,
+    PulseCondition,
+    TriggerModel,
+  } from '../../app/main-window';
   import Badge from '../../ui/badge/Badge.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
+  import NumberField from '../../ui/number-field/NumberField.svelte';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import DockGroup from './DockGroup.svelte';
   import ReasonStepper from './ReasonStepper.svelte';
@@ -14,21 +21,40 @@
 
   const { trigger, channels, actions }: Props = $props();
 
+  const CONDITIONS: { id: PulseCondition; symbol: string; name: string }[] = [
+    { id: 'greater', symbol: '>', name: 'Longer than' },
+    { id: 'less', symbol: '<', name: 'Shorter than' },
+    { id: 'equal', symbol: '=', name: 'Equal to' },
+    { id: 'notEqual', symbol: '≠', name: 'Not equal to' },
+  ];
+
   const off = $derived(trigger.availability?.enabled === false);
   const reason = $derived(trigger.availability?.reason);
+  const pulse = $derived(trigger.type === 'pulse' ? trigger.pulse : undefined);
   const choice = (options: { id: string; label: string }[]) =>
     options.map((option) => ({ ...option, disabled: off, disabledReason: reason }));
-  const types = [
-    { id: 'edge', label: 'Edge' },
-    { id: 'pulse', label: 'Pulse', disabled: true, disabledReason: 'Pulse trigger arrives in a later release' },
-    { id: 'video', label: 'Video', disabled: true, disabledReason: 'Video trigger is untested on this hardware' },
-  ];
+  const types = $derived([
+    { id: 'edge', label: 'Edge', disabled: off, disabledReason: reason },
+    { id: 'pulse', label: 'Pulse', disabled: off, disabledReason: reason },
+    {
+      id: 'video',
+      label: 'Video',
+      disabled: true,
+      disabledReason: 'Video trigger is untested on this hardware (experimental)',
+    },
+  ]);
+  const polarityNames = $derived(
+    pulse
+      ? { rising: 'Positive pulse', falling: 'Negative pulse' }
+      : { rising: 'Rising edge', falling: 'Falling edge' },
+  );
   const slopes = $derived(
     choice([
-      { id: 'rising', label: 'Rising' },
-      { id: 'falling', label: 'Falling' },
+      { id: 'rising', label: polarityNames.rising },
+      { id: 'falling', label: polarityNames.falling },
     ]),
   );
+  const conditions = $derived(choice(CONDITIONS.map(({ id, name }) => ({ id, label: name }))));
   const sweeps = $derived(
     choice([
       { id: 'auto', label: 'Auto' },
@@ -44,15 +70,30 @@
     })),
   );
   const asChannel = (id: string): ChannelNumber => Number(id) as ChannelNumber;
+  const conditionOf = (id: string) => CONDITIONS.find((c) => c.id === id);
+  const slopeIcon = (id: string) => {
+    const rising = id === 'rising';
+    if (pulse) return rising ? 'pulse-positive' : 'pulse-negative';
+    return rising ? 'rising-edge' : 'falling-edge';
+  };
+
+  function escapeClears(event: KeyboardEvent) {
+    if (event.key === 'Escape') actions.clearPulseWidthError();
+  }
 </script>
 
 <DockGroup title="Trigger" region="trigger">
   <div class="line">
     <span class="ss-caps label">Type</span>
-    <Segmented value={trigger.type} options={types} onchange={() => {}} ariaLabel="Trigger type" />
-    <Badge kind="experimental" tooltip="Experimental: pulse and video triggers are not verified on this hardware">
-      Exp
-    </Badge>
+    <span title={pulse ? trigger.accuracyNote : undefined}>
+      <Segmented
+        value={trigger.type}
+        options={types}
+        onchange={(id) => actions.setTriggerKind(id === 'pulse' ? 'pulse' : 'edge')}
+        ariaLabel="Trigger type"
+      />
+    </span>
+    <Badge kind="experimental" tooltip="Experimental: video triggers are not verified on this hardware">Exp</Badge>
   </div>
   <div class="line">
     <span class="ss-caps label">Source</span>
@@ -68,11 +109,11 @@
       value={trigger.slope}
       options={slopes}
       onchange={(id) => actions.setTriggerSlope(id === 'falling' ? 'falling' : 'rising')}
-      ariaLabel="Trigger slope"
+      ariaLabel={pulse ? 'Trigger polarity' : 'Trigger slope'}
     >
       {#snippet option({ id })}
-        <Icon name={id === 'rising' ? 'rising-edge' : 'falling-edge'} />
-        <span class="hidden-label">{id === 'rising' ? 'Rising' : 'Falling'}</span>
+        <Icon name={slopeIcon(id)} />
+        <span class="hidden-label">{id === 'rising' ? polarityNames.rising : polarityNames.falling}</span>
       {/snippet}
     </Segmented>
   </div>
@@ -89,6 +130,40 @@
       ariaLabel="Trigger level"
     />
   </div>
+  {#if pulse}
+    <div class="line">
+      <span class="ss-caps label">Width</span>
+      <Segmented
+        value={pulse.condition}
+        options={conditions}
+        onchange={(id) => actions.setPulseCondition(conditionOf(id)?.id ?? 'greater')}
+        ariaLabel="Pulse width condition"
+      >
+        {#snippet option({ id })}
+          <span aria-hidden="true" title={conditionOf(id)?.name}>{conditionOf(id)?.symbol}</span>
+          <span class="hidden-label">{conditionOf(id)?.name}</span>
+        {/snippet}
+      </Segmented>
+      <!-- Escape and leaving the field both drop the shown error; the inner input owns the keys. -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <span role="group" aria-label="Pulse width" onkeydown={escapeClears} onfocusout={actions.clearPulseWidthError}>
+        <NumberField
+          value={pulse.width.value}
+          commit={actions.commitPulseWidth}
+          disabled={off}
+          disabledReason={reason}
+          error={pulse.error}
+          ariaLabel="Pulse width"
+        >
+          {#snippet left()}<small>WIDTH</small>{/snippet}
+          {#snippet unit()}<small>{pulse.width.unit}</small>{/snippet}
+        </NumberField>
+      </span>
+      {#if !pulse.verified}
+        <Badge kind="warning" tooltip="Pulse width outside the verified range (50 µs to 5 ms)">?</Badge>
+      {/if}
+    </div>
+  {/if}
   <div class="line">
     <span class="ss-caps label">Sweep</span>
     <Segmented
@@ -98,7 +173,12 @@
       ariaLabel="Trigger sweep"
     />
   </div>
-  {#if trigger.accuracyNote}<div class="note">{trigger.accuracyNote}</div>{/if}
+  {#if off && reason}<div class="reason" data-testid="trigger-reason">{reason}</div>{/if}
+  {#if pulse}
+    <div class="slot" role="status">{pulse.error ?? ''}</div>
+  {:else if trigger.accuracyNote}
+    <div class="note">{trigger.accuracyNote}</div>
+  {/if}
 </DockGroup>
 
 <style>
@@ -119,6 +199,16 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  .reason {
+    font-size: var(--ss-font-size-xs);
+    color: var(--ss-color-status-warning);
+  }
+  /* Two lines are always reserved so a rejected width never moves the group. */
+  .slot {
+    min-block-size: 2lh;
+    font-size: var(--ss-font-size-xs);
+    color: var(--ss-color-status-error);
   }
   .note {
     font-size: var(--ss-font-size-xs);

@@ -124,6 +124,7 @@
               channels={model.channels}
               horizontal={model.horizontal}
               trigger={model.trigger}
+              math={model.math}
               actions={windowActions}
               wrapped={compact}
               smallRows={collapse.smallRows}

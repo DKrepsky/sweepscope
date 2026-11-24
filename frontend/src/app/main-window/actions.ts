@@ -42,6 +42,8 @@ export interface MainWindowActions {
   setPulseCondition(condition: PulseCondition): void;
   /** Text as typed (`500 us`); the backend parses it and rejects the whole patch when it is not a time. */
   commitPulseWidth(text: string): void;
+  /** Escape or blur of the width field: the shown error goes away. */
+  clearPulseWidthError(): void;
   setView(view: ViewTab): void;
   setXyAxis(axis: 'x' | 'y', channel: ChannelNumber): void;
   setSpectrumWindow(window: SpectrumWindowName): void;

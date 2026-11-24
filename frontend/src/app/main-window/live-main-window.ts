@@ -65,7 +65,7 @@ function selectModel(i: ModelInputs): MainWindowModel {
       i.display?.automatic ?? false,
     ),
     channels: selectChannels(connection, instrument, selected, i.measurements),
-    trigger: selectTrigger(connection, instrument),
+    trigger: selectTrigger(connection, instrument, i.pulseWidthRejected),
     cursors: selectCursors(i.cursors, instrument, graph.state, selected),
     measurements: selectMeasurements(i.measurements, i.pinned, graph.state),
     status: selectStatus(connection, instrument, i.facts, i.renderer, i.measurements),
@@ -87,6 +87,7 @@ interface Presentation {
   xyAxes: Readable<ModelInputs['xyAxes']>;
   peak: Readable<ModelInputs['peak']>;
   persistenceEpoch: Readable<number>;
+  pulseWidthRejected: Readable<boolean>;
 }
 
 type BackendInputs = Pick<
@@ -94,7 +95,10 @@ type BackendInputs = Pick<
   'connection' | 'instrument' | 'status' | 'facts' | 'display' | 'measurements' | 'frame'
 >;
 type AnalysisInputs = Pick<ModelInputs, 'spectrum' | 'spectrumFrame' | 'recording' | 'roll'>;
-type PresentationInputs = Pick<ModelInputs, 'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch'>;
+type PresentationInputs = Pick<
+  ModelInputs,
+  'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch' | 'pulseWidthRejected'
+>;
 
 function backendInputs({ stores, frames }: Deps): Readable<BackendInputs> {
   const { connection, instrument, status, facts, display, measurements } = stores;
@@ -121,8 +125,15 @@ function analysisInputs({ analysis }: Deps): Readable<AnalysisInputs> {
 
 function presentationInputs(p: Presentation): Readable<PresentationInputs> {
   return derived(
-    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch],
-    ([selected, view, xyAxes, peak, persistenceEpoch]) => ({ selected, view, xyAxes, peak, persistenceEpoch }),
+    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch, p.pulseWidthRejected],
+    ([selected, view, xyAxes, peak, persistenceEpoch, pulseWidthRejected]) => ({
+      selected,
+      view,
+      xyAxes,
+      peak,
+      persistenceEpoch,
+      pulseWidthRejected,
+    }),
   );
 }
 
@@ -149,8 +160,9 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
   const xy = createXyAxesStore();
   const peak = createPeakMarkerStore();
   const persistenceEpoch = createPersistenceEpoch();
+  const pulseWidthRejected = writable(false);
 
-  const model = deriveModel(deps, { selected, view, xyAxes: xy, peak, persistenceEpoch });
+  const model = deriveModel(deps, { selected, view, xyAxes: xy, peak, persistenceEpoch, pulseWidthRejected });
 
   const actions = createLiveActions({
     commands,
@@ -173,6 +185,7 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
     xy,
     peak,
     persistenceEpoch,
+    pulseWidthRejected,
     enabledChannels: () => enabledChannels(get(stores.instrument)),
     binCount: () => get(analysis.spectrumFrame)?.bins ?? 0,
   });

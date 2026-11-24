@@ -658,7 +658,7 @@ describe('live main window model: analysis actions', () => {
     expect(vi.mocked(commands.setTrigger).mock.calls).toEqual([
       [{ kind: 'pulse' }],
       [{ condition: 'greater' }],
-      [{ widthText: '500 us' }],
+      [{ widthText: '500 us' }, expect.any(Function)],
     ]);
   });
 
@@ -689,5 +689,209 @@ describe('live main window model: analysis actions', () => {
       math: { row: { enabled: false }, chip: '' },
       autoset: { busy: false, noSignal: false },
     });
+  });
+});
+
+describe('live main window model: pulse trigger and math', () => {
+  const pulseState = (): InstrumentState => {
+    const base = instrumentState();
+    return {
+      ...base,
+      trigger: {
+        ...base.trigger,
+        kind: 'pulse',
+        pulse: { condition: 'greater', width: value('500', 'µs') as never, verified: true },
+      },
+    };
+  };
+
+  it('given a pulse trigger, when read, then the type, condition and applied width show', () => {
+    const { window } = setup({ instrument: pulseState() });
+
+    expect(model(window).trigger).toMatchObject({
+      type: 'pulse',
+      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, verified: true },
+    });
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given a typed width, when the backend rejects it, then the model carries the error with the applied width', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    vi.mocked(commands.setTrigger).mockImplementation((_patch, onRejected) => onRejected?.());
+
+    window.commitPulseWidth('abc');
+
+    expect(model(window).trigger.pulse?.error).toBe('Invalid width. Enter a time such as 500 µs. Applied: 500 µs.');
+  });
+
+  it('given a shown width error, when Escape clears it, then the error is gone', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    vi.mocked(commands.setTrigger).mockImplementation((_patch, onRejected) => onRejected?.());
+    window.commitPulseWidth('abc');
+
+    window.clearPulseWidthError();
+
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given a shown width error, when a new width is committed and accepted, then the error is gone', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    vi.mocked(commands.setTrigger).mockImplementationOnce((_patch, onRejected) => onRejected?.());
+    window.commitPulseWidth('abc');
+
+    window.commitPulseWidth('1 ms');
+
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given an edge trigger, when read, then there is no pulse model', () => {
+    const { window } = setup();
+
+    expect(model(window).trigger).toMatchObject({ type: 'edge' });
+    expect(model(window).trigger.pulse).toBeUndefined();
+  });
+
+  const withMath = (patch: Partial<InstrumentState['math']>): InstrumentState => {
+    const base = instrumentState();
+    return { ...base, math: { ...base.math, ...patch } };
+  };
+
+  it('given math on with sources of one scale, when read, then the row shows the label and the chip the scale', () => {
+    const { window } = setup({ instrument: withMath({ enabled: true }) });
+
+    expect(model(window).math.row).toMatchObject({ enabled: true, label: 'A−B', sourceA: 1, sourceB: 2, status: 'ok' });
+    expect(model(window).math.chip).toBe('M  A−B  1 V/div');
+  });
+
+  it('given math off, when read, then the chip is empty', () => {
+    const { window } = setup();
+
+    expect(model(window).math.chip).toBe('');
+  });
+
+  it('given sources of different scales, when read, then the row is mixed with the backend detail', () => {
+    const { window } = setup({
+      instrument: withMath({ enabled: true, status: { kind: 'mixed', detail: 'CH1 500 mV/div, CH2 20 mV/div.' } }),
+    });
+
+    expect(model(window).math.row).toMatchObject({ status: 'mixed', statusDetail: 'CH1 500 mV/div, CH2 20 mV/div.' });
+  });
+
+  it('given a disabled source, when read, then the chip names the reason and the model carries it', () => {
+    const { window } = setup({
+      instrument: withMath({ enabled: true, status: { kind: 'unavailable', reason: 'CH2 is off' } }),
+    });
+
+    expect(model(window).math.chip).toBe('M  A−B  unavailable: CH2 is off');
+    expect(model(window).math.unavailableReason).toBe('CH2 is off');
+  });
+
+  it('given the invert operation, when read, then there is no source B', () => {
+    const { window } = setup({ instrument: withMath({ operation: 'invertA', sourceB: null }) });
+
+    expect(model(window).math.row.sourceB).toBeUndefined();
+  });
+});
+
+describe('live main window model: pulse trigger and math', () => {
+  const pulseState = (): InstrumentState => {
+    const base = instrumentState();
+    return {
+      ...base,
+      trigger: {
+        ...base.trigger,
+        kind: 'pulse',
+        pulse: { condition: 'greater', width: value('500', 'µs'), verified: true },
+      },
+    };
+  };
+  const rejecting = (commands: InstrumentCommands) =>
+    vi.mocked(commands.setTrigger).mockImplementation((_patch, onRejected) => onRejected?.());
+
+  it('given a pulse trigger, when read, then the type, condition and applied width show', () => {
+    const { window } = setup({ instrument: pulseState() });
+
+    expect(model(window).trigger).toMatchObject({
+      type: 'pulse',
+      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, verified: true },
+    });
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given a typed width, when the backend rejects it, then the model carries the error with the applied width', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    rejecting(commands);
+
+    window.commitPulseWidth('abc');
+
+    expect(model(window).trigger.pulse?.error).toBe('Invalid width. Enter a time such as 500 µs. Applied: 500 µs.');
+  });
+
+  it('given a shown width error, when Escape clears it, then the error is gone', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    rejecting(commands);
+    window.commitPulseWidth('abc');
+
+    window.clearPulseWidthError();
+
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given a shown width error, when a new width is committed and accepted, then the error is gone', () => {
+    const { window, commands } = setup({ instrument: pulseState() });
+    vi.mocked(commands.setTrigger).mockImplementationOnce((_patch, onRejected) => onRejected?.());
+    window.commitPulseWidth('abc');
+
+    window.commitPulseWidth('1 ms');
+
+    expect(model(window).trigger.pulse?.error).toBeUndefined();
+  });
+
+  it('given an edge trigger, when read, then there is no pulse model', () => {
+    const { window } = setup();
+
+    expect(model(window).trigger).toMatchObject({ type: 'edge' });
+    expect(model(window).trigger.pulse).toBeUndefined();
+  });
+
+  const withMath = (patch: Partial<InstrumentState['math']>): InstrumentState => {
+    const base = instrumentState();
+    return { ...base, math: { ...base.math, ...patch } };
+  };
+
+  it('given math on with sources of one scale, when read, then the row shows the label and the chip the scale', () => {
+    const { window } = setup({ instrument: withMath({ enabled: true }) });
+
+    expect(model(window).math.row).toMatchObject({ enabled: true, label: 'A−B', sourceA: 1, sourceB: 2, status: 'ok' });
+    expect(model(window).math.chip).toBe('M  A−B  1 V/div');
+  });
+
+  it('given math off, when read, then the chip is empty', () => {
+    const { window } = setup();
+
+    expect(model(window).math.chip).toBe('');
+  });
+
+  it('given sources of different scales, when read, then the row is mixed with the backend detail', () => {
+    const { window } = setup({
+      instrument: withMath({ enabled: true, status: { kind: 'mixed', detail: 'CH1 500 mV/div, CH2 20 mV/div.' } }),
+    });
+
+    expect(model(window).math.row).toMatchObject({ status: 'mixed', statusDetail: 'CH1 500 mV/div, CH2 20 mV/div.' });
+  });
+
+  it('given a disabled source, when read, then the chip names the reason and the model carries it', () => {
+    const { window } = setup({
+      instrument: withMath({ enabled: true, status: { kind: 'unavailable', reason: 'CH2 is off' } }),
+    });
+
+    expect(model(window).math.chip).toBe('M  A−B  unavailable: CH2 is off');
+    expect(model(window).math.unavailableReason).toBe('CH2 is off');
+  });
+
+  it('given the invert operation, when read, then there is no source B', () => {
+    const { window } = setup({ instrument: withMath({ operation: 'invertA', sourceB: null }) });
+
+    expect(model(window).math.row.sourceB).toBeUndefined();
   });
 });

@@ -52,10 +52,10 @@ describe('layoutTierFor', () => {
   });
 
   it.each([
-    [47.25, 'h1'],
-    [47.24, 'h2'],
-    [46.25, 'h2'],
-    [46.24, 'h4'],
+    [50, 'h1'],
+    [49.99, 'h2'],
+    [48.75, 'h2'],
+    [48.74, 'h4'],
     [45, 'h4'],
     [44.99, 'scroll'],
   ])('given a wide window %s rem high, when the tier is computed, then it is %s', (rem, tier) => {
@@ -63,12 +63,12 @@ describe('layoutTierFor', () => {
   });
 
   it.each([
-    [59, 'h1'],
-    [58.99, 'h2'],
-    [57, 'h2'],
-    [56.99, 'h3'],
-    [50.25, 'h3'],
-    [50.24, 'h4'],
+    [62.5, 'h1'],
+    [62.49, 'h2'],
+    [60, 'h2'],
+    [59.99, 'h3'],
+    [52.75, 'h3'],
+    [52.74, 'h4'],
     [45, 'h4'],
     [44.99, 'scroll'],
   ])('given a narrow window %s rem high, when the tier is computed, then it is %s', (rem, tier) => {

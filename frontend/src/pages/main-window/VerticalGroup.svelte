@@ -1,24 +1,29 @@
 <script lang="ts">
-  import type { ChannelModel, MainWindowActions } from '../../app/main-window';
+  import type { ChannelModel, MainWindowActions, MathModel } from '../../app/main-window';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import ChannelRow from './ChannelRow.svelte';
   import DockGroup from './DockGroup.svelte';
+  import MathRow from './MathRow.svelte';
 
   interface Props {
     channels: ChannelModel[];
+    math: MathModel;
     actions: MainWindowActions;
     /** H3: only the chosen channel's row is shown, with channel tabs. */
     tabs: boolean;
   }
 
-  const { channels, actions, tabs }: Props = $props();
+  const { channels, math, actions, tabs }: Props = $props();
 
+  const MATH_TAB = 'M';
   let chosen = $state<string | null>(null);
   const shown = $derived(chosen ?? String(channels.find((channel) => channel.selected)?.number ?? 1));
+  const showsMath = $derived(!tabs || shown === MATH_TAB);
   const visible = $derived(tabs ? channels.filter((channel) => String(channel.number) === shown) : channels);
-  const tabOptions = $derived(
-    channels.map((channel) => ({ id: String(channel.number), label: String(channel.number) })),
-  );
+  const tabOptions = $derived([
+    ...channels.map((channel) => ({ id: String(channel.number), label: String(channel.number) })),
+    { id: MATH_TAB, label: 'M' },
+  ]);
 </script>
 
 <DockGroup title="Vertical" region="vertical">
@@ -31,6 +36,7 @@
     {#each visible as channel (channel.number)}
       <ChannelRow {channel} {actions} />
     {/each}
+    {#if showsMath}<MathRow {math} {channels} {actions} />{/if}
   </div>
 </DockGroup>
 

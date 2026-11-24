@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { box, openMain, SCOPE_SCREEN, shell, tiers, type TextScale } from './support/app';
+import { emit } from './support/tauri-stub';
 
 // Rows of the design 3.2 example table: window width in CSS px, text scale, expected width tier.
 const table: [number, TextScale, string][] = [
@@ -50,13 +51,13 @@ test.describe('width tiers (design 3.2)', () => {
 });
 
 test.describe('height tiers (design 3.2)', () => {
-  // Calibrated thresholds (layout-calibration.md), wide column at 1440 px: h1 from 47.25 rem (756 px), h2 from 46.25 rem (740 px), h4 from the floor.
+  // Calibrated thresholds (layout-calibration.md), wide column at 1440 px: h1 from 50 rem (800 px), h2 from 48.75 rem (780 px), h4 from the floor.
   const heights: [number, string][] = [
     [900, 'h1'],
-    [756, 'h1'],
-    [755, 'h2'],
-    [740, 'h2'],
-    [739, 'h4'],
+    [800, 'h1'],
+    [799, 'h2'],
+    [780, 'h2'],
+    [779, 'h4'],
     [720, 'h4'],
     [576, 'scroll'],
   ];
@@ -147,7 +148,7 @@ test.describe('layout per width tier', () => {
     await openMain(page);
     const overview = page.locator('[data-region="readout"] .overview');
     const before = await overview.count();
-    await page.setViewportSize({ width: 1440, height: 745 });
+    await page.setViewportSize({ width: 1440, height: 790 });
     await expect(shell(page)).toHaveAttribute('data-height-tier', 'h2');
     expect(before).toBeGreaterThan(0);
     await expect(overview).toHaveCount(0);
@@ -156,10 +157,10 @@ test.describe('layout per width tier', () => {
   test('given tier h3, when checked, then the Vertical group shows channel tabs and one channel row', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1024, height: 820 });
+    await page.setViewportSize({ width: 1024, height: 900 });
     await openMain(page);
     await expect(shell(page)).toHaveAttribute('data-height-tier', 'h3');
-    await expect(page.getByRole('group', { name: 'Channel tabs' }).getByRole('button')).toHaveCount(4);
+    await expect(page.getByRole('group', { name: 'Channel tabs' }).getByRole('button')).toHaveCount(5);
   });
 });
 
@@ -284,7 +285,7 @@ test.describe('content floor (AC-L1 to AC-L3)', () => {
   test('given the window height is reduced, when it crosses a threshold, then the collapse is re-evaluated without reload and the screen stays whole (AC-L3)', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1024, height: 960 });
+    await page.setViewportSize({ width: 1024, height: 1050 });
     await openMain(page);
     await expect(shell(page)).toHaveAttribute('data-height-tier', 'h1');
 
@@ -357,27 +358,27 @@ test.describe('content floor (AC-L1 to AC-L3)', () => {
 test.describe('AC-L1 at every calibrated height threshold and one pixel below it', () => {
   // [width, scale, height in px, expected height tier]; rem thresholds from layout-calibration.md, px = rem x 16 x scale.
   const rows: [number, TextScale, number, string][] = [
-    // wide column (1440 px, W1): h1 47.25 rem, h2 46.25 rem, h4 from the floor 45 rem.
-    [1440, 100, 756, 'h1'],
-    [1440, 100, 755, 'h2'],
-    [1440, 100, 740, 'h2'],
-    [1440, 100, 739, 'h4'],
+    // wide column (1440 px, W1): h1 50 rem, h2 48.75 rem, h4 from the floor 45 rem.
+    [1440, 100, 800, 'h1'],
+    [1440, 100, 799, 'h2'],
+    [1440, 100, 780, 'h2'],
+    [1440, 100, 779, 'h4'],
     [1440, 100, 720, 'h4'],
-    // narrow column (1024 px, W3): h1 59 rem, h2 57 rem, h3 50.25 rem, h4 from the floor.
-    [1024, 100, 944, 'h1'],
-    [1024, 100, 943, 'h2'],
-    [1024, 100, 912, 'h2'],
-    [1024, 100, 911, 'h3'],
-    [1024, 100, 804, 'h3'],
-    [1024, 100, 803, 'h4'],
+    // narrow column (1024 px, W3): h1 62.5 rem, h2 60 rem, h3 52.75 rem, h4 from the floor.
+    [1024, 100, 1000, 'h1'],
+    [1024, 100, 999, 'h2'],
+    [1024, 100, 960, 'h2'],
+    [1024, 100, 959, 'h3'],
+    [1024, 100, 844, 'h3'],
+    [1024, 100, 843, 'h4'],
     [1024, 100, 720, 'h4'],
     // the same thresholds in rem at text scale 125 % (1280 px = 64 rem, W3): px = rem x 20.
-    [1280, 125, 1180, 'h1'],
-    [1280, 125, 1179, 'h2'],
-    [1280, 125, 1140, 'h2'],
-    [1280, 125, 1139, 'h3'],
-    [1280, 125, 1005, 'h3'],
-    [1280, 125, 1004, 'h4'],
+    [1280, 125, 1250, 'h1'],
+    [1280, 125, 1249, 'h2'],
+    [1280, 125, 1200, 'h2'],
+    [1280, 125, 1199, 'h3'],
+    [1280, 125, 1055, 'h3'],
+    [1280, 125, 1054, 'h4'],
     [1280, 125, 900, 'h4'],
   ];
   for (const [width, scale, height, expected] of rows) {
@@ -411,4 +412,77 @@ test.describe('AC-L1 at every calibrated height threshold and one pixel below it
     expect(screen.width).toBeGreaterThanOrEqual(512 - 1);
     expect(screen.height).toBeGreaterThanOrEqual(409.6 - 1);
   });
+});
+
+type Snapshot = { instrument: { revision: number; trigger: object } };
+
+/** The stub snapshot with the Pulse trigger layout, the tallest Trigger group the thresholds are calibrated for. */
+async function showPulseTrigger(page: Page) {
+  const snapshot = await page.evaluate(() =>
+    (
+      window as unknown as { __TAURI_INTERNALS__: { invoke: (c: string, a: object) => Promise<Snapshot> } }
+    ).__TAURI_INTERNALS__.invoke('get_snapshot', {}),
+  );
+  const pulse = { condition: 'greater', width: { value: 500, text: '500', unit: 'µs' }, verified: true };
+  const trigger = { ...snapshot.instrument.trigger, kind: 'pulse', pulse };
+  await emit(page, 'instrument_changed', { ...snapshot.instrument, revision: 99, trigger });
+  await page.getByRole('textbox', { name: 'Pulse width' }).waitFor();
+}
+
+test.describe('AC-L1 with the Pulse trigger layout', () => {
+  const rows: [number, number, string][] = [
+    [1440, 800, 'h1'],
+    [1440, 780, 'h2'],
+    [1024, 1000, 'h1'],
+    [1024, 960, 'h2'],
+    [1024, 844, 'h3'],
+  ];
+  for (const [width, height, expected] of rows) {
+    test(`given the Pulse layout at ${width} x ${height}, when loaded, then the tier is ${expected} and nothing scrolls`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page, 100);
+      await showPulseTrigger(page);
+      await page.waitForTimeout(150);
+      expect((await tiers(page)).height).toBe(expected);
+      expect(await contentScrolls(page)).toBe(false);
+    });
+  }
+
+  test('given a rejected width, when the message shows, then the Trigger group does not change height', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openMain(page, 100, { commands: { set_trigger: { error: 'Invalid width' } } });
+    await showPulseTrigger(page);
+    const before = (await box(page, '[data-region="trigger"]')).height;
+
+    const field = page.getByRole('textbox', { name: 'Pulse width' });
+    await field.fill('abc');
+    await field.press('Enter');
+    await expect(page.getByRole('status').filter({ hasText: 'Invalid width.' })).toBeVisible();
+
+    expect((await box(page, '[data-region="trigger"]')).height).toBe(before);
+  });
+});
+
+test.describe('row M stays one line', () => {
+  const rows: [number, number, number, TextScale][] = [
+    [1440, 900, 1440, 100],
+    [1440, 780, 1440, 100],
+    [1024, 1000, 1024, 100],
+    [3840, 2160, 3840, 200],
+  ];
+  for (const [width, height, , scale] of rows) {
+    test(`given ${width} x ${height} at ${scale} %, when loaded, then row M is as high as a channel row`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await openMain(page, scale);
+      const math = await box(page, '[data-math]');
+      const channel = await box(page, '[data-channel="1"]');
+      expect(math.height).toBeLessThanOrEqual(channel.height + 1);
+    });
+  }
 });

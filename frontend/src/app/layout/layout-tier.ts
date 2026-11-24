@@ -54,14 +54,14 @@ const WIDTH_TIERS: readonly [number, WidthTier][] = [
  */
 export const HEIGHT_TIER_REM = {
   wide: [
-    [47.25, 'h1'],
-    [46.25, 'h2'],
+    [50, 'h1'],
+    [48.75, 'h2'],
     [45, 'h4'],
   ],
   narrow: [
-    [59, 'h1'],
-    [57, 'h2'],
-    [50.25, 'h3'],
+    [62.5, 'h1'],
+    [60, 'h2'],
+    [52.75, 'h3'],
     [45, 'h4'],
   ],
 } as const satisfies Record<string, readonly (readonly [number, HeightTier])[]>;

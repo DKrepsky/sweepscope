@@ -57,6 +57,28 @@ describe('instrument commands', () => {
     await vi.waitFor(() => expect(notify).toHaveBeenCalledExactlyOnceWith('error', 'No scope connected'));
   });
 
+  it('given a command with a rejection handler, when it fails, then the handler runs and no toast is shown', async () => {
+    const { client, notify, commands } = setup();
+    const onRejected = vi.fn();
+    client.respond('set_trigger', () => Promise.reject({ category: 'recoverable', message: 'Invalid width' }));
+
+    commands.setTrigger({ widthText: 'abc' }, onRejected);
+
+    await vi.waitFor(() => expect(onRejected).toHaveBeenCalledOnce());
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('given a command with a rejection handler, when it fails, then the handler runs and no toast is shown', async () => {
+    const { client, notify, commands } = setup();
+    const onRejected = vi.fn();
+    client.respond('set_trigger', () => Promise.reject({ category: 'recoverable', message: 'Invalid width' }));
+
+    commands.setTrigger({ widthText: 'abc' }, onRejected);
+
+    await vi.waitFor(() => expect(onRejected).toHaveBeenCalledOnce());
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it('given a failure that is not a kernel error, when it fails, then its message is notified', async () => {
     const { client, notify, commands } = setup();
     client.respond('force_trigger', () => Promise.reject(new Error('socket closed')));
