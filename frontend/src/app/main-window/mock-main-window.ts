@@ -29,6 +29,7 @@ const toolbar = (): MainWindowModel['toolbar'] => ({
   persistence: 'Persist: Off',
   view: 'yt',
   tools: { cursors: true, math: false, reference: false },
+  cursorsAvailability: { enabled: true },
   files: {
     saveSetup: { enabled: true },
     loadSetup: { enabled: true },

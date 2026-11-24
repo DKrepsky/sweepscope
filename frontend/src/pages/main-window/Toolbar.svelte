@@ -2,7 +2,7 @@
   import type { TextScalePercent } from '../../app/text-scale';
   import { textScaleOptions } from '../../app/text-scale';
   import type { FileActions } from '../../app/files';
-  import type { ToolbarModel } from '../../app/main-window';
+  import type { Availability, ToolbarModel } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
   import Menu from '../../ui/menu/Menu.svelte';
@@ -23,6 +23,7 @@
     textScale: TextScalePercent;
     ontogglerun: () => void;
     onforce: () => void;
+    ontogglecursors: () => void;
     ontoggledrawer: () => void;
     ontextscale: (percent: TextScalePercent) => void;
     onfile: (action: keyof FileActions) => void;
@@ -37,6 +38,7 @@
     textScale,
     ontogglerun,
     onforce,
+    ontogglecursors,
     ontoggledrawer,
     ontextscale,
     onfile,
@@ -101,8 +103,17 @@
   icon: 'cursors' | 'math' | 'reference',
   pressed: boolean | undefined,
   title: string,
+  onclick?: () => void,
+  availability?: Availability,
 )}
-  <Button {pressed} {title} ariaLabel={toolLabels ? undefined : label}>
+  <Button
+    {pressed}
+    {title}
+    ariaLabel={toolLabels ? undefined : label}
+    {onclick}
+    disabled={availability?.enabled === false}
+    disabledReason={availability?.reason}
+  >
     {#snippet left()}<Icon name={icon} />{/snippet}
     {#if toolLabels}{label}{/if}
   </Button>
@@ -182,7 +193,14 @@
   <div class="grow"></div>
 
   <div class="group" role="group" aria-label="Tools">
-    {@render toolButton('Cursors', 'cursors', toolbar.tools.cursors, 'Cursors (C)')}
+    {@render toolButton(
+      'Cursors',
+      'cursors',
+      toolbar.tools.cursors,
+      'Cursors (C)',
+      ontogglecursors,
+      toolbar.cursorsAvailability,
+    )}
     {@render toolButton('Math', 'math', toolbar.tools.math, 'Math channel (A+B, A-B, AxB)')}
     {@render toolButton('Ref', 'reference', toolbar.tools.reference, 'Store or show a reference waveform')}
   </div>

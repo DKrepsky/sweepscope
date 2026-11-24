@@ -7,7 +7,7 @@ import { createLiveActions } from './live-actions';
 function setup(
   state: InstrumentState | undefined = instrumentState(),
   connection = connectionSnapshot(),
-  { noInstrument = false } = {},
+  { noInstrument = false, canToggleCursors = true } = {},
 ) {
   const commands: InstrumentCommands = {
     setRunning: vi.fn(),
@@ -41,6 +41,7 @@ function setup(
     notify,
     select,
     cursors,
+    canToggleCursors: () => canToggleCursors,
     pinned,
     files,
   });
@@ -195,6 +196,12 @@ describe('live actions: cursors and pinned measurements', () => {
     const { actions, cursors } = setup();
     actions.toggleCursors();
     expect(cursors.toggle).toHaveBeenCalledOnce();
+  });
+
+  it('given no waveform to measure, when cursors are toggled, then the store is not touched', () => {
+    const { actions, cursors } = setup(undefined, undefined, { canToggleCursors: false });
+    actions.toggleCursors();
+    expect(cursors.toggle).not.toHaveBeenCalled();
   });
 
   it('given a cursor move, when called, then the store gets the id and position', () => {

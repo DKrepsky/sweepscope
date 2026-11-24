@@ -257,10 +257,22 @@ describe('live main window model: horizontal and trigger', () => {
 });
 
 describe('live main window model: cursors, files and statistics', () => {
-  it('given no cursors, when toggled from the window, then the toolbar shows the cursors tool as on', () => {
-    const { window } = setup();
+  it('given a waveform and no cursors, when toggled from the window, then the toolbar shows the cursors tool as on', () => {
+    const { window, frames } = setup();
+    frames.set(decodeFrame(buildFrame()));
     window.toggleCursors();
     expect(model(window).toolbar.tools.cursors).toBe(true);
+  });
+
+  it('given no waveform, when cursors are toggled from the window, then no cursor is added', () => {
+    const { window } = setup();
+    window.toggleCursors();
+    expect(model(window).cursors.lines).toEqual([]);
+  });
+
+  it('given no waveform, when read, then the toolbar cursors tool is unavailable with the reason', () => {
+    const { window } = setup();
+    expect(model(window).toolbar.cursorsAvailability).toEqual({ enabled: false, reason: 'No waveform' });
   });
 
   it('given no waveform yet, when read, then cursors are unavailable with the reason', () => {

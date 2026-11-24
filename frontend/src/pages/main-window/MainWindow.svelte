@@ -85,6 +85,7 @@
       {textScale}
       ontogglerun={windowActions.toggleRun}
       onforce={windowActions.forceTrigger}
+      ontogglecursors={windowActions.toggleCursors}
       ontoggledrawer={() => (drawerRequested = !drawerRequested)}
       {ontextscale}
       onfile={(action) => windowActions[action]()}

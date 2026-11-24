@@ -49,6 +49,8 @@ export interface ToolbarModel {
   persistence: string;
   view: ViewTab;
   tools: { cursors: boolean; math: boolean; reference: boolean };
+  /** The Cursors tool and the C key: they need a waveform unless cursors are already shown and can be cleared. */
+  cursorsAvailability: Availability;
   files: FilesAvailability;
   /** Run and Stop. */
   availability?: Availability;
