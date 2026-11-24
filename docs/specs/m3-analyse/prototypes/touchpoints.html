@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M3 wireframe: touchpoints sheet (static, dark only)</title>
+<link rel="stylesheet" href="../../../design-prototype/tokens.css">
+<link rel="stylesheet" href="../../../design-prototype/prototype.css">
+<link rel="stylesheet" href="m3.css">
+</head>
+<body class="sheet">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 16 16"><path class="f" d="M4 2.5v11l9-5.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-single" viewBox="0 0 16 16"><path d="M2.5 3v10l7-5z" fill="currentColor" stroke="none"/><path d="M12 4v8"/></symbol>
+    <symbol id="i-force" viewBox="0 0 16 16"><path d="M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 16 16"><path d="M2 12l3-8 3 8M3.2 9.5h3.6M10 4v8M10 8h4"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 16 16"><path d="M4.5 2v12M11.5 2v12M4.5 8h7M6.5 6l-2 2 2 2M9.5 6l2 2-2 2"/></symbol>
+    <symbol id="i-math" viewBox="0 0 16 16"><path d="M3 8h10M8 3v10"/></symbol>
+    <symbol id="i-ref" viewBox="0 0 16 16"><path d="M2 11c2-6 3-6 5 0s3 6 5 0M13 4h1" stroke-dasharray="2 2"/></symbol>
+    <symbol id="i-save" viewBox="0 0 16 16"><path d="M2.5 2.5h9l2 2v9h-11zM5 2.5v4h5v-4M5 13.5v-4h6v4"/></symbol>
+    <symbol id="i-shot" viewBox="0 0 16 16"><path d="M2 5h3l1-2h4l1 2h3v8H2z"/><circle cx="8" cy="8.5" r="2.2"/></symbol>
+    <symbol id="i-cfg" viewBox="0 0 16 16"><path d="M2 4.5h12M2 8h12M2 11.5h12"/><path d="M5 3v3M10 6.5v3M7 10v3" stroke-width="2.5"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 16 16"><path d="M4 8h8"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 16 16"><path d="M4 8h8M8 4v8"/></symbol>
+    <symbol id="i-rise" viewBox="0 0 16 16"><path d="M2 12h4V4h8"/></symbol>
+    <symbol id="i-fall" viewBox="0 0 16 16"><path d="M2 4h4v8h8"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 2l6.5 11.5h-13zM8 6.5v3.2M8 11.4v.4"/></symbol>
+  
+    <symbol id="i-rec" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pulsep" viewBox="0 0 16 16"><path d="M2 12h3V4h6v8h3"/></symbol>
+    <symbol id="i-pulsen" viewBox="0 0 16 16"><path d="M2 4h3v8h6V4h3"/></symbol>
+    <symbol id="i-peak" viewBox="0 0 16 16"><path d="M3 3h10L8 11z" fill="currentColor" stroke="none"/><path d="M8 11v3"/></symbol>
+    <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 4.6v.4"/></symbol>
+  </defs>
+</svg>
+
+
+<main>
+<p class="sec" style="max-width:60rem"><b>M3 Analyse touchpoints.</b> One sheet for the states that change existing regions. All numbers and texts are illustrative placeholders; wording marked backend comes from the backend. The three full-window views are persistence.html, fft.html and xy.html.</p>
+<section class="g"><h2>A. Auto-setup feedback (#22)</h2><div class="r">
+<div class="cell"><span class="caps">1 Running (button busy, no dialog)</span><div class="r" style="margin:0"><button class="btn lg is-busy" aria-busy="true" title="Auto-setup is running"><span class="spin"></span>Autoset</button><span class="chip armed"><span class="dot"></span>Settling</span></div><span class="readline">Same position and size as the idle button. Run, Single and Force are disabled with the reason "Auto-setup is running" for its duration.</span></div>
+<div class="cell"><span class="caps">2 Success (info Toast, 4 s)</span><div class="toast info"><svg class="i"><use href="#i-info"/></svg><span class="t">Auto-setup done. CH1 500 mV/div, 200 µs/div.</span><button class="btn" style="height:var(--ss-size-control-sm)">Dismiss</button></div></div>
+<div class="cell"><span class="caps">3 Failure (warning Toast, 8 s, previous setup kept)</span><div class="toast warning"><svg class="i"><use href="#i-warn"/></svg><span class="t">Auto-setup could not find a stable setting. Previous setup kept.</span><button class="btn" style="height:var(--ss-size-control-sm)">Retry</button></div></div>
+</div><div class="r">
+<div class="cell"><span class="caps">4 No signal (persistent note until the next acquisition shows a signal, plus info Toast "Auto-setup: no signal on any enabled channel.")</span><div class="mini"><svg viewBox="0 0 1000 800" preserveAspectRatio="none"><line class="gl" x1="200" y1="0" x2="200" y2="800"/>
+<line class="gl" x1="300" y1="0" x2="300" y2="800"/>
+<line class="gl" x1="400" y1="0" x2="400" y2="800"/>
+<line class="ga" x1="500" y1="0" x2="500" y2="800"/>
+<line class="gl" x1="600" y1="0" x2="600" y2="800"/>
+<line class="gl" x1="700" y1="0" x2="700" y2="800"/>
+<line class="gl" x1="800" y1="0" x2="800" y2="800"/>
+<line class="gl" x1="900" y1="0" x2="900" y2="800"/>
+<line class="gl" x1="0" y1="100" x2="1000" y2="100"/>
+<line class="gl" x1="0" y1="200" x2="1000" y2="200"/>
+<line class="gl" x1="0" y1="300" x2="1000" y2="300"/>
+<line class="ga" x1="0" y1="400" x2="1000" y2="400"/>
+<line class="gl" x1="0" y1="500" x2="1000" y2="500"/>
+<line class="gl" x1="0" y1="600" x2="1000" y2="600"/>
+<line class="gl" x1="0" y1="700" x2="1000" y2="700"/>
+<line class="gt" x1="0" y1="392" x2="0" y2="408"/>
+<line class="gt" x1="20" y1="395" x2="20" y2="405"/>
+<line class="gt" x1="40" y1="395" x2="40" y2="405"/>
+<line class="gt" x1="60" y1="395" x2="60" y2="405"/>
+<line class="gt" x1="80" y1="395" x2="80" y2="405"/>
+<line class="gt" x1="100" y1="392" x2="100" y2="408"/>
+<line class="gt" x1="120" y1="395" x2="120" y2="405"/>
+<line class="gt" x1="140" y1="395" x2="140" y2="405"/>
+<line class="gt" x1="160" y1="395" x2="160" y2="405"/>
+<line class="gt" x1="180" y1="395" x2="180" y2="405"/>
+<line class="gt" x1="200" y1="392" x2="200" y2="408"/>
+<line class="gt" x1="220" y1="395" x2="220" y2="405"/>
+<line class="gt" x1="240" y1="395" x2="240" y2="405"/>
+<line class="gt" x1="260" y1="395" x2="260" y2="405"/>
+<line class="gt" x1="280" y1="395" x2="280" y2="405"/>
+<line class="gt" x1="300" y1="392" x2="300" y2="408"/>
+<line class="gt" x1="320" y1="395" x2="320" y2="405"/>
+<line class="gt" x1="340" y1="395" x2="340" y2="405"/>
+<line class="gt" x1="360" y1="395" x2="360" y2="405"/>
+<line class="gt" x1="380" y1="395" x2="380" y2="405"/>
+<line class="gt" x1="400" y1="392" x2="400" y2="408"/>
+<line class="gt" x1="420" y1="395" x2="420" y2="405"/>
+<line class="gt" x1="440" y1="395" x2="440" y2="405"/>
+<line class="gt" x1="460" y1="395" x2="460" y2="405"/>
+<line class="gt" x1="480" y1="395" x2="480" y2="405"/>
+<line class="gt" x1="500" y1="392" x2="500" y2="408"/>
+<line class="gt" x1="520" y1="395" x2="520" y2="405"/>
+<line class="gt" x1="540" y1="395" x2="540" y2="405"/>
+<line class="gt" x1="560" y1="395" x2="560" y2="405"/>
+<line class="gt" x1="580" y1="395" x2="580" y2="405"/>
+<line class="gt" x1="600" y1="392" x2="600" y2="408"/>
+<line class="gt" x1="620" y1="395" x2="620" y2="405"/>
+<line class="gt" x1="640" y1="395" x2="640" y2="405"/>
+<line class="gt" x1="660" y1="395" x2="660" y2="405"/>
+<line class="gt" x1="680" y1="395" x2="680" y2="405"/>
+<line class="gt" x1="700" y1="392" x2="700" y2="408"/>
+<line class="gt" x1="720" y1="395" x2="720" y2="405"/>
+<line class="gt" x1="740" y1="395" x2="740" y2="405"/>
+<line class="gt" x1="760" y1="395" x2="760" y2="405"/>
+<line class="gt" x1="780" y1="395" x2="780" y2="405"/>
+<line class="gt" x1="800" y1="392" x2="800" y2="408"/>
+<line class="gt" x1="820" y1="395" x2="820" y2="405"/>
+<line class="gt" x1="840" y1="395" x2="840" y2="405"/>
+<line class="gt" x1="860" y1="395" x2="860" y2="405"/>
+<line class="gt" x1="880" y1="395" x2="880" y2="405"/>
+<line class="gt" x1="900" y1="392" x2="900" y2="408"/>
+<line class="gt" x1="920" y1="395" x2="920" y2="405"/>
+<line class="gt" x1="940" y1="395" x2="940" y2="405"/>
+<line class="gt" x1="960" y1="395" x2="960" y2="405"/>
+<line class="gt" x1="980" y1="395" x2="980" y2="405"/>
+<line class="gt" x1="1000" y1="392" x2="1000" y2="408"/>
+<line class="gt" x1="492" y1="0" x2="508" y2="0"/>
+<line class="gt" x1="495" y1="20" x2="505" y2="20"/>
+<line class="gt" x1="495" y1="40" x2="505" y2="40"/>
+<line class="gt" x1="495" y1="60" x2="505" y2="60"/>
+<line class="gt" x1="495" y1="80" x2="505" y2="80"/>
+<line class="gt" x1="492" y1="100" x2="508" y2="100"/>
+<line class="gt" x1="495" y1="120" x2="505" y2="120"/>
+<line class="gt" x1="495" y1="140" x2="505" y2="140"/>
+<line class="gt" x1="495" y1="160" x2="505" y2="160"/>
+<line class="gt" x1="495" y1="180" x2="505" y2="180"/>
+<line class="gt" x1="492" y1="200" x2="508" y2="200"/>
+<line class="gt" x1="495" y1="220" x2="505" y2="220"/>
+<line class="gt" x1="495" y1="240" x2="505" y2="240"/>
+<line class="gt" x1="495" y1="260" x2="505" y2="260"/>
+<line class="gt" x1="495" y1="280" x2="505" y2="280"/>
+<line class="gt" x1="492" y1="300" x2="508" y2="300"/>
+<line class="gt" x1="495" y1="320" x2="505" y2="320"/>
+<line class="gt" x1="495" y1="340" x2="505" y2="340"/>
+<line class="gt" x1="495" y1="360" x2="505" y2="360"/>
+<line class="gt" x1="495" y1="380" x2="505" y2="380"/>
+<line class="gt" x1="492" y1="400" x2="508" y2="400"/>
+<line class="gt" x1="495" y1="420" x2="505" y2="420"/>
+<line class="gt" x1="495" y1="440" x2="505" y2="440"/>
+<line class="gt" x1="495" y1="460" x2="505" y2="460"/>
+<line class="gt" x1="495" y1="480" x2="505" y2="480"/>
+<line class="gt" x1="492" y1="500" x2="508" y2="500"/>
+<line class="gt" x1="495" y1="520" x2="505" y2="520"/>
+<line class="gt" x1="495" y1="540" x2="505" y2="540"/>
+<line class="gt" x1="495" y1="560" x2="505" y2="560"/>
+<line class="gt" x1="495" y1="580" x2="505" y2="580"/>
+<line class="gt" x1="492" y1="600" x2="508" y2="600"/>
+<line class="gt" x1="495" y1="620" x2="505" y2="620"/>
+<line class="gt" x1="495" y1="640" x2="505" y2="640"/>
+<line class="gt" x1="495" y1="660" x2="505" y2="660"/>
+<line class="gt" x1="495" y1="680" x2="505" y2="680"/>
+<line class="gt" x1="492" y1="700" x2="508" y2="700"/>
+<line class="gt" x1="495" y1="720" x2="505" y2="720"/>
+<line class="gt" x1="495" y1="740" x2="505" y2="740"/>
+<line class="gt" x1="495" y1="760" x2="505" y2="760"/>
+<line class="gt" x1="495" y1="780" x2="505" y2="780"/>
+<line class="gt" x1="492" y1="800" x2="508" y2="800"/>
+              <rect width="1000" height="800" fill="none" stroke="var(--ss-color-grid-frame)" vector-effect="non-scaling-stroke"/><path d="M0 400H1000" stroke="var(--ss-color-ch1)" stroke-width="1.5" fill="none" vector-effect="non-scaling-stroke"/></svg><div class="tag nosig" role="status">No signal</div><div class="mk gnd ch1" style="top:50%">1</div></div></div>
+</div></section>
+<section class="g"><h2>B. Sample rate and aliasing warning (#23)</h2><div class="r">
+<div class="cell"><span class="caps">Status bar: normal and warning (amber, icon, Fs never hidden)</span>
+      <footer class="status barrow" style="min-width:48rem;height:var(--ss-size-statusbar)"><span><span class="k">Fs</span><span class="v num">250 MS/s</span></span><span><span class="k">Record</span><span class="v num">4 096 pts/ch</span></span></footer>
+      <footer class="status barrow" style="min-width:48rem;height:var(--ss-size-statusbar)"><span style="color:var(--ss-color-status-warning)"><svg class="i"><use href="#i-warn"/></svg><span class="k" style="color:var(--ss-color-status-warning)">Fs</span><span class="v num">250 MS/s</span><span class="badge warn" title="Aliasing risk">Alias CH1</span></span><span><span class="k">Record</span><span class="v num">4 096 pts/ch</span></span></footer></div>
+<div class="cell"><span class="caps">Scale strip chip and measurement column</span>
+      <div class="strip" style="width:30rem"><span class="sc ch1 "><b>1</b>500 mV/div DC <span class="badge warn" title="Aliasing risk">Alias</span></span><span class="sc ch2 "><b>2</b>20 mV/div DC</span></div>
+      <table class="m num" style="width:24rem"><thead><tr><th></th><th style="--chc:var(--ss-color-ch1)">CH1 <span class="badge warn" style="background:var(--ss-color-bg-scope)">Alias</span></th><th style="--chc:var(--ss-color-ch2)">CH2</th></tr></thead>
+      <tbody><tr><td>Frequency</td><td class="uv">62.0 <span class="u">MHz</span><sup>[4]</sup></td><td>2.000 <span class="u">kHz</span></td></tr><tr><td>Period</td><td class="uv">16.1 <span class="u">ns</span><sup>[4]</sup></td><td>500.0 <span class="u">µs</span></td></tr><tr><td>Vpp</td><td>1.91 <span class="u">V</span></td><td>32.0 <span class="u">mV</span></td></tr></tbody></table>
+      <div class="fn" style="width:24rem"><span><sup>[4]</sup> Message from the backend: possible aliasing, see the Alias badge.</span></div></div>
+<div class="cell"><span class="caps">Tooltip on any Alias badge (plain language)</span><div class="tip">Possible aliasing on CH1. Its frequency (62.0 MHz) is more than one fifth of the sample rate (250 MS/s), so the display may show a wrong shape or frequency. Try enabling fewer channels, or a faster time base if that raises the sample rate.</div></div>
+</div></section>
+<section class="g"><h2>C. Single shot status (#24)</h2><div class="r">
+<div class="cell"><span class="caps">1 Idle (stopped)</span><div class="r" style="margin:0"><button class="btn lg" title="Single shot (S)"><svg class="i"><use href="#i-single"/></svg>Single</button><div class="tgroup"><span class="chip stop"><span>&#9632; Stop</span></span></div></div></div>
+<div class="cell"><span class="caps">2 Armed, no event yet (Single is on; second click or Stop cancels)</span><div class="r" style="margin:0"><button class="btn lg is-on" aria-pressed="true"><svg class="i"><use href="#i-single"/></svg>Single</button><div class="tgroup"><span class="chip armed"><span class="dot"></span>Waiting for trigger</span></div></div></div>
+<div class="cell"><span class="caps">3 Event seen, frame arriving</span><div class="r" style="margin:0"><button class="btn lg is-on" aria-pressed="true"><svg class="i"><use href="#i-single"/></svg>Single</button><div class="tgroup"><span class="chip trig filled"><span>&#9650; Trig'd</span></span></div></div></div>
+<div class="cell"><span class="caps">4 Done (frame held at full intensity until Run or Single)</span><div class="r" style="margin:0"><button class="btn lg"><svg class="i"><use href="#i-single"/></svg>Single</button><div class="tgroup"><span class="chip stop"><span>&#9632; Stop</span></span><span class="chip trig"><span>&#9650; Done</span></span></div></div></div>
+</div></section>
+<section class="g"><h2>D. Pulse-width trigger (#25)</h2><div class="r">
+<div class="cell"><span class="caps">Pulse selected: polarity, condition, width</span><div class="grp" style="width:24rem"><section class="grp" style="border:0" aria-label="Trigger"><h2>Trigger</h2>
+          <div class="row"><span class="lbl caps">Type</span><div class="seg"><button>Edge</button><button class="is-active">Pulse</button><button disabled title="Video trigger is untested on this hardware (experimental)">Video</button></div><span class="badge exp">Exp</span></div>
+          <div class="row"><span class="lbl caps">Source</span><div class="seg"><button class="is-active" style="color:var(--ss-color-ch1)">1</button><button style="color:var(--ss-color-ch2)">2</button><button style="color:var(--ss-color-ch3)">3</button><button disabled>4</button></div>
+            <div class="seg" title="Pulse polarity"><button class="is-active" aria-label="Positive pulse" title="Positive pulse"><svg class="i"><use href="#i-pulsep"/></svg></button><button aria-label="Negative pulse" title="Negative pulse"><svg class="i"><use href="#i-pulsen"/></svg></button></div></div>
+          <div class="row"><span class="lbl caps">Level</span><div class="step narrow"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">900<small>mV</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div></div>
+          <div class="row"><span class="lbl caps">Width</span><div class="seg" role="group" aria-label="Width condition"><button class="is-active" aria-label="Longer than" title="Longer than">&gt;</button><button aria-label="Shorter than" title="Shorter than">&lt;</button><button aria-label="Equal to" title="Equal to">=</button><button aria-label="Not equal to" title="Not equal to">&ne;</button></div><span class="nf num"><small>WIDTH</small>500<small>µs</small></span></div>
+          <div class="row"><span class="lbl caps">Sweep</span><div class="seg"><button class="is-active">Auto</button><button>Normal</button></div></div>
+          <div class="readline">&nbsp;</div></section></div></div>
+<div class="cell"><span class="caps">Invalid width: error border and message, applied value unchanged</span><div class="grp" style="width:24rem"><section class="grp" aria-label="Trigger"><h2>Trigger</h2>
+          <div class="row"><span class="lbl caps">Type</span><div class="seg"><button>Edge</button><button class="is-active">Pulse</button><button disabled title="Video trigger is untested on this hardware (experimental)">Video</button></div><span class="badge exp">Exp</span></div>
+          <div class="row"><span class="lbl caps">Source</span><div class="seg"><button class="is-active" style="color:var(--ss-color-ch1)">1</button><button style="color:var(--ss-color-ch2)">2</button><button style="color:var(--ss-color-ch3)">3</button><button disabled>4</button></div>
+            <div class="seg" title="Pulse polarity"><button class="is-active" aria-label="Positive pulse" title="Positive pulse"><svg class="i"><use href="#i-pulsep"/></svg></button><button aria-label="Negative pulse" title="Negative pulse"><svg class="i"><use href="#i-pulsen"/></svg></button></div></div>
+          <div class="row"><span class="lbl caps">Level</span><div class="step narrow"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">900<small>mV</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div></div>
+          <div class="row"><span class="lbl caps">Width</span><div class="seg" role="group" aria-label="Width condition"><button class="is-active" aria-label="Longer than" title="Longer than">&gt;</button><button aria-label="Shorter than" title="Shorter than">&lt;</button><button aria-label="Equal to" title="Equal to">=</button><button aria-label="Not equal to" title="Not equal to">&ne;</button></div><span class="nf num err" title="Invalid width. Enter a time such as 500 µs, from 20 ns to 10 s. The applied width stays 500 µs."><input style="display:none"><small>WIDTH</small>5 xs</span></div>
+          <div class="row"><span class="lbl caps">Sweep</span><div class="seg"><button class="is-active">Auto</button><button>Normal</button></div></div>
+          <div class="errmsg"><svg class="i"><use href="#i-warn"/></svg>Invalid width. Enter a time such as 500 µs. Applied: 500 µs.</div></section></div></div>
+<div class="cell"><span class="caps">Width field states</span>
+      <div class="r" style="margin:0"><span class="nf num"><small>WIDTH</small>500<small>µs</small></span><span class="caps">idle</span></div>
+      <div class="r" style="margin:0"><span class="nf num"><small>WIDTH</small>1.5 m</span><span class="caps">editing</span></div>
+      <div class="r" style="margin:0"><span class="nf num err"><small>WIDTH</small>5 xs</span><span class="caps">invalid</span></div>
+      <div class="r" style="margin:0"><span class="nf num" style="box-shadow:inset 2px 0 0 var(--ss-color-status-warning)"><small>WIDTH</small>500<small>µs</small></span><span class="badge warn q" style="width:1rem;justify-content:center;padding:0">?</span><span class="caps">outside verified region</span></div>
+      <div class="readline">Scale strip trigger summary at height tier H4: <span class="num">CH1 pulse + &gt; 500 µs, 900 mV, Auto</span></div></div>
+</div></section>
+<section class="g"><h2>E. Math channel (#30)</h2><div class="r">
+<div class="cell"><span class="caps">Vertical group gains a fixed fifth row M (decision D7: dock height)</span><section class="grp wide" aria-label="Vertical"><h2>Vertical</h2><div class="chrow ch1 is-selected"><button class="chbtn" aria-pressed="true">1</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">500<small>mV/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>&minus;2.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow ch2"><button class="chbtn" aria-pressed="true">2</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">20<small>mV/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>+3.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow ch3 is-off"><button class="chbtn" aria-pressed="false">3</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">2<small>V/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>0.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow ch4 is-off"><button class="chbtn" aria-pressed="false">4</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">1<small>V/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>0.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow math"><button class="chbtn" aria-pressed="true" title="Math channel on or off">M</button>
+      <button class="btn menu-btn" title="Operation: A+B, A&minus;B, A&times;B, Invert A">A&minus;B &#9662;</button>
+      <button class="btn menu-btn" style="color:var(--ss-color-ch1)" title="Source A">A 1 &#9662;</button><button class="btn menu-btn" style="color:var(--ss-color-ch2)" title="Source B">B 2 &#9662;</button>
+      <div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">1<small>V/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>0.00<small>div</small></span><span class="badge sw">SW</span><span class="badge warn" title="Sources use different scales">Mixed</span></div></section></div>
+</div><div class="r">
+<div class="cell"><span class="caps">Source off: row dimmed in place, reason visible in the scale strip</span><section class="grp wide" aria-label="Vertical"><h2>Vertical</h2><div class="chrow ch1 is-selected"><button class="chbtn" aria-pressed="true">1</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">500<small>mV/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>&minus;2.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow ch2 is-off"><button class="chbtn" aria-pressed="false">2</button><div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">20<small>mV/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>+3.00<small>div</small></span><div class="seg"><button>AC</button><button class="is-active">DC</button></div><button class="btn tog">BW</button><button class="btn tog num">1&times;</button><button class="btn tog">Inv</button></div><div class="chrow math is-off"><button class="chbtn" aria-pressed="true" title="Math channel on or off">M</button>
+      <button class="btn menu-btn" title="Operation: A+B, A&minus;B, A&times;B, Invert A">A&minus;B &#9662;</button>
+      <button class="btn menu-btn" style="color:var(--ss-color-ch1)" title="Source A">A 1 &#9662;</button><button class="btn menu-btn" style="color:var(--ss-color-ch2)" title="Source B">B 2 &#9662;</button>
+      <div class="step"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">1<small>V/div</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div><span class="nf num"><small>POS</small>0.00<small>div</small></span><span class="badge sw">SW</span><span class="badge off" title="CH2 is off">Unavailable</span></div></section></div>
+</div><div class="r">
+<div class="cell"><span class="caps">Scale strip chips</span><div class="strip" style="width:44rem;flex-wrap:wrap"><span class="sc ch1 "><b>1</b>500 mV/div DC</span><span class="sc ch2 "><b>2</b>20 mV/div DC</span><span class="sc math"><b>M</b>A&minus;B 1 V/div <span class="badge warn" title="CH1 500 mV/div, CH2 20 mV/div. The math trace has its own scale, 1 V/div.">Mixed</span></span><span class="sc math"><b>M</b>A&times;B 2 V&sup2;/div</span><span class="sc math is-unavail"><b style="background:transparent;color:var(--ss-color-text-muted);border:1px solid var(--ss-color-border)">M</b>A&minus;B <span class="why">unavailable: CH2 is off</span></span></div></div>
+<div class="cell"><span class="caps">Measurements: M column like a channel</span>
+      <table class="m num" style="width:24rem"><thead><tr><th></th><th style="--chc:var(--ss-color-ch1)">CH1</th><th style="--chc:var(--ss-color-ch2)">CH2</th><th style="--chc:var(--ss-color-math)">M</th></tr></thead>
+      <tbody><tr><td>Vpp</td><td>1.91 <span class="u">V</span></td><td class="uv">32.0 <span class="u">mV</span><sup>?</sup></td><td>1.90 <span class="u">V</span></td></tr><tr><td>Vrms</td><td>1.35 <span class="u">V</span></td><td class="uv">11.3 <span class="u">mV</span><sup>?</sup></td><td>1.35 <span class="u">V</span></td></tr></tbody></table></div>
+</div></section>
+<section class="g"><h2>F. Roll mode, gap overlay, recording (#27, #28)</h2><div class="r">
+<div class="cell"><span class="caps">Gap band scrolls with the trace; no trace inside it</span><div class="mini"><svg viewBox="0 0 1000 800" preserveAspectRatio="none"><line class="gl" x1="200" y1="0" x2="200" y2="800"/>
+<line class="gl" x1="300" y1="0" x2="300" y2="800"/>
+<line class="gl" x1="400" y1="0" x2="400" y2="800"/>
+<line class="ga" x1="500" y1="0" x2="500" y2="800"/>
+<line class="gl" x1="600" y1="0" x2="600" y2="800"/>
+<line class="gl" x1="700" y1="0" x2="700" y2="800"/>
+<line class="gl" x1="800" y1="0" x2="800" y2="800"/>
+<line class="gl" x1="900" y1="0" x2="900" y2="800"/>
+<line class="gl" x1="0" y1="100" x2="1000" y2="100"/>
+<line class="gl" x1="0" y1="200" x2="1000" y2="200"/>
+<line class="gl" x1="0" y1="300" x2="1000" y2="300"/>
+<line class="ga" x1="0" y1="400" x2="1000" y2="400"/>
+<line class="gl" x1="0" y1="500" x2="1000" y2="500"/>
+<line class="gl" x1="0" y1="600" x2="1000" y2="600"/>
+<line class="gl" x1="0" y1="700" x2="1000" y2="700"/>
+<line class="gt" x1="0" y1="392" x2="0" y2="408"/>
+<line class="gt" x1="20" y1="395" x2="20" y2="405"/>
+<line class="gt" x1="40" y1="395" x2="40" y2="405"/>
+<line class="gt" x1="60" y1="395" x2="60" y2="405"/>
+<line class="gt" x1="80" y1="395" x2="80" y2="405"/>
+<line class="gt" x1="100" y1="392" x2="100" y2="408"/>
+<line class="gt" x1="120" y1="395" x2="120" y2="405"/>
+<line class="gt" x1="140" y1="395" x2="140" y2="405"/>
+<line class="gt" x1="160" y1="395" x2="160" y2="405"/>
+<line class="gt" x1="180" y1="395" x2="180" y2="405"/>
+<line class="gt" x1="200" y1="392" x2="200" y2="408"/>
+<line class="gt" x1="220" y1="395" x2="220" y2="405"/>
+<line class="gt" x1="240" y1="395" x2="240" y2="405"/>
+<line class="gt" x1="260" y1="395" x2="260" y2="405"/>
+<line class="gt" x1="280" y1="395" x2="280" y2="405"/>
+<line class="gt" x1="300" y1="392" x2="300" y2="408"/>
+<line class="gt" x1="320" y1="395" x2="320" y2="405"/>
+<line class="gt" x1="340" y1="395" x2="340" y2="405"/>
+<line class="gt" x1="360" y1="395" x2="360" y2="405"/>
+<line class="gt" x1="380" y1="395" x2="380" y2="405"/>
+<line class="gt" x1="400" y1="392" x2="400" y2="408"/>
+<line class="gt" x1="420" y1="395" x2="420" y2="405"/>
+<line class="gt" x1="440" y1="395" x2="440" y2="405"/>
+<line class="gt" x1="460" y1="395" x2="460" y2="405"/>
+<line class="gt" x1="480" y1="395" x2="480" y2="405"/>
+<line class="gt" x1="500" y1="392" x2="500" y2="408"/>
+<line class="gt" x1="520" y1="395" x2="520" y2="405"/>
+<line class="gt" x1="540" y1="395" x2="540" y2="405"/>
+<line class="gt" x1="560" y1="395" x2="560" y2="405"/>
+<line class="gt" x1="580" y1="395" x2="580" y2="405"/>
+<line class="gt" x1="600" y1="392" x2="600" y2="408"/>
+<line class="gt" x1="620" y1="395" x2="620" y2="405"/>
+<line class="gt" x1="640" y1="395" x2="640" y2="405"/>
+<line class="gt" x1="660" y1="395" x2="660" y2="405"/>
+<line class="gt" x1="680" y1="395" x2="680" y2="405"/>
+<line class="gt" x1="700" y1="392" x2="700" y2="408"/>
+<line class="gt" x1="720" y1="395" x2="720" y2="405"/>
+<line class="gt" x1="740" y1="395" x2="740" y2="405"/>
+<line class="gt" x1="760" y1="395" x2="760" y2="405"/>
+<line class="gt" x1="780" y1="395" x2="780" y2="405"/>
+<line class="gt" x1="800" y1="392" x2="800" y2="408"/>
+<line class="gt" x1="820" y1="395" x2="820" y2="405"/>
+<line class="gt" x1="840" y1="395" x2="840" y2="405"/>
+<line class="gt" x1="860" y1="395" x2="860" y2="405"/>
+<line class="gt" x1="880" y1="395" x2="880" y2="405"/>
+<line class="gt" x1="900" y1="392" x2="900" y2="408"/>
+<line class="gt" x1="920" y1="395" x2="920" y2="405"/>
+<line class="gt" x1="940" y1="395" x2="940" y2="405"/>
+<line class="gt" x1="960" y1="395" x2="960" y2="405"/>
+<line class="gt" x1="980" y1="395" x2="980" y2="405"/>
+<line class="gt" x1="1000" y1="392" x2="1000" y2="408"/>
+<line class="gt" x1="492" y1="0" x2="508" y2="0"/>
+<line class="gt" x1="495" y1="20" x2="505" y2="20"/>
+<line class="gt" x1="495" y1="40" x2="505" y2="40"/>
+<line class="gt" x1="495" y1="60" x2="505" y2="60"/>
+<line class="gt" x1="495" y1="80" x2="505" y2="80"/>
+<line class="gt" x1="492" y1="100" x2="508" y2="100"/>
+<line class="gt" x1="495" y1="120" x2="505" y2="120"/>
+<line class="gt" x1="495" y1="140" x2="505" y2="140"/>
+<line class="gt" x1="495" y1="160" x2="505" y2="160"/>
+<line class="gt" x1="495" y1="180" x2="505" y2="180"/>
+<line class="gt" x1="492" y1="200" x2="508" y2="200"/>
+<line class="gt" x1="495" y1="220" x2="505" y2="220"/>
+<line class="gt" x1="495" y1="240" x2="505" y2="240"/>
+<line class="gt" x1="495" y1="260" x2="505" y2="260"/>
+<line class="gt" x1="495" y1="280" x2="505" y2="280"/>
+<line class="gt" x1="492" y1="300" x2="508" y2="300"/>
+<line class="gt" x1="495" y1="320" x2="505" y2="320"/>
+<line class="gt" x1="495" y1="340" x2="505" y2="340"/>
+<line class="gt" x1="495" y1="360" x2="505" y2="360"/>
+<line class="gt" x1="495" y1="380" x2="505" y2="380"/>
+<line class="gt" x1="492" y1="400" x2="508" y2="400"/>
+<line class="gt" x1="495" y1="420" x2="505" y2="420"/>
+<line class="gt" x1="495" y1="440" x2="505" y2="440"/>
+<line class="gt" x1="495" y1="460" x2="505" y2="460"/>
+<line class="gt" x1="495" y1="480" x2="505" y2="480"/>
+<line class="gt" x1="492" y1="500" x2="508" y2="500"/>
+<line class="gt" x1="495" y1="520" x2="505" y2="520"/>
+<line class="gt" x1="495" y1="540" x2="505" y2="540"/>
+<line class="gt" x1="495" y1="560" x2="505" y2="560"/>
+<line class="gt" x1="495" y1="580" x2="505" y2="580"/>
+<line class="gt" x1="492" y1="600" x2="508" y2="600"/>
+<line class="gt" x1="495" y1="620" x2="505" y2="620"/>
+<line class="gt" x1="495" y1="640" x2="505" y2="640"/>
+<line class="gt" x1="495" y1="660" x2="505" y2="660"/>
+<line class="gt" x1="495" y1="680" x2="505" y2="680"/>
+<line class="gt" x1="492" y1="700" x2="508" y2="700"/>
+<line class="gt" x1="495" y1="720" x2="505" y2="720"/>
+<line class="gt" x1="495" y1="740" x2="505" y2="740"/>
+<line class="gt" x1="495" y1="760" x2="505" y2="760"/>
+<line class="gt" x1="495" y1="780" x2="505" y2="780"/>
+<line class="gt" x1="492" y1="800" x2="508" y2="800"/>
+              <rect width="1000" height="800" fill="none" stroke="var(--ss-color-grid-frame)" vector-effect="non-scaling-stroke"/><rect x="330" y="0" width="120" height="800" fill="var(--ss-color-gap-fill)"/><line x1="330" x2="330" y1="0" y2="800" stroke="var(--ss-color-status-warning)" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><line x1="450" x2="450" y1="0" y2="800" stroke="var(--ss-color-status-warning)" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="M0,420 L120,415 L260,410 L330,414" fill="none" stroke="var(--ss-color-ch1)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><path d="M450,396 L600,392 L760,386 L1000,380" fill="none" stroke="var(--ss-color-ch1)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg><div class="tag warn num" style="left:33%;top:6px">GAP 1.2 s</div><div class="tag muted num" style="right:6px;top:6px">now</div><div class="mk gnd ch1" style="top:52%">1</div></div></div>
+<div class="cell"><span class="caps">Horizontal readout in roll, recording on (record chip replaces the overview slot)</span>
+      <div class="scope-head" style="width:44rem"><span class="caps">Roll</span><span class="v num">1 s/div</span><span class="muted">|</span><span class="caps">Window</span><span class="v num">10 s</span><div class="grow" style="flex:1"></div>
+      <span class="chip rec" title="Recording to roll-2026-11-24.ssroll. 12.4 MB written."><span class="dot"></span>Rec 01:23:45 &middot; 12.4 MB</span></div>
+      <span class="caps" style="margin-top:var(--ss-space-3)">Record button in the toolbar Data group</span>
+      <div class="r" style="margin:0"><button class="btn is-disabled" aria-disabled="true" title="Recording needs roll mode (500 ms/div or slower)"><svg class="i"><use href="#i-rec"/></svg>Record</button><span class="caps">not roll</span>
+      <button class="btn"><svg class="i"><use href="#i-rec"/></svg>Record</button><span class="caps">roll, off</span>
+      <button class="btn rec-on" aria-pressed="true"><svg class="i"><use href="#i-stop"/></svg>Stop rec</button><span class="caps">recording</span></div></div>
+</div><div class="r">
+<div class="cell"><span class="caps">Trigger group in roll: disabled in place, reason on screen</span><div class="grp" style="width:24rem"><section class="grp is-disabled" aria-label="Trigger"><h2>Trigger</h2>
+          <div class="row"><span class="lbl caps">Type</span><div class="seg"><button aria-disabled="true" class="is-active">Edge</button><button aria-disabled="true">Pulse</button><button disabled>Video</button></div></div>
+          <div class="row"><span class="lbl caps">Source</span><div class="seg"><button class="is-active">1</button><button>2</button><button>3</button><button>4</button></div></div>
+          <div class="row"><span class="lbl caps">Level</span><div class="step narrow"><button aria-label="Smaller"><svg class="i"><use href="#i-minus"/></svg></button><span class="val num">900<small>mV</small></span><button aria-label="Larger"><svg class="i"><use href="#i-plus"/></svg></button></div></div>
+          <div class="row"><span class="lbl caps">Sweep</span><div class="seg"><button class="is-active">Auto</button><button>Normal</button></div></div>
+          <div class="reason" style="opacity:1"><svg class="i" style="flex:none"><use href="#i-info"/></svg><span>Trigger is not available in roll mode (500 ms/div and slower). Use a faster time base to trigger.</span></div></section></div></div>
+<div class="cell"><span class="caps">Recording stopped by an error (warning Banner stays until dismissed; display keeps running)</span>
+      <div class="banner" style="max-width:34rem;color:var(--ss-color-status-error)"><svg class="i"><use href="#i-warn"/></svg><span class="t"><b>Recording stopped: the disk is full.</b> 1.2 GB written to roll-2026-11-24.ssroll. The display is still running.</span><button class="btn">Choose new file</button><button class="btn">Dismiss</button></div>
+      <span class="caps" style="margin-top:var(--ss-space-3)">Status bar item in roll</span>
+      <footer class="status barrow" style="min-width:34rem;height:var(--ss-size-statusbar)"><span><span class="k">Fs</span><span class="v num">1 kS/s</span></span><span class="warn" style="color:var(--ss-color-status-warning)"><svg class="i"><use href="#i-warn"/></svg><span class="k" style="color:var(--ss-color-status-warning)">Gaps</span><span class="v num">2</span></span></footer></div>
+</div></section>
+<section class="g"><h2>G. XY and FFT: cannot-draw states (#29, #31)</h2><div class="r">
+<div class="cell"><span class="caps">XY, Y channel off</span><div class="mini"><svg viewBox="0 0 1000 800" preserveAspectRatio="none"><line class="gl" x1="200" y1="0" x2="200" y2="800"/>
+<line class="gl" x1="300" y1="0" x2="300" y2="800"/>
+<line class="gl" x1="400" y1="0" x2="400" y2="800"/>
+<line class="ga" x1="500" y1="0" x2="500" y2="800"/>
+<line class="gl" x1="600" y1="0" x2="600" y2="800"/>
+<line class="gl" x1="700" y1="0" x2="700" y2="800"/>
+<line class="gl" x1="800" y1="0" x2="800" y2="800"/>
+<line class="gl" x1="900" y1="0" x2="900" y2="800"/>
+<line class="gl" x1="0" y1="100" x2="1000" y2="100"/>
+<line class="gl" x1="0" y1="200" x2="1000" y2="200"/>
+<line class="gl" x1="0" y1="300" x2="1000" y2="300"/>
+<line class="ga" x1="0" y1="400" x2="1000" y2="400"/>
+<line class="gl" x1="0" y1="500" x2="1000" y2="500"/>
+<line class="gl" x1="0" y1="600" x2="1000" y2="600"/>
+<line class="gl" x1="0" y1="700" x2="1000" y2="700"/>
+<line class="gt" x1="0" y1="392" x2="0" y2="408"/>
+<line class="gt" x1="20" y1="395" x2="20" y2="405"/>
+<line class="gt" x1="40" y1="395" x2="40" y2="405"/>
+<line class="gt" x1="60" y1="395" x2="60" y2="405"/>
+<line class="gt" x1="80" y1="395" x2="80" y2="405"/>
+<line class="gt" x1="100" y1="392" x2="100" y2="408"/>
+<line class="gt" x1="120" y1="395" x2="120" y2="405"/>
+<line class="gt" x1="140" y1="395" x2="140" y2="405"/>
+<line class="gt" x1="160" y1="395" x2="160" y2="405"/>
+<line class="gt" x1="180" y1="395" x2="180" y2="405"/>
+<line class="gt" x1="200" y1="392" x2="200" y2="408"/>
+<line class="gt" x1="220" y1="395" x2="220" y2="405"/>
+<line class="gt" x1="240" y1="395" x2="240" y2="405"/>
+<line class="gt" x1="260" y1="395" x2="260" y2="405"/>
+<line class="gt" x1="280" y1="395" x2="280" y2="405"/>
+<line class="gt" x1="300" y1="392" x2="300" y2="408"/>
+<line class="gt" x1="320" y1="395" x2="320" y2="405"/>
+<line class="gt" x1="340" y1="395" x2="340" y2="405"/>
+<line class="gt" x1="360" y1="395" x2="360" y2="405"/>
+<line class="gt" x1="380" y1="395" x2="380" y2="405"/>
+<line class="gt" x1="400" y1="392" x2="400" y2="408"/>
+<line class="gt" x1="420" y1="395" x2="420" y2="405"/>
+<line class="gt" x1="440" y1="395" x2="440" y2="405"/>
+<line class="gt" x1="460" y1="395" x2="460" y2="405"/>
+<line class="gt" x1="480" y1="395" x2="480" y2="405"/>
+<line class="gt" x1="500" y1="392" x2="500" y2="408"/>
+<line class="gt" x1="520" y1="395" x2="520" y2="405"/>
+<line class="gt" x1="540" y1="395" x2="540" y2="405"/>
+<line class="gt" x1="560" y1="395" x2="560" y2="405"/>
+<line class="gt" x1="580" y1="395" x2="580" y2="405"/>
+<line class="gt" x1="600" y1="392" x2="600" y2="408"/>
+<line class="gt" x1="620" y1="395" x2="620" y2="405"/>
+<line class="gt" x1="640" y1="395" x2="640" y2="405"/>
+<line class="gt" x1="660" y1="395" x2="660" y2="405"/>
+<line class="gt" x1="680" y1="395" x2="680" y2="405"/>
+<line class="gt" x1="700" y1="392" x2="700" y2="408"/>
+<line class="gt" x1="720" y1="395" x2="720" y2="405"/>
+<line class="gt" x1="740" y1="395" x2="740" y2="405"/>
+<line class="gt" x1="760" y1="395" x2="760" y2="405"/>
+<line class="gt" x1="780" y1="395" x2="780" y2="405"/>
+<line class="gt" x1="800" y1="392" x2="800" y2="408"/>
+<line class="gt" x1="820" y1="395" x2="820" y2="405"/>
+<line class="gt" x1="840" y1="395" x2="840" y2="405"/>
+<line class="gt" x1="860" y1="395" x2="860" y2="405"/>
+<line class="gt" x1="880" y1="395" x2="880" y2="405"/>
+<line class="gt" x1="900" y1="392" x2="900" y2="408"/>
+<line class="gt" x1="920" y1="395" x2="920" y2="405"/>
+<line class="gt" x1="940" y1="395" x2="940" y2="405"/>
+<line class="gt" x1="960" y1="395" x2="960" y2="405"/>
+<line class="gt" x1="980" y1="395" x2="980" y2="405"/>
+<line class="gt" x1="1000" y1="392" x2="1000" y2="408"/>
+<line class="gt" x1="492" y1="0" x2="508" y2="0"/>
+<line class="gt" x1="495" y1="20" x2="505" y2="20"/>
+<line class="gt" x1="495" y1="40" x2="505" y2="40"/>
+<line class="gt" x1="495" y1="60" x2="505" y2="60"/>
+<line class="gt" x1="495" y1="80" x2="505" y2="80"/>
+<line class="gt" x1="492" y1="100" x2="508" y2="100"/>
+<line class="gt" x1="495" y1="120" x2="505" y2="120"/>
+<line class="gt" x1="495" y1="140" x2="505" y2="140"/>
+<line class="gt" x1="495" y1="160" x2="505" y2="160"/>
+<line class="gt" x1="495" y1="180" x2="505" y2="180"/>
+<line class="gt" x1="492" y1="200" x2="508" y2="200"/>
+<line class="gt" x1="495" y1="220" x2="505" y2="220"/>
+<line class="gt" x1="495" y1="240" x2="505" y2="240"/>
+<line class="gt" x1="495" y1="260" x2="505" y2="260"/>
+<line class="gt" x1="495" y1="280" x2="505" y2="280"/>
+<line class="gt" x1="492" y1="300" x2="508" y2="300"/>
+<line class="gt" x1="495" y1="320" x2="505" y2="320"/>
+<line class="gt" x1="495" y1="340" x2="505" y2="340"/>
+<line class="gt" x1="495" y1="360" x2="505" y2="360"/>
+<line class="gt" x1="495" y1="380" x2="505" y2="380"/>
+<line class="gt" x1="492" y1="400" x2="508" y2="400"/>
+<line class="gt" x1="495" y1="420" x2="505" y2="420"/>
+<line class="gt" x1="495" y1="440" x2="505" y2="440"/>
+<line class="gt" x1="495" y1="460" x2="505" y2="460"/>
+<line class="gt" x1="495" y1="480" x2="505" y2="480"/>
+<line class="gt" x1="492" y1="500" x2="508" y2="500"/>
+<line class="gt" x1="495" y1="520" x2="505" y2="520"/>
+<line class="gt" x1="495" y1="540" x2="505" y2="540"/>
+<line class="gt" x1="495" y1="560" x2="505" y2="560"/>
+<line class="gt" x1="495" y1="580" x2="505" y2="580"/>
+<line class="gt" x1="492" y1="600" x2="508" y2="600"/>
+<line class="gt" x1="495" y1="620" x2="505" y2="620"/>
+<line class="gt" x1="495" y1="640" x2="505" y2="640"/>
+<line class="gt" x1="495" y1="660" x2="505" y2="660"/>
+<line class="gt" x1="495" y1="680" x2="505" y2="680"/>
+<line class="gt" x1="492" y1="700" x2="508" y2="700"/>
+<line class="gt" x1="495" y1="720" x2="505" y2="720"/>
+<line class="gt" x1="495" y1="740" x2="505" y2="740"/>
+<line class="gt" x1="495" y1="760" x2="505" y2="760"/>
+<line class="gt" x1="495" y1="780" x2="505" y2="780"/>
+<line class="gt" x1="492" y1="800" x2="508" y2="800"/>
+              <rect width="1000" height="800" fill="none" stroke="var(--ss-color-grid-frame)" vector-effect="non-scaling-stroke"/></svg><div class="note warn"><b>XY cannot draw</b><span>CH2 (Y) is off.</span><div class="acts"><button class="btn">Enable CH2</button></div></div></div></div>
+<div class="cell"><span class="caps">XY, fewer than two channels on</span><div class="mini"><svg viewBox="0 0 1000 800" preserveAspectRatio="none"><line class="gl" x1="200" y1="0" x2="200" y2="800"/>
+<line class="gl" x1="300" y1="0" x2="300" y2="800"/>
+<line class="gl" x1="400" y1="0" x2="400" y2="800"/>
+<line class="ga" x1="500" y1="0" x2="500" y2="800"/>
+<line class="gl" x1="600" y1="0" x2="600" y2="800"/>
+<line class="gl" x1="700" y1="0" x2="700" y2="800"/>
+<line class="gl" x1="800" y1="0" x2="800" y2="800"/>
+<line class="gl" x1="900" y1="0" x2="900" y2="800"/>
+<line class="gl" x1="0" y1="100" x2="1000" y2="100"/>
+<line class="gl" x1="0" y1="200" x2="1000" y2="200"/>
+<line class="gl" x1="0" y1="300" x2="1000" y2="300"/>
+<line class="ga" x1="0" y1="400" x2="1000" y2="400"/>
+<line class="gl" x1="0" y1="500" x2="1000" y2="500"/>
+<line class="gl" x1="0" y1="600" x2="1000" y2="600"/>
+<line class="gl" x1="0" y1="700" x2="1000" y2="700"/>
+<line class="gt" x1="0" y1="392" x2="0" y2="408"/>
+<line class="gt" x1="20" y1="395" x2="20" y2="405"/>
+<line class="gt" x1="40" y1="395" x2="40" y2="405"/>
+<line class="gt" x1="60" y1="395" x2="60" y2="405"/>
+<line class="gt" x1="80" y1="395" x2="80" y2="405"/>
+<line class="gt" x1="100" y1="392" x2="100" y2="408"/>
+<line class="gt" x1="120" y1="395" x2="120" y2="405"/>
+<line class="gt" x1="140" y1="395" x2="140" y2="405"/>
+<line class="gt" x1="160" y1="395" x2="160" y2="405"/>
+<line class="gt" x1="180" y1="395" x2="180" y2="405"/>
+<line class="gt" x1="200" y1="392" x2="200" y2="408"/>
+<line class="gt" x1="220" y1="395" x2="220" y2="405"/>
+<line class="gt" x1="240" y1="395" x2="240" y2="405"/>
+<line class="gt" x1="260" y1="395" x2="260" y2="405"/>
+<line class="gt" x1="280" y1="395" x2="280" y2="405"/>
+<line class="gt" x1="300" y1="392" x2="300" y2="408"/>
+<line class="gt" x1="320" y1="395" x2="320" y2="405"/>
+<line class="gt" x1="340" y1="395" x2="340" y2="405"/>
+<line class="gt" x1="360" y1="395" x2="360" y2="405"/>
+<line class="gt" x1="380" y1="395" x2="380" y2="405"/>
+<line class="gt" x1="400" y1="392" x2="400" y2="408"/>
+<line class="gt" x1="420" y1="395" x2="420" y2="405"/>
+<line class="gt" x1="440" y1="395" x2="440" y2="405"/>
+<line class="gt" x1="460" y1="395" x2="460" y2="405"/>
+<line class="gt" x1="480" y1="395" x2="480" y2="405"/>
+<line class="gt" x1="500" y1="392" x2="500" y2="408"/>
+<line class="gt" x1="520" y1="395" x2="520" y2="405"/>
+<line class="gt" x1="540" y1="395" x2="540" y2="405"/>
+<line class="gt" x1="560" y1="395" x2="560" y2="405"/>
+<line class="gt" x1="580" y1="395" x2="580" y2="405"/>
+<line class="gt" x1="600" y1="392" x2="600" y2="408"/>
+<line class="gt" x1="620" y1="395" x2="620" y2="405"/>
+<line class="gt" x1="640" y1="395" x2="640" y2="405"/>
+<line class="gt" x1="660" y1="395" x2="660" y2="405"/>
+<line class="gt" x1="680" y1="395" x2="680" y2="405"/>
+<line class="gt" x1="700" y1="392" x2="700" y2="408"/>
+<line class="gt" x1="720" y1="395" x2="720" y2="405"/>
+<line class="gt" x1="740" y1="395" x2="740" y2="405"/>
+<line class="gt" x1="760" y1="395" x2="760" y2="405"/>
+<line class="gt" x1="780" y1="395" x2="780" y2="405"/>
+<line class="gt" x1="800" y1="392" x2="800" y2="408"/>
+<line class="gt" x1="820" y1="395" x2="820" y2="405"/>
+<line class="gt" x1="840" y1="395" x2="840" y2="405"/>
+<line class="gt" x1="860" y1="395" x2="860" y2="405"/>
+<line class="gt" x1="880" y1="395" x2="880" y2="405"/>
+<line class="gt" x1="900" y1="392" x2="900" y2="408"/>
+<line class="gt" x1="920" y1="395" x2="920" y2="405"/>
+<line class="gt" x1="940" y1="395" x2="940" y2="405"/>
+<line class="gt" x1="960" y1="395" x2="960" y2="405"/>
+<line class="gt" x1="980" y1="395" x2="980" y2="405"/>
+<line class="gt" x1="1000" y1="392" x2="1000" y2="408"/>
+<line class="gt" x1="492" y1="0" x2="508" y2="0"/>
+<line class="gt" x1="495" y1="20" x2="505" y2="20"/>
+<line class="gt" x1="495" y1="40" x2="505" y2="40"/>
+<line class="gt" x1="495" y1="60" x2="505" y2="60"/>
+<line class="gt" x1="495" y1="80" x2="505" y2="80"/>
+<line class="gt" x1="492" y1="100" x2="508" y2="100"/>
+<line class="gt" x1="495" y1="120" x2="505" y2="120"/>
+<line class="gt" x1="495" y1="140" x2="505" y2="140"/>
+<line class="gt" x1="495" y1="160" x2="505" y2="160"/>
+<line class="gt" x1="495" y1="180" x2="505" y2="180"/>
+<line class="gt" x1="492" y1="200" x2="508" y2="200"/>
+<line class="gt" x1="495" y1="220" x2="505" y2="220"/>
+<line class="gt" x1="495" y1="240" x2="505" y2="240"/>
+<line class="gt" x1="495" y1="260" x2="505" y2="260"/>
+<line class="gt" x1="495" y1="280" x2="505" y2="280"/>
+<line class="gt" x1="492" y1="300" x2="508" y2="300"/>
+<line class="gt" x1="495" y1="320" x2="505" y2="320"/>
+<line class="gt" x1="495" y1="340" x2="505" y2="340"/>
+<line class="gt" x1="495" y1="360" x2="505" y2="360"/>
+<line class="gt" x1="495" y1="380" x2="505" y2="380"/>
+<line class="gt" x1="492" y1="400" x2="508" y2="400"/>
+<line class="gt" x1="495" y1="420" x2="505" y2="420"/>
+<line class="gt" x1="495" y1="440" x2="505" y2="440"/>
+<line class="gt" x1="495" y1="460" x2="505" y2="460"/>
+<line class="gt" x1="495" y1="480" x2="505" y2="480"/>
+<line class="gt" x1="492" y1="500" x2="508" y2="500"/>
+<line class="gt" x1="495" y1="520" x2="505" y2="520"/>
+<line class="gt" x1="495" y1="540" x2="505" y2="540"/>
+<line class="gt" x1="495" y1="560" x2="505" y2="560"/>
+<line class="gt" x1="495" y1="580" x2="505" y2="580"/>
+<line class="gt" x1="492" y1="600" x2="508" y2="600"/>
+<line class="gt" x1="495" y1="620" x2="505" y2="620"/>
+<line class="gt" x1="495" y1="640" x2="505" y2="640"/>
+<line class="gt" x1="495" y1="660" x2="505" y2="660"/>
+<line class="gt" x1="495" y1="680" x2="505" y2="680"/>
+<line class="gt" x1="492" y1="700" x2="508" y2="700"/>
+<line class="gt" x1="495" y1="720" x2="505" y2="720"/>
+<line class="gt" x1="495" y1="740" x2="505" y2="740"/>
+<line class="gt" x1="495" y1="760" x2="505" y2="760"/>
+<line class="gt" x1="495" y1="780" x2="505" y2="780"/>
+<line class="gt" x1="492" y1="800" x2="508" y2="800"/>
+              <rect width="1000" height="800" fill="none" stroke="var(--ss-color-grid-frame)" vector-effect="non-scaling-stroke"/></svg><div class="note warn"><b>XY needs two enabled channels</b><span>Only CH1 is on. Enable another channel.</span></div></div></div>
+<div class="cell"><span class="caps">FFT, no channel on</span><div class="mini"><svg viewBox="0 0 1000 800" preserveAspectRatio="none"><line class="gl" x1="200" y1="0" x2="200" y2="800"/>
+<line class="gl" x1="300" y1="0" x2="300" y2="800"/>
+<line class="gl" x1="400" y1="0" x2="400" y2="800"/>
+<line class="ga" x1="500" y1="0" x2="500" y2="800"/>
+<line class="gl" x1="600" y1="0" x2="600" y2="800"/>
+<line class="gl" x1="700" y1="0" x2="700" y2="800"/>
+<line class="gl" x1="800" y1="0" x2="800" y2="800"/>
+<line class="gl" x1="900" y1="0" x2="900" y2="800"/>
+<line class="gl" x1="0" y1="100" x2="1000" y2="100"/>
+<line class="gl" x1="0" y1="200" x2="1000" y2="200"/>
+<line class="gl" x1="0" y1="300" x2="1000" y2="300"/>
+<line class="ga" x1="0" y1="400" x2="1000" y2="400"/>
+<line class="gl" x1="0" y1="500" x2="1000" y2="500"/>
+<line class="gl" x1="0" y1="600" x2="1000" y2="600"/>
+<line class="gl" x1="0" y1="700" x2="1000" y2="700"/>
+<line class="gt" x1="0" y1="392" x2="0" y2="408"/>
+<line class="gt" x1="20" y1="395" x2="20" y2="405"/>
+<line class="gt" x1="40" y1="395" x2="40" y2="405"/>
+<line class="gt" x1="60" y1="395" x2="60" y2="405"/>
+<line class="gt" x1="80" y1="395" x2="80" y2="405"/>
+<line class="gt" x1="100" y1="392" x2="100" y2="408"/>
+<line class="gt" x1="120" y1="395" x2="120" y2="405"/>
+<line class="gt" x1="140" y1="395" x2="140" y2="405"/>
+<line class="gt" x1="160" y1="395" x2="160" y2="405"/>
+<line class="gt" x1="180" y1="395" x2="180" y2="405"/>
+<line class="gt" x1="200" y1="392" x2="200" y2="408"/>
+<line class="gt" x1="220" y1="395" x2="220" y2="405"/>
+<line class="gt" x1="240" y1="395" x2="240" y2="405"/>
+<line class="gt" x1="260" y1="395" x2="260" y2="405"/>
+<line class="gt" x1="280" y1="395" x2="280" y2="405"/>
+<line class="gt" x1="300" y1="392" x2="300" y2="408"/>
+<line class="gt" x1="320" y1="395" x2="320" y2="405"/>
+<line class="gt" x1="340" y1="395" x2="340" y2="405"/>
+<line class="gt" x1="360" y1="395" x2="360" y2="405"/>
+<line class="gt" x1="380" y1="395" x2="380" y2="405"/>
+<line class="gt" x1="400" y1="392" x2="400" y2="408"/>
+<line class="gt" x1="420" y1="395" x2="420" y2="405"/>
+<line class="gt" x1="440" y1="395" x2="440" y2="405"/>
+<line class="gt" x1="460" y1="395" x2="460" y2="405"/>
+<line class="gt" x1="480" y1="395" x2="480" y2="405"/>
+<line class="gt" x1="500" y1="392" x2="500" y2="408"/>
+<line class="gt" x1="520" y1="395" x2="520" y2="405"/>
+<line class="gt" x1="540" y1="395" x2="540" y2="405"/>
+<line class="gt" x1="560" y1="395" x2="560" y2="405"/>
+<line class="gt" x1="580" y1="395" x2="580" y2="405"/>
+<line class="gt" x1="600" y1="392" x2="600" y2="408"/>
+<line class="gt" x1="620" y1="395" x2="620" y2="405"/>
+<line class="gt" x1="640" y1="395" x2="640" y2="405"/>
+<line class="gt" x1="660" y1="395" x2="660" y2="405"/>
+<line class="gt" x1="680" y1="395" x2="680" y2="405"/>
+<line class="gt" x1="700" y1="392" x2="700" y2="408"/>
+<line class="gt" x1="720" y1="395" x2="720" y2="405"/>
+<line class="gt" x1="740" y1="395" x2="740" y2="405"/>
+<line class="gt" x1="760" y1="395" x2="760" y2="405"/>
+<line class="gt" x1="780" y1="395" x2="780" y2="405"/>
+<line class="gt" x1="800" y1="392" x2="800" y2="408"/>
+<line class="gt" x1="820" y1="395" x2="820" y2="405"/>
+<line class="gt" x1="840" y1="395" x2="840" y2="405"/>
+<line class="gt" x1="860" y1="395" x2="860" y2="405"/>
+<line class="gt" x1="880" y1="395" x2="880" y2="405"/>
+<line class="gt" x1="900" y1="392" x2="900" y2="408"/>
+<line class="gt" x1="920" y1="395" x2="920" y2="405"/>
+<line class="gt" x1="940" y1="395" x2="940" y2="405"/>
+<line class="gt" x1="960" y1="395" x2="960" y2="405"/>
+<line class="gt" x1="980" y1="395" x2="980" y2="405"/>
+<line class="gt" x1="1000" y1="392" x2="1000" y2="408"/>
+<line class="gt" x1="492" y1="0" x2="508" y2="0"/>
+<line class="gt" x1="495" y1="20" x2="505" y2="20"/>
+<line class="gt" x1="495" y1="40" x2="505" y2="40"/>
+<line class="gt" x1="495" y1="60" x2="505" y2="60"/>
+<line class="gt" x1="495" y1="80" x2="505" y2="80"/>
+<line class="gt" x1="492" y1="100" x2="508" y2="100"/>
+<line class="gt" x1="495" y1="120" x2="505" y2="120"/>
+<line class="gt" x1="495" y1="140" x2="505" y2="140"/>
+<line class="gt" x1="495" y1="160" x2="505" y2="160"/>
+<line class="gt" x1="495" y1="180" x2="505" y2="180"/>
+<line class="gt" x1="492" y1="200" x2="508" y2="200"/>
+<line class="gt" x1="495" y1="220" x2="505" y2="220"/>
+<line class="gt" x1="495" y1="240" x2="505" y2="240"/>
+<line class="gt" x1="495" y1="260" x2="505" y2="260"/>
+<line class="gt" x1="495" y1="280" x2="505" y2="280"/>
+<line class="gt" x1="492" y1="300" x2="508" y2="300"/>
+<line class="gt" x1="495" y1="320" x2="505" y2="320"/>
+<line class="gt" x1="495" y1="340" x2="505" y2="340"/>
+<line class="gt" x1="495" y1="360" x2="505" y2="360"/>
+<line class="gt" x1="495" y1="380" x2="505" y2="380"/>
+<line class="gt" x1="492" y1="400" x2="508" y2="400"/>
+<line class="gt" x1="495" y1="420" x2="505" y2="420"/>
+<line class="gt" x1="495" y1="440" x2="505" y2="440"/>
+<line class="gt" x1="495" y1="460" x2="505" y2="460"/>
+<line class="gt" x1="495" y1="480" x2="505" y2="480"/>
+<line class="gt" x1="492" y1="500" x2="508" y2="500"/>
+<line class="gt" x1="495" y1="520" x2="505" y2="520"/>
+<line class="gt" x1="495" y1="540" x2="505" y2="540"/>
+<line class="gt" x1="495" y1="560" x2="505" y2="560"/>
+<line class="gt" x1="495" y1="580" x2="505" y2="580"/>
+<line class="gt" x1="492" y1="600" x2="508" y2="600"/>
+<line class="gt" x1="495" y1="620" x2="505" y2="620"/>
+<line class="gt" x1="495" y1="640" x2="505" y2="640"/>
+<line class="gt" x1="495" y1="660" x2="505" y2="660"/>
+<line class="gt" x1="495" y1="680" x2="505" y2="680"/>
+<line class="gt" x1="492" y1="700" x2="508" y2="700"/>
+<line class="gt" x1="495" y1="720" x2="505" y2="720"/>
+<line class="gt" x1="495" y1="740" x2="505" y2="740"/>
+<line class="gt" x1="495" y1="760" x2="505" y2="760"/>
+<line class="gt" x1="495" y1="780" x2="505" y2="780"/>
+<line class="gt" x1="492" y1="800" x2="508" y2="800"/>
+              <rect width="1000" height="800" fill="none" stroke="var(--ss-color-grid-frame)" vector-effect="non-scaling-stroke"/></svg><div class="note warn"><b>No spectrum</b><span>Enable a channel to see its spectrum.</span></div></div></div>
+</div></section>
+</main></body></html>
