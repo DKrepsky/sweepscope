@@ -261,8 +261,43 @@ fn given_an_existing_raw_file_when_the_sidecar_cannot_be_written_then_the_old_ra
 
     let error = export_raw_to(folder.path().join("cap.bin")).unwrap_err();
 
-    assert!(error.to_string().contains("the path is a folder"), "{error}");
+    assert!(error.to_string().contains("cap.format.txt"), "{error}");
     assert_eq!(std::fs::read(folder.path().join("cap.bin")).unwrap(), b"old data");
+}
+
+#[test]
+fn given_an_unreadable_sidecar_when_exporting_raw_then_it_fails_naming_the_sidecar_and_writes_nothing() {
+    let folder = TempDir::new();
+    std::fs::create_dir(folder.path().join("cap.format.txt")).unwrap();
+
+    let error = export_raw_to(folder.path().join("cap.bin")).unwrap_err();
+
+    let text = error.to_string();
+    assert!(
+        text.contains("cap.format.txt") && text.contains("nothing was exported"),
+        "{text}"
+    );
+    assert!(!folder.path().join("cap.bin").exists());
+    assert!(folder.path().join("cap.format.txt").is_dir());
+}
+
+#[cfg(unix)]
+#[test]
+fn given_a_permission_denied_sidecar_when_the_export_fails_then_the_old_sidecar_is_kept() {
+    use std::os::unix::fs::PermissionsExt;
+    let folder = TempDir::new();
+    let sidecar = folder.path().join("cap.format.txt");
+    std::fs::write(&sidecar, b"old layout").unwrap();
+    std::fs::set_permissions(&sidecar, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let readable = std::fs::read(&sidecar).is_ok();
+    std::fs::create_dir(folder.path().join("cap.bin")).unwrap();
+
+    export_raw_to(folder.path().join("cap.bin")).unwrap_err();
+
+    std::fs::set_permissions(&sidecar, std::fs::Permissions::from_mode(0o644)).unwrap();
+    if !readable {
+        assert_eq!(std::fs::read(&sidecar).unwrap(), b"old layout");
+    }
 }
 
 #[test]

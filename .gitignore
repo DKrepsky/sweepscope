@@ -13,3 +13,6 @@ src-tauri/gen/
 
 # agent worktrees
 .claude/worktrees/
+
+# ts-rs stray output
+backend/**/bindings/

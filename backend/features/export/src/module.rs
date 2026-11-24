@@ -156,7 +156,7 @@ impl Exporter {
             return Ok(None);
         };
         let sidecar = path.with_extension("format.txt");
-        let previous = std::fs::read(&sidecar).ok();
+        let previous = read_existing(&sidecar)?;
         write_atomic(&sidecar, layout_text().as_bytes())?;
         // The raw file goes last: its write is atomic, so a failure leaves the old file in place and only the sidecar needs undoing.
         if let Err(error) = write_atomic(&path, bytes) {
@@ -164,6 +164,18 @@ impl Exporter {
             return Err(error);
         }
         Ok(Some(saved(&path)))
+    }
+}
+
+/// Absent is `None`; any other read failure aborts the export so an old sidecar is never deleted by the undo.
+fn read_existing(sidecar: &Path) -> Result<Option<Vec<u8>>, KernelError> {
+    match std::fs::read(sidecar) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(KernelError::recoverable(format!(
+            "Cannot read the existing {}, so nothing was exported: {error}",
+            file_name(sidecar)
+        ))),
     }
 }
 
