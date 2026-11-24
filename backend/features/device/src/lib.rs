@@ -20,8 +20,8 @@ pub use hantek::{HantekCatalog, HantekDevice};
 pub use identity::DeviceId;
 pub use messages::{GetConnection, RetryConnection, UseSimulator};
 pub use module::{DeviceDeps, DeviceModule, SimulatorSource, COMMANDS};
-pub use simulator::{device_id, SignalKind, SimulatedCatalog, SimulatedDevice, SimulatorControl};
+pub use simulator::{device_id, SignalKind, SignalSpec, SimulatedCatalog, SimulatedDevice, SimulatorControl};
 pub use sweepscope_kernel::contracts::{
     AcquisitionSetup, CalibrationStatus, Capabilities, ChannelData, ChannelSetup, Coupling, DeviceIdentity, Frame,
-    Slope, Sweep, TimeBaseStep, TriggerKind, TriggerOutcome, TriggerSetup, VerticalRange,
+    PulseCondition, Slope, Sweep, TimeBaseStep, TriggerKind, TriggerOutcome, TriggerSetup, VerticalRange,
 };
