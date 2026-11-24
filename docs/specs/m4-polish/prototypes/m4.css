@@ -59,3 +59,13 @@
 .cal table.rng thead th{position:sticky;top:0;background:var(--ss-color-bg-raised);z-index:1;text-align:right}
 .cal table.rng th[scope=row]{text-transform:none;letter-spacing:0;text-align:left;font-weight:var(--ss-font-weight-regular);color:var(--ss-color-text-secondary);font-size:var(--ss-font-size-xs);padding:3px var(--ss-space-3);border-bottom:var(--ss-border-width) solid var(--ss-color-border-subtle)}
 .cal table.rng th[scope=col]:first-child{text-align:left}
+/* Revision 5: programmatic focus targets (tabindex=-1, not interactive) never show a ring */
+.cal [tabindex="-1"]:focus,.cal [tabindex="-1"]:focus-visible{outline:none}
+/* Tooltip rows: channel, offset, range */
+.tipbox table.rows td:first-child{font-family:var(--ss-font-mono);font-weight:var(--ss-font-weight-bold);padding-right:var(--ss-space-3);width:1%;white-space:nowrap;text-align:left;color:var(--chc)}
+.tipbox table.rows td:nth-child(2){text-align:right;font-family:var(--ss-font-mono);color:var(--ss-color-text-primary);white-space:nowrap}
+.tipbox table.rows td:nth-child(3){text-align:left;padding-left:var(--ss-space-3);color:var(--ss-color-text-muted);white-space:nowrap}
+.tipbox .empty{color:var(--ss-color-text-muted)}
+/* Done step: channels accepted despite the warning (quiet text, no tag) */
+.cal .accepted{margin:0;padding:0;list-style:none;display:grid;gap:var(--ss-space-2);font-size:var(--ss-font-size-xs);color:var(--ss-color-text-muted)}
+.tipbox table.rows{width:auto}.tipbox table.rows td:nth-child(2){min-width:5.5rem}
