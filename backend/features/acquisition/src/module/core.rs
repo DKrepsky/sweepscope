@@ -2,14 +2,15 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use sweepscope_kernel::contracts::{
-    Capabilities, CaptureCompleted, CaptureOutcome, ConnectionChanged, ConnectionState, DerivedTrace, DeviceIdentity,
-    DeviceSource, Frame, FrameCaptured, RollPolled, TriggerOutcome,
+    Capabilities, CaptureCompleted, CaptureOutcome, CaptureProbe, ConnectionChanged, ConnectionState, DerivedTrace,
+    DeviceIdentity, DeviceSource, Frame, FrameCaptured, FrameContext, RollPolled, TriggerOutcome, ZeroOffsets,
 };
 use sweepscope_kernel::KernelError;
 
 use super::autoset;
 use super::derive::derive_trace;
 use super::effects::{Call, Effects, Output};
+use super::hold::{Hold, ProbeRun};
 use super::roll::RollSessions;
 use crate::domain::autoset_run::{AutosetRun, Finish, Next, FAILED_TEXT, NO_SIGNAL_TEXT};
 use crate::domain::setup_file::SetupFile;
@@ -22,6 +23,7 @@ const FACTS_EVERY: Duration = Duration::from_millis(250);
 /// A change must stay this long before it is written, so a dragged control causes one write.
 const AUTOSAVE_AFTER: Duration = Duration::from_secs(1);
 const NO_SCOPE: &str = "No scope connected";
+const NOT_HELD: &str = "The instrument is not held";
 const CONNECTING: &str = "Connecting";
 const UNKNOWN_ERROR: &str = "The scope reported an error";
 
@@ -42,6 +44,7 @@ pub struct Core {
     saved_setup: Option<SetupFile>,
     unsaved_since: Option<Instant>,
     held: Option<HeldFrame>,
+    hold: Option<Hold>,
 }
 
 /// The newest published frame, kept so a math change while stopped can be shown on it.
@@ -74,6 +77,7 @@ impl Core {
             instrument_revision: 0,
             setup_revision: 0,
             held: None,
+            hold: None,
             session: None,
             last_facts_at: None,
             saved_setup: None,
@@ -173,16 +177,149 @@ impl Core {
         else {
             return;
         };
-        let derived = derive_trace(&self.instrument, &held.frame);
+        let shown = self.instrument.correct_frame(&held.frame);
+        let derived = derive_trace(&self.instrument, &shown.frame);
         if derived == held.derived {
             return;
         }
         held.derived = derived.clone();
+        let mut context = self.instrument.frame_context(self.setup_revision);
+        context.calibrated = shown.calibrated;
         fx.outputs.push(Output::Frame(FrameCaptured {
-            frame: Arc::clone(&held.frame),
-            context: self.instrument.frame_context(self.setup_revision),
+            frame: shown.frame,
+            context,
             derived,
         }));
+    }
+
+    /// New offsets correct the frame on screen at once, whether or not the scope runs.
+    fn republish_held(&mut self, fx: &mut Effects, revision_before: u64) {
+        let Some(held) = self.held.as_mut().filter(|h| h.setup_revision == revision_before) else {
+            return;
+        };
+        held.setup_revision = self.setup_revision;
+        let shown = self.instrument.correct_frame(&held.frame);
+        let derived = derive_trace(&self.instrument, &shown.frame);
+        held.derived = derived.clone();
+        let mut context = self.instrument.frame_context(self.setup_revision);
+        context.calibrated = shown.calibrated;
+        fx.outputs.push(Output::Frame(FrameCaptured {
+            frame: shown.frame,
+            context,
+            derived,
+        }));
+    }
+
+    /// Offsets of the unit in force change what the device is given (the trigger level) and what is shown.
+    pub fn zero_offsets(&mut self, offsets: Option<ZeroOffsets>, fx: &mut Effects) {
+        let before = (self.instrument.applied_offsets(), self.instrument.device_setup());
+        let revision = self.setup_revision;
+        self.instrument.set_offsets(offsets);
+        let after = (self.instrument.applied_offsets(), self.instrument.device_setup());
+        if before.0 == after.0 {
+            return;
+        }
+        if before.1 != after.1 {
+            self.send_setup(fx);
+        }
+        self.roll.sync(&self.instrument, &mut fx.outputs);
+        self.republish_held(fx, revision);
+    }
+
+    /// Lends the instrument to another module: capturing stops, controls lock with `reason`, an armed Single is
+    /// cancelled. Refused while a command could not run anyway (no scope, auto-setup).
+    pub fn hold(&mut self, on: bool, reason: &str, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
+        if !on {
+            return self.release(fx, now);
+        }
+        if self.hold.is_some() {
+            return Ok(());
+        }
+        self.require(|controls| &controls.run, NO_SCOPE)?;
+        let capturing = self.instrument.running();
+        let was_running = self.instrument.hold(reason);
+        self.hold = Some(Hold::new(was_running));
+        if capturing {
+            fx.calls.push(Call::Capturing(false));
+            self.advance_phase(StatusEvent::Stop, fx);
+        }
+        self.meter.clear();
+        self.publish_instrument(fx);
+        self.refresh_facts(fx, now, true);
+        self.roll.sync(&self.instrument, &mut fx.outputs);
+        Ok(())
+    }
+
+    /// Restores the user's model with a new revision and resumes only what was running.
+    fn release(&mut self, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
+        let Some(hold) = self.hold.take() else {
+            return Ok(());
+        };
+        if let Some(probe) = &hold.probe {
+            fx.outputs.push(Output::Probe(probe.fail()));
+        }
+        let resumed = self.instrument.release(hold.was_running);
+        self.send_setup(fx);
+        if resumed && !hold.capturing {
+            fx.calls.push(Call::Capturing(true));
+        }
+        if !resumed && hold.capturing && self.instrument.ready() {
+            fx.calls.push(Call::Capturing(false));
+        }
+        if resumed {
+            self.advance_phase(StatusEvent::Run, fx);
+        }
+        self.meter.clear();
+        self.publish_instrument(fx);
+        self.refresh_facts(fx, now, true);
+        self.roll.sync(&self.instrument, &mut fx.outputs);
+        self.track_setup(fx, now);
+        Ok(())
+    }
+
+    /// Only while held. Applies the setup with a fresh revision; the answer comes as `ProbeCaptured`.
+    pub fn capture_probe(&mut self, request: CaptureProbe, fx: &mut Effects) -> Result<(), KernelError> {
+        if request.keep == 0 {
+            return Err(KernelError::recoverable("A probe must keep at least one frame"));
+        }
+        if !self.instrument.ready() {
+            return Err(KernelError::recoverable(NO_SCOPE));
+        }
+        let Some(hold) = self.hold.as_mut() else {
+            return Err(KernelError::recoverable(NOT_HELD));
+        };
+        if let Some(replaced) = hold.probe.take() {
+            fx.outputs.push(Output::Probe(replaced.fail()));
+        }
+        self.setup_revision += 1;
+        hold.probe = Some(ProbeRun::new(
+            request.id,
+            self.setup_revision,
+            request.discard,
+            request.keep,
+        ));
+        fx.calls.push(Call::Apply(self.setup_revision, request.setup));
+        if !hold.capturing {
+            hold.capturing = true;
+            fx.calls.push(Call::Capturing(true));
+        }
+        Ok(())
+    }
+
+    /// Probe frames are answered, never published; anything not for the awaited probe is dropped.
+    fn probe_captured(&mut self, completed: CaptureCompleted, fx: &mut Effects) {
+        let Some(probe) = self.hold.as_mut().and_then(|h| h.probe.as_mut()) else {
+            return;
+        };
+        if probe.setup_revision != completed.setup_revision {
+            return;
+        }
+        if let Some(answer) = probe.observe(completed.outcome) {
+            if let Some(hold) = self.hold.as_mut() {
+                hold.probe = None;
+            }
+            fx.outputs.push(Output::Probe(answer));
+        }
     }
 
     pub fn set_running(&mut self, on: bool, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
@@ -388,6 +525,10 @@ impl Core {
     }
 
     pub fn capture(&mut self, completed: CaptureCompleted, fx: &mut Effects, now: Instant) {
+        if self.hold.is_some() {
+            self.probe_captured(completed, fx);
+            return;
+        }
         if self.autoset.active() {
             if let Some(next) = autoset::consume(&mut self.autoset, completed, now) {
                 self.advance_autoset(next, fx, now);
@@ -406,18 +547,7 @@ impl Core {
                 self.meter.record(now);
                 self.autoset.note_frame(&frame);
                 self.sync_autoset(fx);
-                let context = self.instrument.frame_context(self.setup_revision);
-                let derived = derive_trace(&self.instrument, &frame);
-                self.held = Some(HeldFrame {
-                    frame: Arc::clone(&frame),
-                    setup_revision: self.setup_revision,
-                    derived: derived.clone(),
-                });
-                fx.outputs.push(Output::Frame(FrameCaptured {
-                    frame,
-                    context,
-                    derived,
-                }));
+                self.show_frame(frame, fx);
                 if single {
                     self.end_single(fx, now);
                     return;
@@ -429,12 +559,32 @@ impl Core {
         }
     }
 
+    /// Publishes the frame corrected and keeps the raw one, so new offsets can correct it again.
+    fn show_frame(&mut self, frame: Arc<Frame>, fx: &mut Effects) {
+        let shown = self.instrument.correct_frame(&frame);
+        let derived = derive_trace(&self.instrument, &shown.frame);
+        self.held = Some(HeldFrame {
+            frame,
+            setup_revision: self.setup_revision,
+            derived: derived.clone(),
+        });
+        let context = self.instrument.frame_context(self.setup_revision);
+        fx.outputs.push(Output::Frame(FrameCaptured {
+            frame: shown.frame,
+            context: FrameContext {
+                calibrated: shown.calibrated,
+                ..context
+            },
+            derived,
+        }));
+    }
+
     /// Roll items of the current setup only; a poll of an older revision belongs to a session that is over.
     pub fn roll_polled(&mut self, polled: RollPolled, fx: &mut Effects) {
         if polled.setup_revision != self.setup_revision {
             return;
         }
-        let Some(captured) = self.roll.item(polled) else {
+        let Some(captured) = self.roll.item(polled, &self.instrument) else {
             return;
         };
         fx.outputs.push(Output::Roll(captured));
@@ -454,6 +604,8 @@ impl Core {
         if self.session.as_ref() == Some(&session) {
             return;
         }
+        self.instrument
+            .set_unit(session.1.as_ref().and_then(|identity| identity.unit_id.clone()));
         self.session = Some(session);
         let restore = self.instrument.on_ready(caps);
         self.send_setup(fx);
@@ -467,6 +619,10 @@ impl Core {
     /// `reason` is the text of an in-between state; `None` means the scope is gone.
     fn lose(&mut self, reason: Option<&str>, fx: &mut Effects) {
         self.abort_autoset(fx);
+        if let Some(probe) = self.hold.as_mut().and_then(|h| h.probe.take()) {
+            fx.outputs.push(Output::Probe(probe.fail()));
+        }
+        self.instrument.set_unit(None);
         match reason {
             Some(reason) => self.instrument.set_unavailable(reason),
             None => self.instrument.on_lost(),

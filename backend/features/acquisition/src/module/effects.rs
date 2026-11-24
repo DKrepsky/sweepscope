@@ -1,4 +1,4 @@
-use sweepscope_kernel::contracts::{AcquisitionSetup, FrameCaptured, RollCaptured};
+use sweepscope_kernel::contracts::{AcquisitionSetup, FrameCaptured, ProbeCaptured, RollCaptured};
 
 use crate::domain::setup_file::SetupFile;
 use crate::{AcquisitionStatus, InstrumentFacts, InstrumentState};
@@ -10,6 +10,7 @@ pub enum Output {
     Facts(Box<InstrumentFacts>),
     Frame(FrameCaptured),
     Roll(RollCaptured),
+    Probe(ProbeCaptured),
 }
 
 /// What a state change asks of the device.

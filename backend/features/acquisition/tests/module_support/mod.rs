@@ -20,6 +20,7 @@ use sweepscope_kernel::{Bus, KernelError};
 use super::domain_support::capabilities;
 
 pub const WAIT: Duration = Duration::from_secs(3);
+pub const UNIT: &str = "fake/pcb/0001";
 
 /// What the fake device was asked to do, in order.
 #[derive(Debug, Clone, PartialEq)]
@@ -187,6 +188,7 @@ pub fn identity() -> DeviceIdentity {
         fpga_version: None,
         calibration: sweepscope_kernel::contracts::CalibrationStatus::Valid,
         simulated: true,
+        unit_id: Some(UNIT.into()),
     }
 }
 

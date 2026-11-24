@@ -160,22 +160,12 @@ fn given_a_width_outside_the_driver_range_when_set_then_it_is_rejected_with_the_
 }
 
 #[test]
-fn given_widths_of_5_us_and_50_ms_when_set_then_they_are_accepted_but_not_verified() {
+fn given_widths_outside_and_inside_the_checked_range_when_set_then_all_are_accepted() {
     let mut instrument = ready_instrument();
 
-    for text in ["5 us", "50 ms"] {
+    for text in ["5 us", "50 us", "500 us", "5 ms", "50 ms"] {
         instrument.set_trigger(pulse_patch(text)).unwrap();
-        assert!(!state(&instrument).trigger.pulse.unwrap().verified, "{text}");
-    }
-}
-
-#[test]
-fn given_widths_from_50_us_to_5_ms_when_set_then_they_are_verified() {
-    let mut instrument = ready_instrument();
-
-    for text in ["50 us", "500 us", "5 ms"] {
-        instrument.set_trigger(pulse_patch(text)).unwrap();
-        assert!(state(&instrument).trigger.pulse.unwrap().verified, "{text}");
+        assert!(state(&instrument).trigger.pulse.is_some(), "{text}");
     }
 }
 

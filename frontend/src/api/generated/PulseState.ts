@@ -2,8 +2,4 @@
 import type { FormattedValue } from "./FormattedValue";
 import type { PulseCondition } from "./PulseCondition";
 
-export type PulseState = { condition: PulseCondition, width: FormattedValue, 
-/**
- * False outside 50 us to 5 ms, the widths checked on hardware.
- */
-verified: boolean, };
+export type PulseState = { condition: PulseCondition, width: FormattedValue, };
