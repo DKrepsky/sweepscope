@@ -318,6 +318,11 @@ pub enum SettingTarget {
 pub struct InstrumentChanged(pub InstrumentState);
 impl Event for InstrumentChanged {}
 
+/// Published after every `ZeroOffsetsChanged` the module has handled, so a publisher can wait for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ZeroOffsetsApplied;
+impl Event for ZeroOffsetsApplied {}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StatusChanged(pub AcquisitionStatus);
 impl Event for StatusChanged {}

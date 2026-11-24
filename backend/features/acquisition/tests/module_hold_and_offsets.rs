@@ -5,11 +5,14 @@ mod module_support;
 use std::sync::Arc;
 
 use domain_support::{capabilities, range_index};
-use module_support::{expect_recoverable, frame, ready_rig, Rig, UNIT};
-use sweepscope_acquisition::{ArmSingle, SetRunning, SettingTarget, StartAutoset, StepSetting};
+use module_support::{expect_recoverable, frame, ready_rig, Rig, UNIT, WAIT};
+use sweepscope_acquisition::{
+    ArmSingle, ChannelPatch, SetChannel, SetRunning, SetTrigger, SettingTarget, StartAutoset, StepSetting,
+    TriggerPatch, ZeroOffsetsApplied,
+};
 use sweepscope_kernel::contracts::{
-    AcquisitionSetup, CaptureOutcome, CaptureProbe, Frame, HoldInstrument, ProbeCaptured, RollItem, TriggerOutcome,
-    ZeroOffsets, ZeroOffsetsChanged,
+    AcquisitionSetup, CaptureCompleted, CaptureOutcome, CaptureProbe, Frame, HoldInstrument, ProbeCaptured, RollItem,
+    TriggerOutcome, ZeroOffsets, ZeroOffsetsChanged,
 };
 use sweepscope_kernel::testing::EventRecorder;
 
@@ -296,6 +299,66 @@ fn given_offsets_of_the_connected_unit_when_a_frame_is_published_then_its_zero_c
 
     assert_eq!(last_zero_code(&rig), 128.0 + OFFSET_V / 1.0 * 25.0);
     assert_eq!(rig.frames.events()[0].context.calibrated, [true, false, false, false]);
+}
+
+#[test]
+fn given_offsets_when_they_are_published_then_the_module_announces_that_it_applied_them() {
+    let rig = ready_rig();
+    let applied = rig.bus.subscribe::<ZeroOffsetsApplied>();
+
+    rig.bus.publish(ZeroOffsetsChanged { offsets: None });
+
+    assert!(applied.recv_timeout(WAIT).is_some());
+}
+
+#[test]
+fn given_offsets_published_while_a_capture_is_handled_when_the_capture_wakes_the_module_then_the_frame_is_calibrated() {
+    let rig = ready_rig();
+    trigger_on_channel_two(&rig);
+    run(&rig);
+    // Offsets of the trigger source change the setup, so applying them runs the hook on the module thread, after it
+    // drained the offsets queue and before it waits for the capture. Offsets of channel 1 change no setup.
+    let channel_two = offsets_for(UNIT, OFFSET_V).volts[0].clone();
+    let source_only = ZeroOffsets {
+        volts: [vec![], channel_two.clone(), vec![], vec![]],
+        ..offsets_for(UNIT, OFFSET_V)
+    };
+    let both = ZeroOffsets {
+        volts: [channel_two.clone(), channel_two, vec![], vec![]],
+        ..source_only.clone()
+    };
+    rig.device.on_next_apply(move |bus, revision| {
+        bus.publish(ZeroOffsetsChanged { offsets: Some(both) });
+        bus.publish(CaptureCompleted {
+            setup_revision: revision,
+            outcome: CaptureOutcome::Frame(Arc::new(frame(TriggerOutcome::Auto))),
+        });
+    });
+
+    rig.bus.publish(ZeroOffsetsChanged {
+        offsets: Some(source_only),
+    });
+    rig.wait(|| !rig.frames.events().is_empty());
+
+    assert!(rig.frames.events()[0].context.calibrated[0]);
+}
+
+fn trigger_on_channel_two(rig: &Rig) {
+    let enable = ChannelPatch {
+        enabled: Some(true),
+        ..ChannelPatch::default()
+    };
+    rig.bus
+        .request(SetChannel {
+            channel: 2,
+            patch: enable,
+        })
+        .unwrap();
+    let source = TriggerPatch {
+        source: Some(2),
+        ..TriggerPatch::default()
+    };
+    rig.bus.request(SetTrigger { patch: source }).unwrap();
 }
 
 #[test]

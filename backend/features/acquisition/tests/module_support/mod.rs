@@ -33,11 +33,15 @@ pub enum DeviceCall {
 /// Answers a setup with the frame the scope would capture; `None` leaves the capture pending.
 pub type Responder = Box<dyn Fn(&AcquisitionSetup) -> Option<Frame> + Send>;
 
+/// Runs on the module's own thread while it applies a setup: `(bus, setup revision)`.
+pub type ApplyHook = Box<dyn FnOnce(&Bus, u64) + Send>;
+
 #[derive(Default)]
 pub struct FakeDevice {
     calls: Mutex<Vec<DeviceCall>>,
     capturing: AtomicBool,
     responder: Mutex<Option<Responder>>,
+    on_apply: Mutex<Option<ApplyHook>>,
 }
 
 impl FakeDevice {
@@ -49,6 +53,10 @@ impl FakeDevice {
                 Box::new(request.setup.clone()),
             ));
             device.answer(&announcer, request.setup_revision, &request.setup);
+            let hook = device.on_apply.lock().unwrap().take();
+            if let Some(hook) = hook {
+                hook(&announcer, request.setup_revision);
+            }
             Ok(())
         })
         .unwrap();
@@ -70,6 +78,11 @@ impl FakeDevice {
     /// A scope that captures only while capturing is on, one frame per applied setup.
     pub fn respond_with(&self, responder: impl Fn(&AcquisitionSetup) -> Option<Frame> + Send + 'static) {
         *self.responder.lock().unwrap() = Some(Box::new(responder));
+    }
+
+    /// Runs `hook` once, at the next applied setup, before the module reads any further event.
+    pub fn on_next_apply(&self, hook: impl FnOnce(&Bus, u64) + Send + 'static) {
+        *self.on_apply.lock().unwrap() = Some(Box::new(hook));
     }
 
     fn answer(&self, bus: &Bus, setup_revision: u64, setup: &AcquisitionSetup) {
