@@ -5,8 +5,8 @@ use std::time::Duration;
 use sweepscope_acquisition::{Phase, SetRunning, SettingTarget, StartAutoset, StepSetting};
 use sweepscope_calibration::domain::offsets::OffsetFile;
 use sweepscope_calibration::{
-    CloseZeroCalibration, GetZeroCalibration, MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration,
-    ZeroCalibrationState, ZeroStep,
+    CloseZeroCalibration, ContinueZeroChannel, GetZeroCalibration, MeasureZeroChannel, OpenZeroCalibration,
+    StartZeroCalibration, ZeroCalibrationState, ZeroStep,
 };
 use sweepscope_device::{SignalKind, SignalSpec, SimulatorControl};
 use sweepscope_display::DisplayFrameReady;
@@ -148,11 +148,15 @@ const CHANNELS: usize = 4;
 /// The 2 mV/div noise is 24 codes rms, so a frame mean wanders by a few codes; the zero error is 8.
 const MEAN_TOLERANCE_CODES: f64 = 3.0;
 const TWO_MILLIVOLT_STEPS_FROM_ONE_VOLT: usize = 8;
+const TWO_MILLIVOLT_RANGE_INDEX: usize = 0;
+/// Simulator noise at 2 mV/div (24 codes) can clip a sample, which forbids Continue; 5 mV/div is quieter.
+const FIVE_MILLIVOLT_RANGE_INDEX: usize = 1;
 /// Simulator zero error of channel 1 on 2 mV/div, 0.66 mV, in codes at 24.15 codes per division.
 const CHANNEL_ONE_ZERO_ERROR_CODES: f64 = 0.66e-3 / 2.0e-3 * 24.15;
 
 struct ShortedRig {
     backend: Backend,
+    control: SimulatorControl,
     storage: Arc<MemoryStorage>,
 }
 
@@ -163,7 +167,11 @@ fn shorted_rig() -> ShortedRig {
     }
     wait_until_ready(&backend.bus);
     assert!(eventually(WAIT, || zero_state(&backend.bus).availability.enabled));
-    ShortedRig { backend, storage }
+    ShortedRig {
+        backend,
+        control,
+        storage,
+    }
 }
 
 fn zero_state(bus: &Bus) -> ZeroCalibrationState {
@@ -312,4 +320,72 @@ fn given_an_auto_setup_in_progress_when_the_dialog_is_opened_then_it_is_refused_
 
     assert!(refused.is_err());
     assert!(zero_state(bus).session.is_none());
+}
+
+fn open_and_measure_channel_one(bus: &Bus) {
+    bus.request(OpenZeroCalibration).expect("open");
+    bus.request(StartZeroCalibration).expect("start");
+    wait_for_channel(bus, 1);
+    bus.request(MeasureZeroChannel).expect("measure");
+}
+
+#[test]
+fn given_a_zero_error_above_the_limit_when_continue_is_sent_then_the_session_completes_and_the_offset_is_stored_and_applied(
+) {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    rig.control.set_zero_error_volts(0, FIVE_MILLIVOLT_RANGE_INDEX, 6.0e-3);
+    open_and_measure_channel_one(bus);
+    wait_for_step(bus, ZeroStep::NotShorted);
+    let rejected = zero_state(bus).session.expect("session");
+    assert!(rejected.can_continue, "{:?}", rejected);
+
+    bus.request(ContinueZeroChannel).expect("continue");
+    for channel in 2..=4 {
+        wait_for_channel(bus, channel);
+        bus.request(MeasureZeroChannel).expect("measure");
+    }
+    wait_for_step(bus, ZeroStep::Done);
+
+    let state = zero_state(bus);
+    assert!(state.unit.expect("unit").calibrated);
+    assert_eq!(state.session.expect("session").overridden, [true, false, false, false]);
+    let offsets = stored_offsets(&rig.storage).expect("stored offsets");
+    assert!(
+        (offsets[FIVE_MILLIVOLT_RANGE_INDEX] - 6.0e-3).abs() < 0.5e-3,
+        "stored {}",
+        offsets[0]
+    );
+    bus.request(CloseZeroCalibration).expect("close");
+    let captured = frame_at_two_millivolts(bus);
+    assert!(captured.context.calibrated[0]);
+}
+
+#[test]
+fn given_a_zero_error_below_the_widened_limit_when_measured_then_it_passes_without_continue() {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    rig.control.set_zero_error_volts(3, TWO_MILLIVOLT_RANGE_INDEX, 1.45e-3);
+
+    measure_channels(bus, 4);
+    wait_for_step(bus, ZeroStep::Done);
+
+    assert_eq!(zero_state(bus).session.expect("session").overridden, [false; 4]);
+}
+
+#[test]
+fn given_a_clipped_gate_reading_when_continue_is_sent_then_it_is_refused_and_the_session_stays_rejected() {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    let mut clipped = SignalSpec::new(SignalKind::Shorted);
+    clipped.offset_v = 5.0;
+    rig.control.set_signal(0, clipped);
+    open_and_measure_channel_one(bus);
+    wait_for_step(bus, ZeroStep::NotShorted);
+
+    let result = bus.request(ContinueZeroChannel);
+
+    assert!(!zero_state(bus).session.expect("session").can_continue);
+    assert!(result.is_err());
+    assert!(zero_state(bus).session.is_some_and(|s| s.step == ZeroStep::NotShorted));
 }

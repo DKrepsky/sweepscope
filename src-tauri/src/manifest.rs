@@ -98,6 +98,7 @@ const ZERO_CALIBRATION_COMMANDS: &[CommandDescriptor] = &[
     command_without_arguments("open_zero_calibration"),
     command_without_arguments("start_zero_calibration"),
     command_without_arguments("measure_zero_calibration"),
+    command_without_arguments("continue_zero_calibration"),
     command_without_arguments("close_zero_calibration"),
 ];
 

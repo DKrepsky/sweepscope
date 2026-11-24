@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-continue-zero-calibration"
+description = "Enables the continue_zero_calibration command without any pre-configured scope."
+commands.allow = ["continue_zero_calibration"]
+
+[[permission]]
+identifier = "deny-continue-zero-calibration"
+description = "Denies the continue_zero_calibration command without any pre-configured scope."
+commands.deny = ["continue_zero_calibration"]

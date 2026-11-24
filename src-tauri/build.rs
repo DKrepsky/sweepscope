@@ -34,6 +34,7 @@ const COMMANDS: &[&str] = &[
     "open_zero_calibration",
     "start_zero_calibration",
     "measure_zero_calibration",
+    "continue_zero_calibration",
     "close_zero_calibration",
 ];
 
