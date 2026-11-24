@@ -44,3 +44,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Hand-maintained e2e stub command lists: check a test compares them with src-tauri/capabilities/main.json.
 - Worker session counters (bumped on state change) are the accepted fix for Stop-then-Run races; check a test restarts inside one poll.
 - Held-state republish patterns (rederive on edit while stopped): check a revision guard that bumps synchronously, equality guard for idempotence, and that no consumer feeds back; downstream consumers are latest-wins and idempotent.
+- Worker loops that drain event subscriptions at the top and then block on one other queue: check the events are drained again after the wake-up (M4: offsets event vs first capture).
+- When a spec/ADR says a root composes module X, check the root really does (M4 CLI read the offsets file itself); check doc paths against the actual workspace layout and documented rules against the checker.
+- Removed-concept sweeps: grep for leftover options (unverifiedTimeBase) and dead selectors after a replacement (connectionChip).
