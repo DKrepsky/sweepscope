@@ -117,3 +117,14 @@ fn given_the_page_when_its_wording_is_read_then_it_states_no_tolerance_and_uses_
     assert!(page.contains("about 0.1 division"));
     assert!(!page.contains('±'));
 }
+
+#[test]
+fn given_the_prd_capabilities_when_the_capability_table_is_read_then_hotplug_bandwidth_and_adc_rows_are_listed() {
+    let rows = table_rows(&page(), "Capability table");
+
+    let items: Vec<&str> = rows.iter().map(|row| row[0].as_str()).collect();
+
+    for wanted in ["Analog bandwidth", "Bandwidth limit", "ADC", "Hotplug"] {
+        assert!(items.iter().any(|item| item.starts_with(wanted)), "{wanted}");
+    }
+}
