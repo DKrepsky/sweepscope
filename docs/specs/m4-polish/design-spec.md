@@ -30,6 +30,7 @@ Journey: see `NO CALIBRATION` in the bottom bar -> click it -> read why and pres
 - Slot: the **right end** of the status bar, after Renderer, essential priority (never dropped by the status bar collapse; Renderer drops first). It **replaces** the status bar `Accuracy` button and popover (decision D4, question Q7); the tooltip carries the accuracy information.
 - Tooltip: existing Tooltip component (500 ms delay, also on keyboard focus), multi-line, with a small two-column table for the offsets (engineering notation, U+2212 minus). Text and numbers come from the backend; the wireframe values are placeholders.
 - Wireframe: `prototypes/status-tag.html`, `main-window.html`, `main-window-calibrated.html`.
+- **Known limit (QA C-6, accepted by the PM):** at text scale 150 to 200 % in a 1440 px window the tag, which is never dropped, makes the width fall in the existing scroll tier of `docs/design.md` 3.2; no new tier is added.
 
 ### 2.1 Connection item (replaces the `CONNECTED` chip)
 
