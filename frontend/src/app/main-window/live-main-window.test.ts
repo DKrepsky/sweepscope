@@ -44,6 +44,13 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     useSimulator: vi.fn(),
     retryConnection: vi.fn(),
     setInterpolation: vi.fn(),
+    armSingle: vi.fn(),
+    startAutoset: vi.fn(),
+    setMath: vi.fn(),
+    setPersistence: vi.fn(),
+    setSpectrum: vi.fn(),
+    startRecording: vi.fn(),
+    stopRecording: vi.fn(),
   };
   const display: Writable<DisplayState | undefined> = writable(undefined);
   const measurements: Writable<MeasurementsState | undefined> = writable(undefined);
