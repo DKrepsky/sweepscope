@@ -194,7 +194,6 @@ pub fn state(caps: &Capabilities, model: &Model, gate: &impl Fn(Availability) ->
         scale: ScaleChoice {
             index: index as u8,
             label: formatted(scale, unit_quantity(setting.operation)),
-            verified: true,
             faster: step_availability(index > 0, "Smallest scale", gate),
             slower: step_availability(index < last, "Largest scale", gate),
         },

@@ -1,7 +1,11 @@
 use std::cell::RefCell;
 use std::time::Instant;
 
-use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, DerivedTrace, Frame, FrameContext, RollContext};
+use std::sync::Arc;
+
+use sweepscope_kernel::contracts::{
+    AcquisitionSetup, Capabilities, DerivedTrace, Frame, FrameContext, RollContext, ZeroOffsets,
+};
 use sweepscope_kernel::KernelError;
 
 use super::autoset_run::{self, Plan, Start};
@@ -9,6 +13,7 @@ use super::defaults::Defaults;
 use super::math;
 use super::meter::CaptureMeter;
 use super::model::{nearest_index, Model, CHANNELS};
+use super::offsets::{self, Corrected};
 use super::pulse;
 use super::setup_file::{self, SetupFile};
 use super::view::{self, LAST_CHANNEL, NO_SCOPE};
@@ -43,6 +48,11 @@ pub struct Instrument {
     pending_setup: Option<SetupFile>,
     notice: Option<SetupNotice>,
     autoset_running: bool,
+    /// Why the instrument is lent to another module; locks every control like a lost device does.
+    held: Option<String>,
+    offsets: Option<ZeroOffsets>,
+    /// The unit of the ready device; offsets of another unit are never applied.
+    unit_id: Option<String>,
 }
 
 /// Everything that makes a roll session: when any part changes the screen history is void and a new session begins.
@@ -51,6 +61,7 @@ pub struct RollKey {
     setup: AcquisitionSetup,
     invert: [bool; CHANNELS],
     probe: [f64; CHANNELS],
+    offsets: Option<ZeroOffsets>,
 }
 
 /// What a loaded setup could not do; each line names a value that kept its current setting.
@@ -72,6 +83,9 @@ impl Instrument {
             pending_setup: None,
             notice: None,
             autoset_running: false,
+            held: None,
+            offsets: None,
+            unit_id: None,
         }
     }
 
@@ -219,9 +233,10 @@ impl Instrument {
     pub fn roll_key(&self) -> Option<RollKey> {
         let model = self.model.as_ref()?;
         Some(RollKey {
-            setup: model.device_setup(),
+            setup: self.device_setup()?,
             invert: model.invert,
             probe: model.probes,
+            offsets: self.applied_offsets(),
         })
     }
 
@@ -343,7 +358,7 @@ impl Instrument {
     pub fn state(&self, revision: u64) -> Option<InstrumentState> {
         let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
         let locks = view::Locks {
-            connection: self.unavailable.as_deref(),
+            connection: self.unavailable.as_deref().or(self.held.as_deref()),
             autoset_running: self.autoset_running,
         };
         let mut state = view::instrument_state(caps, model, revision, &locks);
@@ -363,7 +378,7 @@ impl Instrument {
             window_len: 0,
             invert: [false; CHANNELS],
             probe: [1.0; CHANNELS],
-            range_verified: [true; CHANNELS],
+            calibrated: [false; CHANNELS],
             seconds_per_div: 0.0,
         };
         let Some((caps, model)) = self.caps.as_ref().zip(self.model.as_ref()) else {
@@ -378,9 +393,6 @@ impl Instrument {
             .time_bases
             .get(usize::from(model.setup.time_base_index))
             .map_or(0.0, |t| t.seconds_per_div);
-        for (number, verified) in context.range_verified.iter_mut().enumerate() {
-            *verified = model.range(caps, number).is_none_or(|r| r.verified);
-        }
         context
     }
 
@@ -390,7 +402,76 @@ impl Instrument {
 
     /// What the device must be given: the user's setup, with the sweep a Single needs.
     pub fn device_setup(&self) -> Option<AcquisitionSetup> {
-        self.model.as_ref().map(Model::device_setup)
+        let model = self.model.as_ref()?;
+        let mut setup = model.device_setup();
+        self.shift_trigger_level(model, &mut setup);
+        Some(setup)
+    }
+
+    /// The device compares raw codes, which carry the zero error: the level it gets moves by the same offset.
+    fn shift_trigger_level(&self, model: &Model, setup: &mut AcquisitionSetup) {
+        let Some(offsets) = self.active_offsets() else {
+            return;
+        };
+        let source = usize::from(setup.trigger.source);
+        let range = usize::from(model.setup.channels[source].range_index);
+        setup.trigger.level_volts += offsets::volts_at(offsets, source, range);
+    }
+
+    fn active_offsets(&self) -> Option<&ZeroOffsets> {
+        let unit = self.unit_id.as_deref()?;
+        self.offsets.as_ref().filter(|o| o.unit_id == unit)
+    }
+
+    /// Offsets in force for the ready device, for change detection.
+    pub fn applied_offsets(&self) -> Option<ZeroOffsets> {
+        self.active_offsets().cloned()
+    }
+
+    pub fn set_offsets(&mut self, offsets: Option<ZeroOffsets>) {
+        self.offsets = offsets;
+    }
+
+    /// `None` while no device is ready.
+    pub fn set_unit(&mut self, unit_id: Option<String>) {
+        self.unit_id = unit_id;
+    }
+
+    /// A frame as every consumer must see it: corrected once, here.
+    pub fn correct_frame(&self, frame: &Arc<Frame>) -> Corrected {
+        match &self.caps {
+            Some(caps) => offsets::correct(caps, self.active_offsets(), frame),
+            None => Corrected {
+                frame: Arc::clone(frame),
+                calibrated: [false; CHANNELS],
+            },
+        }
+    }
+
+    /// Lends the instrument out: capturing stops and the controls lock with `reason`. Returns whether it was running;
+    /// an armed Single counts as not running, it is cancelled.
+    pub fn hold(&mut self, reason: &str) -> bool {
+        self.held = Some(reason.to_owned());
+        let Some(model) = &mut self.model else {
+            return false;
+        };
+        let was_running = model.running && !model.single;
+        model.running = false;
+        model.single = false;
+        was_running
+    }
+
+    /// Returns whether it runs again. When the device is gone the run intent waits for the next ready.
+    pub fn release(&mut self, was_running: bool) -> bool {
+        self.held = None;
+        if !self.ready() {
+            self.was_running |= was_running;
+            return false;
+        }
+        if let Some(model) = &mut self.model {
+            model.running = was_running;
+        }
+        was_running
     }
 
     pub fn running(&self) -> bool {
@@ -406,6 +487,9 @@ impl Instrument {
 
     fn edit(&mut self, change: Edit) -> Result<Change, KernelError> {
         if let Some(reason) = &self.unavailable {
+            return Err(KernelError::recoverable(reason.clone()));
+        }
+        if let Some(reason) = &self.held {
             return Err(KernelError::recoverable(reason.clone()));
         }
         if self.autoset_running {

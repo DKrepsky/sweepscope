@@ -12,8 +12,4 @@ range: ScaleChoice, position: FormattedValue, positionDivs: number, maxPositionD
 /**
  * 1, 10 or 100.
  */
-probe: number, probeText: string, invert: boolean, 
-/**
- * Reason text when the range is outside 50 mV to 1 V per division.
- */
-unverified: string | null, enable: Availability, };
+probe: number, probeText: string, invert: boolean, enable: Availability, };

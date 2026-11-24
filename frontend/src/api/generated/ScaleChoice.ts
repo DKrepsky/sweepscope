@@ -5,4 +5,4 @@ import type { FormattedValue } from "./FormattedValue";
 /**
  * The current entry of a scale table. `faster` is a smaller volts or time per division.
  */
-export type ScaleChoice = { index: number, label: FormattedValue, verified: boolean, faster: Availability, slower: Availability, };
+export type ScaleChoice = { index: number, label: FormattedValue, faster: Availability, slower: Availability, };

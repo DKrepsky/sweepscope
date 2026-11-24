@@ -8,6 +8,7 @@ mod core;
 mod derive;
 mod effects;
 mod handlers;
+mod hold;
 mod last_setup;
 mod roll;
 mod setup_files;
@@ -18,7 +19,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged, RollPolled};
+use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged, RollPolled, ZeroOffsetsChanged};
 use sweepscope_kernel::{Bus, Clock, FilePicker, KernelError, Storage, Subscription};
 
 pub use self::commands::COMMANDS;
@@ -49,6 +50,7 @@ impl AcquisitionModule {
         let completed = deps.bus.subscribe::<CaptureCompleted>();
         let connections = deps.bus.subscribe::<ConnectionChanged>();
         let polled = deps.bus.subscribe::<RollPolled>();
+        let offsets = deps.bus.subscribe::<ZeroOffsetsChanged>();
         let stop = Arc::new(AtomicBool::new(false));
         let consumer = std::thread::Builder::new()
             .name("acquisition".into())
@@ -61,6 +63,7 @@ impl AcquisitionModule {
                             completed,
                             connections,
                             polled,
+                            offsets,
                         },
                         &stop,
                     )
@@ -89,6 +92,7 @@ struct Inputs {
     completed: Subscription<CaptureCompleted>,
     connections: Subscription<ConnectionChanged>,
     polled: Subscription<RollPolled>,
+    offsets: Subscription<ZeroOffsetsChanged>,
 }
 
 /// Connection changes go first, so a capture is judged against the newest connection state.
@@ -96,6 +100,9 @@ fn consume(shared: &Shared, inputs: &Inputs, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
         for change in inputs.connections.drain() {
             shared.connection(change);
+        }
+        for change in inputs.offsets.drain() {
+            shared.zero_offsets(change);
         }
         for polled in inputs.polled.drain() {
             shared.roll_polled(polled);
