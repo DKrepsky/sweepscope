@@ -48,7 +48,10 @@ test.describe('tokens at runtime', () => {
   test('given the Tokens section, when checked, then there is one swatch per colour token and each resolves to the token value', async ({
     page,
   }) => {
-    const colourTokens = tokenNames.filter((n) => n.startsWith('color-') && !n.includes('overlay'));
+    // Overlay and gap fill are translucent (rgba) tokens: they have no hex value to compare.
+    const colourTokens = tokenNames.filter(
+      (n) => n.startsWith('color-') && !n.includes('overlay') && n !== 'color-gap-fill',
+    );
     await expect(page.locator('[data-swatch]')).toHaveCount(tokenNames.filter((n) => n.startsWith('color-')).length);
     for (const name of colourTokens) {
       const swatch = page.locator(`[data-swatch="${name}"] .swatch`);

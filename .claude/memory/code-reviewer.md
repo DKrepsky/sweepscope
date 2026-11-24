@@ -37,3 +37,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - M2 PR #48 went red on `cargo deny` (RUSTSEC-2026-0594, `cookie` via tauri) because cargo-deny/cargo-audit were not installed locally and nobody ran them. Install them (`cargo install --locked cargo-deny cargo-audit`) and run them on every review, including the last one before G4: advisories appear without code changes.
 - Read `.github/workflows/ci.yml` at the start of each review; the CI parity table in the review template is mandatory.
 - Installed CI tools live in ~/.cargo/bin (cargo-deny, cargo-audit); actionlint 1.7.12 pinned (sha in ci.yml) goes to the scratch folder. `gh pr checks` may show the run of an older head: compare `gh pr view --json headRefOid` with local HEAD (a lockfile fix not yet pushed explains a red job).
+- Background shell jobs that chain many npm steps report "completed" early and logs may lag; rerun the missing steps in the foreground before filling the CI table.
+- Roll/worker loops: check that end conditions are edge-triggered (generation counter), not level-read per poll, so Stop then Run inside one poll does not continue the old session.
+- Multi-source consumer loops (try_next on one subscription, timed wait on another) add latency and idle wake-ups; check POLL constants.
+- Check `git status` for untracked QA scratch files (playwright.qa.config.ts) at the end of every review.
