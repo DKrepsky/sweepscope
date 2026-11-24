@@ -145,16 +145,44 @@ fn given_an_accepted_rejection_when_later_ranges_are_noisy_or_off_zero_then_they
     assert!(matches!(step, Step::Done(_)));
 }
 
+/// 2 mV/div on a perfect short at position 0: zero code 35, noise about 24 codes, low samples clip at code 0.
+fn clipped_low_at_two_millivolts() -> Reading {
+    let codes: Vec<u8> = (0..300).map(|i| [0, 35, 70][i % 3]).collect();
+    Reading::new(&codes, 35.0, COUNTS).unwrap()
+}
+
 #[test]
-fn given_an_accepted_rejection_when_a_later_range_is_clipped_then_it_is_rejected_and_not_continuable() {
-    let mut sweep = accepted_at_two_millivolts(36);
-    let mut codes = flat(128);
-    codes[3] = 0;
+fn given_an_accepted_rejection_when_clipped_low_samples_come_at_two_millivolts_then_the_channel_completes() {
+    let mut sweep = ZeroSweep::new(RANGES.to_vec());
+    sweep.next(None);
+    rejection(sweep.next(Some(&reading(&alternating(128, 6)))));
+    sweep.accept_rejected().unwrap();
 
-    let found = rejection(sweep.next(Some(&reading(&codes))));
+    let (plans, step) = run(&mut sweep, |index| {
+        if index == 0 {
+            clipped_low_at_two_millivolts()
+        } else {
+            level(0)
+        }
+    });
 
-    assert_eq!(found.range_index, 1);
-    assert!(!found.continuable);
+    assert_eq!(plans[0], 0);
+    assert!(matches!(step, Step::Done(_)));
+}
+
+#[test]
+fn given_a_normal_sweep_when_clipped_low_samples_come_at_two_millivolts_then_they_are_accepted() {
+    let mut sweep = ZeroSweep::new(RANGES.to_vec());
+
+    let (_, step) = run(&mut sweep, |index| {
+        if index == 0 {
+            clipped_low_at_two_millivolts()
+        } else {
+            level(0)
+        }
+    });
+
+    assert!(matches!(step, Step::Done(_)));
 }
 
 #[test]

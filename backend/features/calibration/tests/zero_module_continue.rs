@@ -160,23 +160,16 @@ fn given_a_clipped_gate_reading_when_rejected_then_continue_is_not_offered_and_t
 }
 
 #[test]
-fn given_a_clipped_later_range_when_continued_then_it_is_rejected_again_and_not_continuable() {
+fn given_a_clipped_later_range_when_continued_then_the_channel_is_still_accepted_as_overridden() {
     let rig = connected_rig();
     rig.set_signal(off_zero_then_clipped);
     rejected_at_channel_one(&rig);
 
     rig.continue_channel().unwrap();
-    let session = rig
-        .until(|s| {
-            s.session.as_ref().is_some_and(|x| {
-                x.step == ZeroStep::NotShorted && x.not_shorted.as_ref().is_some_and(|l| l[0].contains("clipped"))
-            })
-        })
-        .session
-        .unwrap();
+    let session = rig.until_step(ZeroStep::Channel).session.unwrap();
 
-    assert!(!session.can_continue);
-    assert_eq!(session.overridden, [false; 4]);
+    assert_eq!(session.overridden, [true, false, false, false]);
+    assert_eq!(session.done_channels, [true, false, false, false]);
 }
 
 #[test]

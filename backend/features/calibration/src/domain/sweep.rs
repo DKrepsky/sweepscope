@@ -49,7 +49,7 @@ pub struct ZeroSweep {
     offsets: Vec<f64>,
     /// The rejected reading of the range at the cursor, kept for `accept_rejected`.
     pending: Option<Reading>,
-    /// Set once a rejection was accepted: only clipped readings are refused from then on.
+    /// Set once a rejection was accepted: no check applies from then on (clipping is expected at 2 mV/div).
     forced: bool,
 }
 
@@ -115,9 +115,10 @@ impl ZeroSweep {
 
     fn judge(&self, index: usize, reading: &Reading) -> Option<Rejection> {
         let range = self.ranges[index];
-        let found = if self.forced {
-            judge_clipped(reading, range)
-        } else if self.gate == Some(index) {
+        if self.forced {
+            return None;
+        }
+        let found = if self.gate == Some(index) {
             judge_gate(reading, range)
         } else {
             judge_other(reading, range, index)
