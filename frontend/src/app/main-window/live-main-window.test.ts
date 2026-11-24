@@ -724,6 +724,19 @@ describe('live main window model: pulse trigger and math', () => {
     expect(model(window).trigger.pulse?.error).toBe('Invalid width. Enter a time such as 500 µs. Applied: 500 µs.');
   });
 
+  it('given an applied width in ASCII microseconds, when the backend rejects a width, then the error spells the unit with the micro sign', () => {
+    const state = pulseState();
+    const pulse = state.trigger.pulse;
+    const { window, commands } = setup({
+      instrument: { ...state, trigger: { ...state.trigger, pulse: { ...pulse!, width: value('500', 'us') as never } } },
+    });
+    vi.mocked(commands.setTrigger).mockImplementation((_patch, onRejected) => onRejected?.());
+
+    window.commitPulseWidth('abc');
+
+    expect(model(window).trigger.pulse?.error).toBe('Invalid width. Enter a time such as 500 µs. Applied: 500 µs.');
+  });
+
   it('given a shown width error, when Escape clears it, then the error is gone', () => {
     const { window, commands } = setup({ instrument: pulseState() });
     vi.mocked(commands.setTrigger).mockImplementation((_patch, onRejected) => onRejected?.());

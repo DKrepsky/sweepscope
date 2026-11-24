@@ -22,7 +22,7 @@ function toPulse({ condition, width, verified }: PulseState, rejected: boolean):
     width: applied,
     verified,
     ...(rejected && {
-      error: `Invalid width. Enter a time such as 500 µs. Applied: ${applied.value} ${applied.unit}.`,
+      error: `Invalid width. Enter a time such as 500 µs. Applied: ${applied.value} ${applied.unit.replace(/^us$/, 'µs')}.`,
     }),
   };
 }

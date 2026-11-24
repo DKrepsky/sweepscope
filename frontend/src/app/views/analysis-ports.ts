@@ -1,4 +1,4 @@
-import { readable, type Readable } from 'svelte/store';
+import type { Readable } from 'svelte/store';
 import type { MathPatch } from '../../api/generated/MathPatch';
 import type { Persistence } from '../../api/generated/Persistence';
 import type { RecordingState } from '../../api/generated/RecordingState';
@@ -29,7 +29,12 @@ export interface SpectrumFrameInput {
   binHz: number;
   /** Size of one division on the level axis, dBV or volts rms. */
   unitsPerDiv: number;
-  channels: { channel: number; peakBin: number; levels: ArrayLike<number>; divisions: ArrayLike<number> }[];
+  channels: {
+    channel: number;
+    peakBin?: number | undefined;
+    levels: ArrayLike<number>;
+    divisions: ArrayLike<number>;
+  }[];
 }
 
 export interface AnalysisSources {
@@ -37,10 +42,4 @@ export interface AnalysisSources {
   recording: Readable<RecordingState | undefined>;
   roll: Readable<RollInput | undefined>;
   spectrumFrame: Readable<SpectrumFrameInput | undefined>;
-}
-
-/** Nothing arrives and nothing is sent: the window then shows every analysis control as unavailable. */
-export function inertAnalysisSources(): AnalysisSources {
-  const none = readable(undefined);
-  return { spectrum: none, recording: none, roll: none, spectrumFrame: none };
 }

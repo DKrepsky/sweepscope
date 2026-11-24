@@ -199,14 +199,12 @@ test.describe('#22 auto-setup states', () => {
   });
 
   test('given the Autoset button, when it is pressed, then start_autoset is sent', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await button(page, /Autoset/).click();
     await expect.poll(async () => (await calls(page, 'start_autoset')).length).toBe(1);
   });
 
   test('given the A key, when pressed on the page, then start_autoset is sent', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await page.locator('[data-testid="main-window"]').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('a');
@@ -236,7 +234,6 @@ test.describe('#24 single shot states', () => {
   });
 
   test('given the Single button, when pressed, then arm_single is sent', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await button(page, 'Single').click();
     await expect.poll(async () => (await calls(page, 'arm_single')).length).toBe(1);
@@ -317,7 +314,6 @@ test.describe('#25 pulse trigger', () => {
   test('given a rejected width, when the error shows, then the text appears once and stays inside the dock', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-24: the width error is drawn twice and one copy overflows the dock into the sidebar');
     const text = 'Invalid width. Enter a time such as 500 µs. Applied: 500 µs.';
     await openMain(page, scripted({ set_trigger: { error: text } }));
     await emit(page, 'instrument_changed', pulseState());
@@ -349,7 +345,6 @@ test.describe('#27 roll mode availability', () => {
   });
 
   test('given a roll setup, when the page is open, then the roll stream is opened', async ({ page }) => {
-    test.fail(true, 'BUG-21: createRollFeed is never wired in main.ts');
     await openMain(page);
     await emit(page, 'instrument_changed', rollState());
     await expect.poll(async () => (await calls(page, 'open_roll_stream')).length).toBeGreaterThan(0);
@@ -466,7 +461,6 @@ test.describe('#26 persistence menu', () => {
   });
 
   test('given the menu, when 1 s is chosen, then set_persistence is sent with 1s', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await button(page, /Persist/).click();
     await page.getByRole('menuitemradio', { name: '1 s' }).click();
@@ -479,7 +473,6 @@ test.describe('#29 FFT view', () => {
   test('given Yt, when FFT is selected, then set_spectrum active true is sent once and false on return', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await button(page, /FFT/).click();
     await button(page, 'Yt').click();
@@ -490,7 +483,6 @@ test.describe('#29 FFT view', () => {
   test('given the FFT view, when it is open, then the spectrum stream is opened and the peak marker panel shows', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-21: createSpectrumFeed is never wired in main.ts');
     await openMain(page);
     await button(page, /FFT/).click();
     await expect.poll(async () => (await calls(page, 'open_spectrum_stream')).length).toBeGreaterThan(0);
@@ -540,7 +532,6 @@ test.describe('#30 math row', () => {
   });
 
   test('given the math toggle, when pressed, then set_math enabled true is sent', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await button(page, 'M, math channel enabled').click();
     const sent = await calls(page, 'set_math');
@@ -550,7 +541,6 @@ test.describe('#30 math row', () => {
 
 test.describe('#28 recording', () => {
   test('given a roll setup, when Record is pressed, then start_recording is sent', async ({ page }) => {
-    test.fail(true, 'BUG-21: the live app wires inert analysis commands, nothing is sent');
     await openMain(page);
     await emit(page, 'instrument_changed', rollState());
     await button(page, 'Record').click();
@@ -560,7 +550,6 @@ test.describe('#28 recording', () => {
   test('given a recording failure, when recording_changed arrives, then one error Banner offers Choose new file and Dismiss', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-21: the recording slice is not handed to the model');
     await openMain(page);
     await emit(page, 'recording_changed', {
       revision: 5,

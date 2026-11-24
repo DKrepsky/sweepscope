@@ -357,3 +357,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `ipc/streams.rs`: `Streams<E: StreamEvent>` (ordered = `subscribe`, latest-wins = `subscribe_latest`, per-event stamp); Channel arg is `on_frame` (webview `onFrame`).
 - Clippy `too_many_lines` (40) bites `compose`; group consumers in a struct helper.
 - Bash tool refuses long `python3 - <<EOF` + chained commands in a worktree; write the script with Write into the scratchpad and run `python3 -I file`.
+
+## M3 fix round wiring (developer-8)
+- `createLiveApp` now builds the analysis sources itself (stores.spectrum/recording + `createRollFeed`/`createSpectrumFeed`) and passes `commands` as `analyseCommands`; no optional dependency, no inert fallbacks, so main.ts cannot forget them. `live-app.test.ts` "analysis wiring" composes the real thing against the fake client.
+- New real stream feeds open on first model subscription, so e2e stubs must acknowledge open/close roll and spectrum streams (added to `e2e/support/tauri-stub.ts`).
+- NumberField `errorText="external"` = invalid state only, caller draws the text. Backend units are ASCII `us`; message text converts to `µs`.
+- Fresh worktrees have no node_modules: `npm ci` in frontend. The graph.spec 33 ms probe is flaky under load (webkit).

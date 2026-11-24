@@ -4,8 +4,8 @@ import { createCursorsStore } from '../cursors';
 import { createFileActions } from '../files';
 import { createInstrumentCommands, createInstrumentStores, type InstrumentStores } from '../instrument';
 import type { NotificationAction } from '../notifications';
-import { inertAnalysisSources, type AnalyseCommands, type AnalysisSources } from '../views';
-import { createFrameFeed, type FrameBudgetProbe } from '../waveform';
+import type { AnalysisSources } from '../views';
+import { createFrameFeed, createRollFeed, createSpectrumFeed, type FrameBudgetProbe } from '../waveform';
 import { createLiveMainWindow, type LiveMainWindow } from './live-main-window';
 import { createPinnedMeasurements } from './pinned-measurements';
 
@@ -21,19 +21,7 @@ interface Deps {
   /** Resolves once the UI has applied what the last store change caused (Svelte's `tick`). */
   afterRender: () => Promise<void>;
   probe: FrameBudgetProbe;
-  /** Feeds and commands of the analysis features; without them every analysis control stays unavailable. */
-  analysis?: { sources: AnalysisSources; commands: AnalyseCommands };
 }
-
-const inertAnalyseCommands: AnalyseCommands = {
-  armSingle: () => {},
-  startAutoset: () => {},
-  setMath: () => {},
-  setPersistence: () => {},
-  setSpectrum: () => {},
-  startRecording: () => {},
-  stopRecording: () => {},
-};
 
 export interface LiveApp {
   model: LiveMainWindow;
@@ -72,6 +60,13 @@ function followBackendMessages(stores: InstrumentStores, notify: Deps['notify'],
   };
 }
 
+const analysisSources = (client: BackendClient, { spectrum, recording }: InstrumentStores): AnalysisSources => ({
+  spectrum,
+  recording,
+  roll: createRollFeed(client),
+  spectrumFrame: createSpectrumFeed(client),
+});
+
 export function createLiveApp(deps: Deps): LiveApp {
   const { client, notify, copyText, now, composeScreenshot } = deps;
   const stores = createInstrumentStores({ client });
@@ -84,9 +79,9 @@ export function createLiveApp(deps: Deps): LiveApp {
   let stopMessages = () => {};
   const model = createLiveMainWindow({
     stores,
-    analysis: deps.analysis?.sources ?? inertAnalysisSources(),
+    analysis: analysisSources(client, stores),
     commands,
-    analyseCommands: deps.analysis?.commands ?? inertAnalyseCommands,
+    analyseCommands: commands,
     cursors,
     pinned,
     files,
