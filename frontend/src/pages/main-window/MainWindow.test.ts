@@ -162,17 +162,6 @@ describe('MainWindow behaviour', () => {
     expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  it('given the Accuracy popover open, when Escape is pressed, then it closes and focus returns to its button', async () => {
-    const user = userEvent.setup();
-    renderShell(tiers.w1);
-    await user.click(screen.getByRole('button', { name: /^Accuracy/ }));
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('dialog', { name: 'Accuracy note' })).toBeNull();
-    expect(screen.getByRole('button', { name: /^Accuracy/ })).toHaveFocus();
-  });
-
   it('given an error notification, when rendered, then it is announced as an alert', () => {
     renderShell(tiers.w1, {
       notifications: writable<Notification[]>([{ id: 1, kind: 'error', text: 'Could not save text size' }]),
@@ -215,11 +204,11 @@ describe('MainWindow behaviour', () => {
     expect(container.querySelector('[data-trigger-summary]')).toHaveTextContent(/^Trigger CH\d/);
   });
 
-  it('given tier h3, when rendered, then only connection and sample rate remain in the status bar', () => {
+  it('given tier h3, when rendered, then only connection, sample rate and the calibration tag remain in the status bar', () => {
     const { container } = renderShell({ ...tiers.h3, width: 'w3' });
 
     const items = [...container.querySelectorAll('[data-item]')].map((item) => item.getAttribute('data-item'));
-    expect(items).toEqual(['connection', 'sample-rate']);
+    expect(items).toEqual(['connection', 'sample-rate', 'calibration']);
   });
 
   it('given the mock model, when rendered, then no placeholder note sits next to the numbers', () => {

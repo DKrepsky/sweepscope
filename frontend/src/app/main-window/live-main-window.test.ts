@@ -341,12 +341,11 @@ describe('live main window model: cursors, files and statistics', () => {
 });
 
 describe('live main window model: status', () => {
-  it('given a ready simulator, when read, then the connection says Connected and simulated', () => {
+  it('given a ready simulator, when read, then the connection says Ready and the detail leads with Simulator', () => {
     const { window } = setup();
     expect(model(window).status.connection).toMatchObject({
-      state: 'Connected',
-      detail: 'Hantek 6254BC',
-      simulated: true,
+      state: 'Ready',
+      detail: 'Simulator · Hantek 6254BC',
     });
   });
 
@@ -489,13 +488,6 @@ describe('live main window model: banners', () => {
       }),
     );
     expect(model(window).banners[0]?.actions.map((a) => a.id)).toEqual(['retry', 'use-simulator']);
-  });
-});
-
-describe('live main window model: status accuracy note', () => {
-  it('given no measurements slice yet, when read, then the status accuracy says there is no measurement yet', () => {
-    const { window } = setup();
-    expect(model(window).status.accuracy).toBe('No measurement yet');
   });
 });
 

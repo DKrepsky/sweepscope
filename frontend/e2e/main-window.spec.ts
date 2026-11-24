@@ -146,6 +146,26 @@ test.describe('main window shell', () => {
     await expect(page.getByRole('menu')).toHaveCount(0);
   });
 
+  test('given the calibration tag, when it is activated, then the backend is asked to open the dialog', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await page.getByRole('button', { name: 'No calibration. Open calibration dialog' }).click();
+    await expect
+      .poll(async () => (await ipcLog(page)).some((call) => call.command === 'open_zero_calibration'))
+      .toBe(true);
+  });
+
+  test('given the status bar, when read, then it has no Accuracy item or Simulator chip and the tag closes the row', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const status = page.locator('[data-region="status"]');
+    await expect(status.getByRole('button', { name: /^Accuracy/ })).toHaveCount(0);
+    await expect(status.locator('.chip')).toHaveCount(0);
+    await expect(status.locator('.item').last()).toHaveAttribute('data-item', 'calibration');
+  });
+
   test('given the shell, when loaded and exercised, then no console or page errors occur', async ({ page }) => {
     const errors = collectErrors(page);
     await openMain(page);

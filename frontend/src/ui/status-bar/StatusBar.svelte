@@ -17,7 +17,7 @@
   {#each rows as row, index (index)}
     <div class="row">
       {#each row as item (item.id)}
-        <div class="item" class:warning={item.warning} data-item={item.id}>
+        <div class="item" class:warning={item.warning} class:end={item.end} data-item={item.id}>
           {#if item.warning}<Icon name="warning" />{/if}
           {@render item.content()}
         </div>
@@ -51,6 +51,10 @@
     padding: 0 var(--ss-space-5);
     align-self: stretch;
     border-right: var(--ss-border-width) solid var(--ss-color-border-subtle);
+  }
+  .end {
+    margin-inline-start: auto;
+    border-right: 0;
   }
   .warning {
     color: var(--ss-color-status-warning);

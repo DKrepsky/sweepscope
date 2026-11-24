@@ -201,7 +201,6 @@ test.describe('M2 measurements (#15)', () => {
     await expect(panel).toContainText('Frequency');
     await expect(panel).toContainText('1.000');
     await expect(panel).toContainText('kHz');
-    await expect(panel).toContainText('Voltage readings are accurate to about 2 to 3 counts.');
   });
 
   test('given a cell that does not fit, when shown, then it reads - with a footnote reason', async ({ page }) => {

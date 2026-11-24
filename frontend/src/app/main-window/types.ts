@@ -182,12 +182,12 @@ export interface MeasurementsModel {
 }
 
 export interface StatusModel {
-  connection: { state: string; detail: string; tooltip: string; simulated: boolean };
+  /** The state word is the design's: Ready, Connecting, Disconnected or Error. */
+  connection: { state: 'Ready' | 'Connecting' | 'Disconnected' | 'Error'; detail: string; tooltip: string };
   sampleRate: { value: string; tooltip: string; alias?: AliasNotice };
   record: { points: string; span: string };
   capture: { rate: string; deadTime: string; tooltip: string };
   renderer: string;
-  accuracy: string;
 }
 
 /** A label on the screen: `edge-right` is the roll `now` mark; `channel` colours it. */

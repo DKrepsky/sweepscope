@@ -193,7 +193,13 @@
         </div>
       </div>
     </div>
-    <MainStatusBar status={model.status} wrap={compact} essentialOnly={collapse.essentialStatusOnly} />
+    <MainStatusBar
+      status={model.status}
+      calibration={model.calibration.tag}
+      onopencalibration={windowActions.openCalibration}
+      wrap={compact}
+      essentialOnly={collapse.essentialStatusOnly}
+    />
   </div>
   {#if model.calibration.dialog}
     <CalibrationDialog
