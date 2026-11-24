@@ -89,4 +89,64 @@ describe('fake zero calibration', () => {
     expect(revisions).toEqual([...revisions].sort((a, b) => a - b));
     expect(new Set(revisions).size).toBe(revisions.length);
   });
+
+  it('given a rejection that can continue, when it is continued, then the channel is stored as overridden and the sweep moves on', async () => {
+    const client = createFakeClient();
+    client.zeroCalibration.leaveUnshorted(1);
+    await openAndStart(client);
+    await client.send('measure_zero_calibration', {});
+
+    await client.send('continue_zero_calibration' as never, {} as never);
+
+    expect(client.zeroCalibration.state().session).toMatchObject({
+      step: 'channel',
+      channel: 2,
+      doneChannels: [true, false, false, false],
+      overridden: [true, false, false, false],
+      canContinue: false,
+    });
+  });
+
+  it('given a rejection, when it is shown, then it offers continue', async () => {
+    const client = createFakeClient();
+    client.zeroCalibration.leaveUnshorted(1);
+    await openAndStart(client);
+
+    await client.send('measure_zero_calibration', {});
+
+    expect(client.zeroCalibration.state().session).toMatchObject({ step: 'notShorted', canContinue: true });
+  });
+
+  it('given a clipped reading, when it is rejected, then continue is not offered and the request fails', async () => {
+    const client = createFakeClient();
+    client.zeroCalibration.leaveClipped(1);
+    await openAndStart(client);
+    await client.send('measure_zero_calibration', {});
+
+    await expect(client.send('continue_zero_calibration' as never, {} as never)).rejects.toThrow('cannot continue');
+    expect(client.zeroCalibration.state().session).toMatchObject({ step: 'notShorted', canContinue: false });
+  });
+
+  it('given every channel continued, when the last is stored, then the done step lists them all as overridden', async () => {
+    const client = createFakeClient();
+    client.zeroCalibration.leaveUnshorted(1, 2, 3, 4);
+    await openAndStart(client);
+
+    for (let channel = 0; channel < 4; channel++) {
+      await client.send('measure_zero_calibration', {});
+      await client.send('continue_zero_calibration' as never, {} as never);
+    }
+
+    expect(client.zeroCalibration.state().session).toMatchObject({
+      step: 'done',
+      overridden: [true, true, true, true],
+    });
+  });
+
+  it('given no rejection, when continue is sent, then it is refused', async () => {
+    const client = createFakeClient();
+    await openAndStart(client);
+
+    await expect(client.send('continue_zero_calibration' as never, {} as never)).rejects.toThrow('cannot continue');
+  });
 });

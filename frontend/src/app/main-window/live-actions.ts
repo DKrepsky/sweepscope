@@ -121,6 +121,7 @@ function calibrationActions({ calibration, calibrationBlocked }: Deps) {
     },
     startCalibration: calibration.startCalibration,
     calibrateChannel: calibration.calibrateChannel,
+    continueChannel: calibration.continueChannel,
     closeCalibration: calibration.closeCalibration,
   };
 }

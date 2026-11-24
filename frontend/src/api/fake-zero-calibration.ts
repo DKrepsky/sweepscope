@@ -1,12 +1,17 @@
+import type { CommandName } from './generated/commands';
 import type { FormattedValue } from './generated/FormattedValue';
 import type { OffsetRow } from './generated/OffsetRow';
+import type { TooltipText } from './generated/TooltipText';
 import type { ZeroCalibrationState } from './generated/ZeroCalibrationState';
 import type { ZeroSession } from './generated/ZeroSession';
 
 type Channels = ZeroSession['doneChannels'];
 
 export const DEVICE_LOST_TEXT = 'Device disconnected. Calibration cancelled. Nothing was stored.';
-const EMPTY_TOOLTIP = { rows: [], notes: [] };
+const EMPTY_TOOLTIP: TooltipText = {
+  heading: '',
+  channels: [{ cells: [] }, { cells: [] }, { cells: [] }, { cells: [] }],
+};
 const NOT_SHORTED_LINE = 'Peak to peak 49.7 mV at 100 mV/div, limit 24.8 mV.';
 const RANGES = ['2 mV', '5 mV', '10 mV', '20 mV', '50 mV', '100 mV', '200 mV', '500 mV', '1 V', '2 V', '5 V', '10 V'];
 const IDLE: ZeroSession = {
@@ -15,6 +20,8 @@ const IDLE: ZeroSession = {
   doneChannels: [false, false, false, false],
   progress: null,
   notShorted: null,
+  canContinue: false,
+  overridden: [false, false, false, false],
   failure: null,
   table: null,
 };
@@ -35,10 +42,14 @@ export interface FakeZeroCalibration {
   state(): ZeroCalibrationState;
   /** Inputs that are not shorted when their turn comes; measuring them ends in the not shorted step. */
   leaveUnshorted(...channels: number[]): void;
+  /** Like `leaveUnshorted`, but the reading clips: `Continue` is not offered for it. */
+  leaveClipped(...channels: number[]): void;
   loseDevice(): void;
   open(): void;
   start(): void;
   measure(): void;
+  /** Accepts the rejected reading and resumes the sweep; the channel is stored as overridden. */
+  continue(): void;
   close(): void;
 }
 
@@ -50,12 +61,18 @@ class Session implements FakeZeroCalibration {
     session: null,
   };
   private unshorted: number[] = [];
+  private clipped: number[] = [];
 
   constructor(private readonly publish: (state: ZeroCalibrationState) => void) {}
 
   state = () => this.current;
 
   leaveUnshorted = (...channels: number[]) => void (this.unshorted = channels);
+
+  leaveClipped = (...channels: number[]) => {
+    this.clipped = channels;
+    this.unshorted = channels;
+  };
 
   loseDevice = () => {
     this.change({ availability: { enabled: false, reason: 'No device' } });
@@ -78,9 +95,18 @@ class Session implements FakeZeroCalibration {
     if (!channel || (held.step !== 'channel' && held.step !== 'notShorted')) return this.refuse('measure');
     this.show({ step: 'measuring', channel, progress: 0.5 });
     if (this.unshorted.includes(channel)) {
-      return this.show({ step: 'notShorted', channel, notShorted: [NOT_SHORTED_LINE] });
+      const canContinue = !this.clipped.includes(channel);
+      return this.show({ step: 'notShorted', channel, notShorted: [NOT_SHORTED_LINE], canContinue });
     }
     this.finishChannel(channel);
+  };
+
+  continue = () => {
+    const held = this.current.session;
+    if (!held?.channel || held.step !== 'notShorted' || !held.canContinue) return this.refuse('continue');
+    const overridden = held.overridden.map((was, index) => was || index === held.channel! - 1) as Channels;
+    this.show({ step: 'measuring', channel: held.channel, progress: 0.5, overridden });
+    this.finishChannel(held.channel);
   };
 
   close = () => this.change({ session: null });
@@ -95,8 +121,8 @@ class Session implements FakeZeroCalibration {
   }
 
   private show(next: Partial<ZeroSession> & Pick<ZeroSession, 'step'>) {
-    const doneChannels = this.current.session?.doneChannels ?? IDLE.doneChannels;
-    this.change({ session: { ...IDLE, doneChannels, ...next } });
+    const { doneChannels, overridden } = this.current.session ?? IDLE;
+    this.change({ session: { ...IDLE, doneChannels, overridden, ...next } });
   }
 
   private change(patch: Partial<ZeroCalibrationState>) {
@@ -112,10 +138,10 @@ class Session implements FakeZeroCalibration {
 export const createFakeZeroCalibration = (publish: (state: ZeroCalibrationState) => void): FakeZeroCalibration =>
   new Session(publish);
 
-type ZeroCommand = 'open' | 'start' | 'measure' | 'close';
+type ZeroCommand = 'open' | 'start' | 'measure' | 'continue' | 'close';
 
-/** The four commands answer from the session, like the shell does; `null` is their result. */
+/** The commands answer from the session, like the shell does; `null` is their result. The names are typed loosely: `continue` is not in the generated contract yet. */
 export const zeroCalibrationHandlers = (zero: FakeZeroCalibration) =>
-  (['open', 'start', 'measure', 'close'] as const).map(
-    (action: ZeroCommand) => [`${action}_zero_calibration` as const, () => (zero[action](), null)] as const,
+  (['open', 'start', 'measure', 'continue', 'close'] as const).map(
+    (action: ZeroCommand) => [`${action}_zero_calibration` as CommandName, () => (zero[action](), null)] as const,
   );

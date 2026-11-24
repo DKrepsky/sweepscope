@@ -9,4 +9,4 @@ export {
   selectPausedForCalibration,
 } from './selectors';
 export { CALIBRATION_STEPS } from './types';
-export type { CalibrationDialogModel, CalibrationTagModel } from './types';
+export type { CalibrationDialogModel, CalibrationTagModel, CalibrationTooltip } from './types';

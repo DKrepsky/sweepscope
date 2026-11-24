@@ -57,7 +57,7 @@ interface Deps {
 }
 
 const selectCalibration = (i: ModelInputs): MainWindowModel['calibration'] => ({
-  tag: selectCalibrationTag(i.zeroCalibration, i.connection, i.recording),
+  tag: selectCalibrationTag(i.zeroCalibration, i.connection, i.recording, i.instrument),
   dialog: selectCalibrationDialog(i.zeroCalibration),
 });
 

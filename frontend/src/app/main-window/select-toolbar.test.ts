@@ -140,6 +140,8 @@ describe('paused for calibration', () => {
       doneChannels: [false, false, false, false],
       progress: null,
       notShorted: null,
+      canContinue: false,
+      overridden: [false, false, false, false],
       failure: null,
       table: null,
     },

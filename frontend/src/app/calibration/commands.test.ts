@@ -9,18 +9,20 @@ function setup() {
 }
 
 describe('calibration commands', () => {
-  it('given the four use cases, when each is called, then each sends its backend command with no arguments', () => {
+  it('given the use cases, when each is called, then each sends its backend command with no arguments', () => {
     const { client, commands } = setup();
 
     commands.openCalibration();
     commands.startCalibration();
     commands.calibrateChannel();
+    commands.continueChannel();
     commands.closeCalibration();
 
     expect(client.calls).toEqual([
       { name: 'open_zero_calibration', args: {} },
       { name: 'start_zero_calibration', args: {} },
       { name: 'measure_zero_calibration', args: {} },
+      { name: 'continue_zero_calibration', args: {} },
       { name: 'close_zero_calibration', args: {} },
     ]);
   });

@@ -19,6 +19,6 @@ describe('calibrationBlockedReason', () => {
   });
 
   it('given a scope that runs, when the calibration dialog is requested, then nothing blocks it', () => {
-    expect(calibrationBlockedReason({ state: 'none', tooltip: { rows: [], notes: [] } })).toBeNull();
+    expect(calibrationBlockedReason({ state: 'none', tooltip: { heading: '', lines: [] } })).toBeNull();
   });
 });

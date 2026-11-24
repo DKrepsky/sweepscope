@@ -167,7 +167,11 @@ export const recordingState = (patch: Partial<RecordingState> = {}): RecordingSt
 export const zeroCalibrationState = (patch: Partial<ZeroCalibrationState> = {}): ZeroCalibrationState => ({
   revision: 1,
   availability: enabled,
-  unit: { calibrated: false, storedAtUtc: null, tooltip: { rows: [], notes: [] } },
+  unit: {
+    calibrated: false,
+    storedAtUtc: null,
+    tooltip: { heading: '', channels: [{ cells: [] }, { cells: [] }, { cells: [] }, { cells: [] }] },
+  },
   session: null,
   ...patch,
 });

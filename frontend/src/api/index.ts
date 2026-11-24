@@ -1,8 +1,9 @@
 export type { BackendClient, StreamHandle } from './backend-client';
 export type { UiStateEntry } from './generated/UiStateEntry';
 export type { KernelError } from './generated/KernelError';
-export type { StreamKind } from './generated/commands';
+export type { CommandName, StreamKind } from './generated/commands';
 export type { AcquisitionStatus } from './generated/AcquisitionStatus';
+export type { ChannelState } from './generated/ChannelState';
 export type { ChannelPatch } from './generated/ChannelPatch';
 export type { ConnectionSnapshot } from './generated/ConnectionSnapshot';
 export type { DisplayState } from './generated/DisplayState';
