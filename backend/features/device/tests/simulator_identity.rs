@@ -14,6 +14,7 @@ fn given_a_simulated_device_when_identity_is_read_then_it_is_simulated_with_firm
     assert!(identity.firmware.is_some());
     assert!(identity.fpga_version.is_some());
     assert_eq!(identity.calibration, CalibrationStatus::Valid);
+    assert_eq!(identity.unit_id.as_deref(), Some("simulator"));
 }
 
 #[test]

@@ -7,7 +7,7 @@ use super::control::SimulatorControl;
 use super::edge::{self, Direction};
 use super::profile;
 use super::pulse::{self, PulseSearch};
-use super::signal;
+use super::signal::{self, SignalKind};
 use super::timing::{self, POLL_INTERVAL};
 use crate::profile::RECORD_LEN;
 use crate::{
@@ -175,9 +175,16 @@ impl SimulatedDevice {
         let volts_per_div = self.capabilities.vertical_ranges[usize::from(setup.range_index)].volts_per_div;
         let zero_code = profile::zero_code(setup.position_divs, plan.counts_per_div);
         let spec = self.control.signal(channel);
+        let range = usize::from(setup.range_index);
+        let zero_error = self.control.zero_error_volts(channel, range);
+        let noise_sd = match spec.kind {
+            SignalKind::Shorted => profile::noise_sd_volts(range, volts_per_div, plan.counts_per_div),
+            _ => 0.0,
+        };
         let codes = (0..count)
             .map(|i| {
-                let volts = signal::sample(&spec, start + i as f64 * plan.interval_s);
+                let t = start + i as f64 * plan.interval_s;
+                let volts = signal::sample(&spec, t) + zero_error + signal::gaussian_noise(channel, t, noise_sd);
                 to_code(volts, volts_per_div, zero_code, plan.counts_per_div)
             })
             .collect();

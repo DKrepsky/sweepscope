@@ -3,6 +3,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use super::profile::{default_zero_error_volts, RANGE_COUNT};
 use super::signal::{SignalKind, SignalSpec};
 use crate::{CatalogEvent, DeviceId};
 
@@ -18,6 +19,7 @@ struct State {
     generation: u64,
     overrun_pending: bool,
     signals: [SignalSpec; 4],
+    zero_error_volts: [[f64; RANGE_COUNT]; 4],
 }
 
 struct Shared {
@@ -47,6 +49,7 @@ impl SimulatorControl {
                     generation: 0,
                     overrun_pending: false,
                     signals: [SignalSpec::new(SignalKind::Sine); 4],
+                    zero_error_volts: default_zero_error_volts(),
                 }),
                 listeners: Mutex::new(Vec::new()),
             }),
@@ -76,6 +79,28 @@ impl SimulatorControl {
         if let Some(slot) = self.state().signals.get_mut(channel) {
             *slot = signal.into();
         }
+    }
+
+    /// Zero error the simulated input adds to every signal on `range` (index into the vertical ranges).
+    /// Out of range channels or ranges are ignored.
+    pub fn set_zero_error_volts(&self, channel: usize, range: usize, volts: f64) {
+        if let Some(slot) = self
+            .state()
+            .zero_error_volts
+            .get_mut(channel)
+            .and_then(|ranges| ranges.get_mut(range))
+        {
+            *slot = volts;
+        }
+    }
+
+    pub(super) fn zero_error_volts(&self, channel: usize, range: usize) -> f64 {
+        self.state()
+            .zero_error_volts
+            .get(channel)
+            .and_then(|ranges| ranges.get(range))
+            .copied()
+            .unwrap_or(0.0)
     }
 
     pub(super) fn is_plugged(&self) -> bool {
@@ -204,6 +229,28 @@ mod tests {
         control.set_signal(1, spec);
 
         assert_eq!(control.signal(1), spec);
+    }
+
+    #[test]
+    fn given_a_zero_error_set_for_one_channel_and_range_when_read_then_others_keep_their_defaults() {
+        let control = SimulatorControl::new();
+        let other = control.zero_error_volts(1, 0);
+
+        control.set_zero_error_volts(0, 3, 0.0123);
+
+        assert_eq!(control.zero_error_volts(0, 3), 0.0123);
+        assert_eq!(control.zero_error_volts(1, 0), other);
+    }
+
+    #[test]
+    fn given_an_out_of_range_channel_or_range_when_set_then_it_is_ignored() {
+        let control = SimulatorControl::new();
+
+        control.set_zero_error_volts(4, 0, 1.0);
+        control.set_zero_error_volts(0, 12, 1.0);
+
+        assert_eq!(control.zero_error_volts(4, 0), 0.0);
+        assert_eq!(control.zero_error_volts(0, 12), 0.0);
     }
 
     #[test]

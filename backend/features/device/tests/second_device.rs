@@ -21,6 +21,7 @@ impl ScriptedDevice {
                 fpga_version: None,
                 calibration: CalibrationStatus::Valid,
                 simulated: true,
+                unit_id: None,
             },
             capabilities: Capabilities {
                 channel_count: 1,
