@@ -27,6 +27,8 @@ export interface RollInput {
 export interface SpectrumFrameInput {
   bins: number;
   binHz: number;
+  /** Size of one division on the level axis, dBV or volts rms. */
+  unitsPerDiv: number;
   channels: { channel: number; peakBin: number; levels: ArrayLike<number>; divisions: ArrayLike<number> }[];
 }
 

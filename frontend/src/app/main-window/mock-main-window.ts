@@ -133,7 +133,7 @@ function withRunning(model: MainWindowModel, running: boolean): MainWindowModel 
   return {
     ...model,
     toolbar: { ...model.toolbar, running, chips: running ? runningChips : stoppedChips },
-    graph: { ...model.graph, state: running ? 'live' : 'frozen' },
+    graph: { ...model.graph, state: running ? 'live' : 'frozen', running },
   };
 }
 

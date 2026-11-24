@@ -51,7 +51,10 @@ interface Deps {
 
 function selectModel(i: ModelInputs): MainWindowModel {
   const { connection, instrument, selected } = i;
-  const graph = selectGraph(connection, instrument, i.frame, selected);
+  const views = selectViews(i);
+  const persistence = selectPersistence(i);
+  const roll = selectRoll(i);
+  const graph = selectGraph(i, { views, persistence, roll });
   return {
     toolbar: selectToolbar(connection, instrument, i.status, {
       hasWaveform: graph.state !== 'empty',
@@ -74,10 +77,10 @@ function selectModel(i: ModelInputs): MainWindowModel {
     status: selectStatus(connection, instrument, i.facts, i.renderer, i.measurements),
     graph,
     banners: selectBanners(connection),
-    views: selectViews(i),
-    persistence: selectPersistence(i),
+    views,
+    persistence,
     peak: selectPeak(i),
-    roll: selectRoll(i),
+    roll,
     recording: selectRecording(i),
     autoset: selectAutoset(i),
     math: selectMath(i),

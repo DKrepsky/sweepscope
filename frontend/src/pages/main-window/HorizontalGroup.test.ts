@@ -10,7 +10,9 @@ const baseline = (): HorizontalModel => get(createMockMainWindow()).horizontal;
 
 function setup(change: Partial<HorizontalModel> = {}) {
   const actions = spyActions();
-  render(HorizontalGroup, { props: { horizontal: { ...baseline(), ...change }, actions } });
+  render(HorizontalGroup, {
+    props: { horizontal: { ...baseline(), ...change }, views: get(createMockMainWindow()).views, actions },
+  });
   return { actions, user: userEvent.setup() };
 }
 

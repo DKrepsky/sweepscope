@@ -339,3 +339,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A local module named `autoset` shadows the lib crate of the same name inside `module/`; domain re-exports `Plan` and the lib is imported only in `domain/autoset_run.rs`.
 - `Capabilities` has no counts per division; adapter uses a nominal 23.0 (driver measured 21.1, 21.6, 24.15). engineering-format writes micro as `u` (`500 us/div`).
 - Setup edits are refused in `Instrument::edit` while the auto-setup lock is on; `autoset_apply` runs after the lock is released.
+## M3 F5 stage and views (developer-9)
+- `selectGraph(inputs, { views, persistence, roll })` is the one place that picks Yt, XY, FFT or roll data; `GraphModel` now carries `view`, `running`, `dimmed` (only disconnected dims; stopped is full intensity), `math`, ticks (graph convention: Y ticks count from the bottom, the backend counts from the top), `xy`, `persistence {decayMs, epoch, revision}` and `tags`.
+- Persistence ghosts age by an injected clock: `createPausableClock` (app/views) is held still while `graph.running` is false. Ghost opacities now come from `tokens['opacity-persist-*']`.
+- XY: a division on X is a tenth of the width, so the X ground marker uses `xFractionFromGround` / `divisionsFromXFraction`. `formatFrequency` gives four digits (`300.0 Hz`).
+- `Menu` only has `checked` (role `menuitemcheckbox`), no radio role. Segmented segments cannot carry their own aria-label (name is the visible text).
+- Tests: `app/main-window/test-inputs.ts` builds `ModelInputs` from `app/instrument/test-data`. Playwright with a temp config copy: ports 5173/4173 are often taken by other agents, pick unusual ones and set `E2E_PREVIEW_PORT`.

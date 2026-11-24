@@ -2,7 +2,15 @@ import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { get } from 'svelte/store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockMainWindow, type CursorsModel, type Interpolation } from '../../app/main-window';
+import {
+  createMockMainWindow,
+  type CursorsModel,
+  type GraphModel,
+  type Interpolation,
+  type PeakModel,
+  type RollModel,
+  type ViewsModel,
+} from '../../app/main-window';
 import { createRecordingContext } from '../../ui/graph/recording-context';
 import ScopeStage from './ScopeStage.svelte';
 import { spyActions } from './test-support';
@@ -17,16 +25,30 @@ const lines: CursorsModel['lines'] = [
   { id: 'y2', axis: 'y', position: 0.7, tag: 'Y2 1.50 V', valueText: 'Y2 1.50 V' },
 ];
 
-function renderStage(patch: { cursors?: Partial<CursorsModel>; interpolation?: Interpolation } = {}) {
+interface StagePatch {
+  cursors?: Partial<CursorsModel>;
+  interpolation?: Interpolation;
+  graph?: Partial<GraphModel>;
+  views?: Partial<ViewsModel>;
+  peak?: Partial<PeakModel>;
+  roll?: Partial<RollModel>;
+  clock?: () => number;
+}
+
+function renderStage(patch: StagePatch = {}) {
   const model = get(createMockMainWindow());
   const actions = spyActions();
   const cursors = { ...model.cursors, enabled: true, available: { enabled: true }, lines, ...patch.cursors };
   render(ScopeStage, {
     props: {
-      graph: model.graph,
+      graph: { ...model.graph, ...patch.graph },
       channels: model.channels,
       trigger: model.trigger,
       cursors,
+      views: { ...model.views, ...patch.views },
+      peak: { ...model.peak, ...patch.peak },
+      roll: { ...model.roll, ...patch.roll },
+      clock: patch.clock,
       dots: false,
       interpolation: patch.interpolation,
       actions,

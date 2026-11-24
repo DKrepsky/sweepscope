@@ -657,7 +657,7 @@ describe('live main window model: analysis actions', () => {
 
   it('given a spectrum with 100 bins, when the peak marker is placed and moved past the end, then it stays on the last bin in manual mode', () => {
     const { window, spectrumFrame } = setup();
-    spectrumFrame.set({ bins: 100, binHz: 12.21, channels: [] });
+    spectrumFrame.set({ bins: 100, binHz: 12.21, unitsPerDiv: 10, channels: [] });
 
     window.placePeakMarker(97);
     window.movePeakMarker(10);
