@@ -7,6 +7,7 @@ use std::time::Duration;
 use sweepscope_kernel::contracts::FrameCaptured;
 use sweepscope_kernel::{Bus, Clock, KernelError, Subscription};
 
+use crate::alias::AliasWatch;
 use crate::channel::measure_frame;
 use crate::messages::{GetMeasurements, MeasurementsChanged};
 use crate::slice::Slice;
@@ -60,9 +61,10 @@ impl Drop for MeasurementModule {
 }
 
 fn run(shared: &Shared, frames: &Subscription<FrameCaptured>, stop: &AtomicBool) {
+    let mut alias = AliasWatch::default();
     while !stop.load(Ordering::Acquire) {
         if let Some(captured) = frames.recv_timeout(POLL) {
-            shared.measure(&captured);
+            shared.measure(&captured, &mut alias);
         }
         shared.announce_held_back();
     }
@@ -79,11 +81,13 @@ impl Shared {
         self.slice.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn measure(&self, captured: &FrameCaptured) {
-        let Some(channels) = measure_frame(&captured.frame, &captured.context) else {
+    fn measure(&self, captured: &FrameCaptured, alias: &mut AliasWatch) {
+        let derived = captured.derived.as_deref();
+        let Some(channels) = measure_frame(&captured.frame, &captured.context, derived) else {
             return;
         };
-        let announced = self.slice().update(channels, self.clock.now());
+        let warnings = alias.evaluate(&channels, &captured.frame, &captured.context);
+        let announced = self.slice().update(channels, warnings, self.clock.now());
         if let Some(state) = announced {
             self.bus.publish(MeasurementsChanged(state));
         }

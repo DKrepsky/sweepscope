@@ -1,15 +1,23 @@
 //! One channel of one frame to its twelve measurements.
 use engineering_format::{format, Quantity};
 use measurements::{is_clipped, measure, Invalid as LibInvalid, Measured};
-use sweepscope_kernel::contracts::{ChannelData, FormattedValue, Frame, FrameContext};
+use sweepscope_kernel::contracts::{ChannelData, DerivedTrace, FormattedValue, Frame, FrameContext};
 
 use crate::messages::{ChannelMeasurements, InvalidReason, Measurement, MeasurementId};
 use crate::texts;
 
 type Cell = Result<(f64, Quantity), InvalidReason>;
 
-/// Enabled channels of the frame, ascending; `None` when a record holds no samples (a roll chunk may be empty).
-pub fn measure_frame(frame: &Frame, context: &FrameContext) -> Option<Vec<ChannelMeasurements>> {
+/// Column of the math trace.
+const MATH_CHANNEL: u8 = 5;
+
+/// Enabled channels of the frame, ascending, then the math trace as channel 5; `None` when a record holds no
+/// samples (a roll chunk may be empty).
+pub fn measure_frame(
+    frame: &Frame,
+    context: &FrameContext,
+    derived: Option<&DerivedTrace>,
+) -> Option<Vec<ChannelMeasurements>> {
     let mut channels = Vec::new();
     for (index, data) in frame.channels.iter().enumerate() {
         let Some(data) = data else { continue };
@@ -18,7 +26,24 @@ pub fn measure_frame(frame: &Frame, context: &FrameContext) -> Option<Vec<Channe
         }
         channels.push(measure_channel(frame, context, index, data));
     }
+    channels.extend(
+        derived
+            .filter(|d| !d.volts.is_empty())
+            .map(|d| measure_derived(frame, d)),
+    );
     Some(channels)
+}
+
+/// The math trace is already in volts; it has no converter rails, so it never clips and has no range flag.
+fn measure_derived(frame: &Frame, derived: &DerivedTrace) -> ChannelMeasurements {
+    let volts_per_count = derived.volts_per_div / frame.counts_per_div;
+    let measured = measure(&derived.volts, frame.sample_interval_s, volts_per_count);
+    ChannelMeasurements {
+        channel: MATH_CHANNEL,
+        clipped: false,
+        unverified: None,
+        measurements: cells(&measured, false),
+    }
 }
 
 fn measure_channel(frame: &Frame, context: &FrameContext, index: usize, data: &ChannelData) -> ChannelMeasurements {

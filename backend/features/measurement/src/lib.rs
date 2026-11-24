@@ -1,6 +1,7 @@
 //! Twelve automatic measurements per enabled channel, derived from every captured frame (ADR 0014).
 #![forbid(unsafe_code)]
 
+mod alias;
 mod channel;
 mod messages;
 mod module;
