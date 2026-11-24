@@ -71,6 +71,12 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Graph and Marker have no `index.ts`: import `Graph.svelte` / `Marker.svelte` by path. Button `onclick` is `() => void` (no event): get element rects through a `bind:this` wrapper span.
 - Gallery tests stub `HTMLCanvasElement.prototype.getContext` with a Proxy no-op and `window.matchMedia`. Forced tooltip: dispatch `new FocusEvent('focusin', {bubbles:true})` on the child button. Menu is `position:fixed` with a scrim, so it opens from a button, never forced open.
 
+## Screenshot facts (WP16)
+- `drawTraces` resets the transform and clears the canvas: to paint the graph inside a window of a bigger canvas, wrap the ctx in a Proxy that adds an integer device-pixel offset to `setTransform` and no-ops `clearRect` (`ui/screenshot/draw-screenshot.ts`).
+- e2e can reach app modules without a UI path: `page.evaluate` with `import(/* @vite-ignore */ variablePath)` against the vite dev server (`/src/...ts`); decode PNG with `createImageBitmap(new Blob([bytes]))`.
+- Parallel Playwright runs: copy `playwright.config.ts` to a temp file with other ports and `npx vite --port N --strictPort`, delete it afterwards (also `test-results`, `playwright-report`; a leftover report dir makes eslint fail). A fresh worktree needs `npm ci` in `frontend/`.
+- `RecordingContext` lacks text; tests add `fillText` etc. with `Object.assign` on the ctx.
+
 ## Main window shell facts (WP9)
 - Real ui props differ from the spec's 3.4 sketch (Graph has `frame`/`summary`, no `size`; Marker has `label`/`name`/`color`; `fitScreen(Size)` clamps to a px constant). Read the component before using it.
 - `app` cannot import `ui` or `api` types: view-model types are structural copies (GraphModel, MeasurementsModel) assignable to the ui props. `pages` cannot import `api` even in tests: fake a client with `{ send: vi.fn() } as never`.
