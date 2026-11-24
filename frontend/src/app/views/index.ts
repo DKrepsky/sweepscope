@@ -6,5 +6,7 @@ export { createPeakMarkerStore } from './peak-marker-store';
 export type { PeakMarker, PeakMarkerStore } from './peak-marker-store';
 export { createPersistenceEpoch } from './persistence-epoch';
 export type { PersistenceEpoch } from './persistence-epoch';
+export { createPausableClock } from './pausable-clock';
+export type { PausableClock } from './pausable-clock';
 export { inertAnalysisSources } from './analysis-ports';
 export type { AnalyseCommands, AnalysisSources, RollInput, SpectrumFrameInput } from './analysis-ports';

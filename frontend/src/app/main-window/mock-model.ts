@@ -103,6 +103,10 @@ export const mockMeasurements = (): MeasurementsModel => ({
 
 export const mockGraph = (): MainWindowModel['graph'] => ({
   state: 'live',
+  view: 'yt',
+  running: true,
+  dimmed: false,
+  tags: [],
   selected: 1,
   channels: [
     { channel: 3, samples: triangleWave() },
@@ -129,14 +133,30 @@ const channelOptions = (enabled: number[]) =>
 const mockViews = (): Analysis['views'] => ({
   tab: 'yt',
   tabAvailability: { yt: { enabled: true }, xy: { enabled: true }, fft: { enabled: true } },
-  xy: { x: 1, y: 2, xOptions: channelOptions([1, 2, 3]), yOptions: channelOptions([1, 2, 3]) },
+  xy: {
+    x: 1,
+    y: 2,
+    xOptions: channelOptions([1, 2, 3]),
+    yOptions: channelOptions([1, 2, 3]),
+    scales: { x: 'CH1 500 mV/div', y: 'CH2 200 mV/div' },
+    readline: 'Fs 1.25 MS/s · straight segments',
+  },
   fft: {
     window: 'hann',
     scale: 'dbv',
     available: { enabled: true },
+    windows: [
+      { value: 'rectangular', label: 'Rectangular' },
+      { value: 'hann', label: 'Hann' },
+      { value: 'hamming', label: 'Hamming' },
+      { value: 'blackman', label: 'Blackman' },
+    ],
+    windowShort: 'Hann',
+    windowLabel: 'Hann',
     ticksX: [],
     ticksY: [],
-    readout: { span: '0 to 25 kHz', binSpacing: '12.21 Hz', topLabel: '+10 dBV' },
+    readout: { span: '0 to 25 kHz', binSpacing: '12.21 Hz', topLabel: '+10 dBV', scale: '10 dB/div' },
+    readline: 'Fs 50 kS/s · bin 12.21 Hz (Fs / N)',
   },
 });
 
@@ -165,8 +185,17 @@ export const mockAnalysis = (): Analysis => ({
     available: { enabled: true },
     epoch: 0,
   },
-  peak: { mode: 'auto', channel: 1, bin: 0, frequency: '1.001 kHz', level: '−6.9 dBV', available: { enabled: true } },
-  roll: { active: false, window: '', gaps: [], gapCount: 0 },
+  peak: {
+    mode: 'auto',
+    channel: 1,
+    bin: 0,
+    frequency: '1.001 kHz',
+    level: '−6.9 dBV',
+    available: { enabled: true },
+    note: '',
+    bins: 0,
+  },
+  roll: { active: false, window: '', gaps: [], gapCount: 0, announcement: '' },
   recording: {
     active: false,
     available: { enabled: false, reason: 'Recording needs roll mode (500 ms/div or slower)' },

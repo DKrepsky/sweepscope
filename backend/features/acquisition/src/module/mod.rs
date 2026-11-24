@@ -9,6 +9,7 @@ mod derive;
 mod effects;
 mod handlers;
 mod last_setup;
+mod roll;
 mod setup_files;
 mod shared;
 
@@ -17,7 +18,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged};
+use sweepscope_kernel::contracts::{CaptureCompleted, ConnectionChanged, RollPolled};
 use sweepscope_kernel::{Bus, Clock, FilePicker, KernelError, Storage, Subscription};
 
 pub use self::commands::COMMANDS;
@@ -47,12 +48,23 @@ impl AcquisitionModule {
         handlers::register(&deps.bus, &shared, SetupFiles::new(deps.picker))?;
         let completed = deps.bus.subscribe::<CaptureCompleted>();
         let connections = deps.bus.subscribe::<ConnectionChanged>();
+        let polled = deps.bus.subscribe::<RollPolled>();
         let stop = Arc::new(AtomicBool::new(false));
         let consumer = std::thread::Builder::new()
             .name("acquisition".into())
             .spawn({
                 let (shared, stop) = (Arc::clone(&shared), Arc::clone(&stop));
-                move || consume(&shared, &completed, &connections, &stop)
+                move || {
+                    consume(
+                        &shared,
+                        &Inputs {
+                            completed,
+                            connections,
+                            polled,
+                        },
+                        &stop,
+                    )
+                }
             })
             .map_err(|e| KernelError::fatal(format!("cannot start the acquisition thread: {e}")))?;
         Ok(Self {
@@ -73,18 +85,22 @@ impl Drop for AcquisitionModule {
     }
 }
 
+struct Inputs {
+    completed: Subscription<CaptureCompleted>,
+    connections: Subscription<ConnectionChanged>,
+    polled: Subscription<RollPolled>,
+}
+
 /// Connection changes go first, so a capture is judged against the newest connection state.
-fn consume(
-    shared: &Shared,
-    completed: &Subscription<CaptureCompleted>,
-    connections: &Subscription<ConnectionChanged>,
-    stop: &AtomicBool,
-) {
+fn consume(shared: &Shared, inputs: &Inputs, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
-        for change in connections.drain() {
+        for change in inputs.connections.drain() {
             shared.connection(change);
         }
-        match completed.recv_timeout(TICK) {
+        for polled in inputs.polled.drain() {
+            shared.roll_polled(polled);
+        }
+        match inputs.completed.recv_timeout(TICK) {
             Some(outcome) => shared.capture(outcome),
             None => shared.tick(),
         }

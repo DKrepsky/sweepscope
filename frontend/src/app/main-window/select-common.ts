@@ -35,6 +35,8 @@ export interface ModelInputs {
   peak: PeakMarker;
   persistenceEpoch: number;
   pulseWidthRejected: boolean;
+  /** Id of the newest recording failure the user dismissed. */
+  dismissedRecordingFailure: number;
 }
 
 export type BackendAvailability = InstrumentState['controls']['run'];

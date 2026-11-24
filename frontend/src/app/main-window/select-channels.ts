@@ -7,6 +7,8 @@ import {
   toQuantity,
   unavailableReason,
 } from './select-common';
+import type { XyAxes } from '../views';
+import { aliasOf } from './select-warnings';
 import type { ChannelModel, ChannelNumber, ScaleQuantity } from './types';
 
 type ChannelState = InstrumentState['channels'][number];
@@ -60,17 +62,33 @@ function placeholderChannel(number: ChannelNumber, selected: ChannelNumber, reas
   };
 }
 
+/** Alias badge and XY role, kept out of `toChannel` so each source of a badge stays in one place. */
+function extras(
+  number: number,
+  measurements: MeasurementsState | undefined,
+  xyRoles: XyAxes | undefined,
+): Pick<ChannelModel, 'alias' | 'role'> {
+  const alias = aliasOf(measurements, number);
+  const role = xyRoles?.x === number ? 'x' : xyRoles?.y === number ? 'y' : undefined;
+  return { ...(alias && { alias }), ...(role && { role }) };
+}
+
+/** `xyRoles` is given only while the XY view is shown. */
 export function selectChannels(
   connection: ConnectionSnapshot | undefined,
   instrument: InstrumentState | undefined,
   selected: ChannelNumber,
   measurements?: MeasurementsState,
+  xyRoles?: XyAxes,
 ): ChannelModel[] {
   if (instrument) {
     const vertical = toAvailability(instrument.controls.vertical);
     const isClipped = (number: number) =>
       measurements?.channels.some((m) => m.channel === number && m.clipped) ?? false;
-    return instrument.channels.map((state) => toChannel(state, vertical, selected, isClipped(state.number)));
+    return instrument.channels.map((state) => ({
+      ...toChannel(state, vertical, selected, isClipped(state.number)),
+      ...extras(state.number, measurements, xyRoles),
+    }));
   }
   const reason = unavailableReason(connection);
   return ([1, 2, 3, 4] as const).map((number) => placeholderChannel(number, selected, reason));

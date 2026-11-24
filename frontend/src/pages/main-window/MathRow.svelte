@@ -95,7 +95,7 @@
     aria-pressed={row.enabled}
     aria-disabled={toggleReason ? 'true' : undefined}
     title={toggleReason ?? 'Math channel on'}
-    aria-label="Math channel enabled"
+    aria-label="M, math channel enabled"
     onclick={toggle}
   >
     M

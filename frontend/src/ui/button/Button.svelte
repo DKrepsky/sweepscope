@@ -10,7 +10,7 @@
     /** Latched on state (toggle buttons), distinct from the transient press feedback. */
     pressed?: boolean;
     /** Status colour used by RunButton. */
-    tone?: 'run' | 'stop';
+    tone?: 'run' | 'stop' | 'record';
     disabled?: boolean;
     disabledReason?: string;
     /** Work in progress: shows a spinner on the right and sets `aria-busy`. The size does not change. */
@@ -158,6 +158,11 @@
   .stop {
     color: var(--ss-color-status-stop);
     border-color: var(--ss-color-status-stop);
+  }
+
+  .record {
+    color: var(--ss-color-status-record);
+    border-color: var(--ss-color-status-record);
   }
 
   .spinner {

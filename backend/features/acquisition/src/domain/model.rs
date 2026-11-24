@@ -1,12 +1,16 @@
 //! The editable part of the instrument: what the user chose, validated against the capabilities.
 use sweepscope_kernel::contracts::{
-    AcquisitionSetup, Capabilities, ChannelSetup, Coupling, Slope, Sweep, TriggerKind, TriggerSetup, VerticalRange,
+    AcquisitionSetup, Capabilities, ChannelSetup, Coupling, PulseCondition, Slope, Sweep, TriggerKind, TriggerSetup,
+    VerticalRange,
 };
 
 use super::defaults::Defaults;
 use super::geometry::{geometry, record_percent, Geometry};
+use super::math::MathSetting;
 
 pub const CHANNELS: usize = 4;
+pub const DEFAULT_PULSE_WIDTH_S: f64 = 500e-6;
+pub const DEFAULT_PULSE_CONDITION: PulseCondition = PulseCondition::Greater;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Model {
@@ -16,6 +20,12 @@ pub struct Model {
     pub running: bool,
     /// Trigger position on the screen, 0 to 1; the hardware percent derives from it and the geometry.
     pub trigger_fraction: f64,
+    /// A Single is armed: the device gets `Normal` sweep while `setup.trigger.sweep` keeps the user's choice.
+    pub single: bool,
+    /// Kept while the trigger is `Edge`, so switching back to `Pulse` restores what the user typed.
+    pub pulse_width_s: f64,
+    pub pulse_condition: PulseCondition,
+    pub math: MathSetting,
 }
 
 pub fn nearest_index<T>(items: &[T], wanted: f64, value_of: impl Fn(&T) -> f64) -> u8 {
@@ -56,7 +66,12 @@ impl Model {
             invert: [false; CHANNELS],
             running: false,
             trigger_fraction: defaults.trigger_fraction,
+            single: false,
+            pulse_width_s: DEFAULT_PULSE_WIDTH_S,
+            pulse_condition: DEFAULT_PULSE_CONDITION,
+            math: MathSetting::default(),
         };
+        model.math = MathSetting::fitted(caps, &model);
         model.settle(caps);
         model
     }
@@ -77,6 +92,36 @@ impl Model {
         }
         self.keep_source_enabled();
         self.settle(caps);
+    }
+
+    pub fn in_roll(&self, caps: &Capabilities) -> bool {
+        caps.time_bases
+            .get(usize::from(self.setup.time_base_index))
+            .is_some_and(|t| t.streaming)
+    }
+
+    /// What the device must run: a Single waits for a trigger whatever the sweep setting says.
+    pub fn device_setup(&self) -> AcquisitionSetup {
+        let mut setup = self.setup.clone();
+        if self.single {
+            setup.trigger.sweep = Sweep::Normal;
+        }
+        setup
+    }
+
+    pub fn set_pulse(&mut self, is_pulse: bool) {
+        self.setup.trigger.kind = if is_pulse {
+            TriggerKind::Pulse {
+                width_s: self.pulse_width_s,
+                condition: self.pulse_condition,
+            }
+        } else {
+            TriggerKind::Edge
+        };
+    }
+
+    pub fn is_pulse(&self) -> bool {
+        matches!(self.setup.trigger.kind, TriggerKind::Pulse { .. })
     }
 
     pub fn enabled_count(&self) -> u8 {

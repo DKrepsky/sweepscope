@@ -17,7 +17,12 @@ beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => createRecordingContext() as never);
 });
 
-function setup(change: (model: MainWindowModel) => MainWindowModel = (model) => model) {
+interface Toasts {
+  notifications: Notification[];
+  onnotificationdismiss: (id: number) => void;
+}
+
+function setup(change: (model: MainWindowModel) => MainWindowModel = (model) => model, toasts?: Toasts) {
   const actions = spyActions();
   const model: Writable<MainWindowModel> = writable(change(get(createMockMainWindow())));
   render(MainWindow, {
@@ -26,8 +31,8 @@ function setup(change: (model: MainWindowModel) => MainWindowModel = (model) => 
       actions,
       tier: writable(tier),
       textScale: writable<TextScalePercent>(100),
-      notifications: writable<Notification[]>([]),
-      onnotificationdismiss: () => {},
+      notifications: writable<Notification[]>(toasts?.notifications ?? []),
+      onnotificationdismiss: toasts?.onnotificationdismiss ?? (() => {}),
       ontextscale: () => {},
     },
   });
@@ -353,19 +358,104 @@ describe('marker drags', () => {
   });
 });
 
-describe('controls without an action yet', () => {
-  it.each(['Single', 'Autoset'])(
-    'given the toolbar, when %s is focused, then it is disabled and says it arrives later',
-    async (name) => {
-      const { actions, user } = setup();
-      const button = screen.getByRole('button', { name });
+describe('analysis toolbar actions', () => {
+  it.each([
+    ['Single', 'armSingle'],
+    ['Autoset', 'startAutoset'],
+    ['Record', 'startRecording'],
+  ])('given the toolbar, when %s is clicked, then only %s is called', async (name, action) => {
+    const { actions, user } = setup((model) => ({
+      ...model,
+      recording: { ...model.recording, available: { enabled: true } },
+    }));
 
-      await user.click(button);
-      button.focus();
+    await user.click(screen.getByRole('button', { name }));
 
-      expect(button).toHaveAttribute('aria-disabled', 'true');
-      expect(await screen.findByRole('tooltip')).toHaveTextContent('Arrives in a later release');
-      expect(onlyCall(actions)).toEqual([]);
+    expect(onlyCall(actions)).toEqual([action]);
+  });
+
+  it('given the toolbar, when XY is chosen, then setView gets xy', async () => {
+    const { actions, user } = setup();
+
+    await user.click(screen.getByRole('button', { name: 'XY' }));
+
+    expect(actions.setView).toHaveBeenCalledExactlyOnceWith('xy');
+  });
+
+  it('given math is off, when the Math tool is clicked, then math is enabled', async () => {
+    const { actions, user } = setup();
+
+    await user.click(screen.getByRole('button', { name: /^Math/ }));
+
+    expect(actions.setMathEnabled).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it('given math is on, when the Math tool is clicked, then math is disabled', async () => {
+    const { actions, user } = setup((model) => ({
+      ...model,
+      toolbar: { ...model.toolbar, tools: { ...model.toolbar.tools, math: true } },
+    }));
+
+    await user.click(screen.getByRole('button', { name: /^Math/ }));
+
+    expect(actions.setMathEnabled).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('given the persist menu, when Clear persistence is chosen, then only clearPersistence is called', async () => {
+    const { actions, user } = setup();
+
+    await user.click(screen.getByRole('button', { name: /Persist: Off/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Clear persistence' }));
+
+    expect(onlyCall(actions)).toEqual(['clearPersistence']);
+  });
+
+  it('given an auto-setup toast with Retry, when Retry is clicked, then the action runs and the toast is dismissed', async () => {
+    const run = vi.fn();
+    const dismissed = vi.fn();
+    const { user } = setup(undefined, {
+      notifications: [
+        {
+          id: 7,
+          kind: 'warning',
+          text: 'Auto-setup could not find a stable setting.',
+          action: { label: 'Retry', run },
+        },
+      ],
+      onnotificationdismiss: dismissed,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect([run.mock.calls.length, dismissed.mock.calls]).toEqual([1, [[7]]]);
+  });
+});
+
+describe('recording failure banner', () => {
+  const failure = (model: MainWindowModel): MainWindowModel => ({
+    ...model,
+    banners: [
+      {
+        id: 'recording',
+        kind: 'error',
+        text: 'Recording stopped: the disk is full.',
+        actions: [
+          { id: 'choose-new-file', label: 'Choose new file' },
+          { id: 'dismiss', label: 'Dismiss' },
+        ],
+      },
+    ],
+  });
+
+  it.each(['choose-new-file', 'dismiss'])(
+    'given the banner, when its %s action is clicked, then bannerAction gets it',
+    async (id) => {
+      const { actions, user } = setup(failure);
+      const label = id === 'dismiss' ? 'Dismiss' : 'Choose new file';
+
+      await user.click(screen.getByRole('button', { name: label }));
+
+      expect(actions.bannerAction).toHaveBeenCalledExactlyOnceWith(id);
     },
   );
 });

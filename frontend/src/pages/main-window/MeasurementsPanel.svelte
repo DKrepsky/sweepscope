@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { MeasurementsModel } from '../../app/main-window';
+  import Badge from '../../ui/badge/Badge.svelte';
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
   import Menu from '../../ui/menu/Menu.svelte';
@@ -38,6 +39,11 @@
   }
 </script>
 
+{#snippet columnHeader(column: { id: string })}
+  {@const alias = measurements.columns.find((other) => other.id === column.id)?.alias}
+  {#if alias}<Badge kind="warning" tooltip={alias.message}>Alias</Badge>{/if}
+{/snippet}
+
 <Panel {collapsed} ontoggle={() => (collapsed = !collapsed)}>
   {#snippet header()}Measurements{/snippet}
   {#snippet actions()}
@@ -59,11 +65,15 @@
     </span>
   {/snippet}
   {#snippet body()}
+    {#if measurements.unavailableNote}
+      <p class="footnote" role="status">{measurements.unavailableNote}</p>
+    {/if}
     <MeasurementMatrix
       columns={measurements.columns}
       rows={measurements.rows}
       footnotes={measurements.footnotes}
       frozenLabel={measurements.frozenLabel}
+      {columnHeader}
     />
     {#if measurements.accuracyNote}
       <p class="footnote">{measurements.accuracyNote}</p>

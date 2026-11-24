@@ -5,11 +5,13 @@
   interface Props {
     kind: 'info' | 'warning' | 'error';
     text: Snippet;
+    /** Buttons after the text, such as `Retry`. */
+    actions?: Snippet;
     timeoutMs?: number;
     ondismiss: () => void;
   }
 
-  const { kind, text, timeoutMs, ondismiss }: Props = $props();
+  const { kind, text, actions, timeoutMs, ondismiss }: Props = $props();
 
   const defaultTimeoutMs = { info: 4000, warning: 8000, error: 0 } as const;
 
@@ -33,6 +35,7 @@
 >
   <Icon name={kind === 'info' ? 'info' : 'warning'} />
   <span class="text">{@render text()}</span>
+  {#if actions}<span class="actions">{@render actions()}</span>{/if}
   {#if kind === 'error'}
     <button type="button" class="dismiss" aria-label="Dismiss" onclick={() => ondismiss()}>
       <Icon name="close" />
@@ -63,6 +66,10 @@
   }
   .text {
     color: var(--ss-color-text-primary);
+  }
+  .actions {
+    display: inline-flex;
+    gap: var(--ss-space-2);
   }
   .dismiss {
     display: grid;

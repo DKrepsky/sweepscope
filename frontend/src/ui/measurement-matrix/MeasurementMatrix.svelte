@@ -47,7 +47,7 @@
         <th scope="row">{row.label}</th>
         {#each columns as column (column.id)}
           {@const c = row.cells[column.id]}
-          <td class={c ? [c.state, isMuted(c) && 'muted'] : 'empty'}>
+          <td class={c ? [c.state, c.warning && 'warning', isMuted(c) && 'muted'] : 'empty'}>
             {#if c?.tooltip}
               <Tooltip text={c.tooltip}>
                 <!-- Keyboard users need focus to read the tooltip. -->
@@ -106,7 +106,8 @@
   td.muted {
     color: var(--ss-color-text-muted);
   }
-  td.unverified {
+  td.unverified,
+  td.warning {
     box-shadow: inset var(--ss-space-1) 0 0 var(--ss-color-status-warning);
   }
   .mark,

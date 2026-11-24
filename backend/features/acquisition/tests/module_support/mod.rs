@@ -1,18 +1,18 @@
 #![allow(dead_code)]
 //! Rig for the acquisition module tests. A feature crate may not depend on `device`, so the device side is a fake
 //! that answers the three kernel requests and publishes the two events the real module publishes.
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use sweepscope_acquisition::{
     AcquisitionDeps, AcquisitionModule, FactsChanged, GetInstrument, InstrumentChanged, InstrumentSnapshot,
-    StatusChanged,
+    SettingTarget, StatusChanged, StepSetting,
 };
 use sweepscope_kernel::contracts::{
     AcquisitionSetup, ApplySetup, CaptureCompleted, CaptureOutcome, ChannelData, ConnectionChanged, ConnectionIssue,
     ConnectionIssueKind, ConnectionSnapshot, ConnectionState, DeviceIdentity, DeviceSource, ForceTrigger, Frame,
-    FrameCaptured, SetCapturing, TriggerOutcome,
+    FrameCaptured, RollCaptured, RollPolled, RollPolledItem, SetCapturing, TriggerOutcome,
 };
 use sweepscope_kernel::testing::{eventually, EventRecorder, FakeClock, MemoryStorage, ScriptedPicker};
 use sweepscope_kernel::{Bus, KernelError};
@@ -29,22 +29,32 @@ pub enum DeviceCall {
     Force,
 }
 
+/// Answers a setup with the frame the scope would capture; `None` leaves the capture pending.
+pub type Responder = Box<dyn Fn(&AcquisitionSetup) -> Option<Frame> + Send>;
+
 #[derive(Default)]
 pub struct FakeDevice {
     calls: Mutex<Vec<DeviceCall>>,
+    capturing: AtomicBool,
+    responder: Mutex<Option<Responder>>,
 }
 
 impl FakeDevice {
     fn attach(self: &Arc<Self>, bus: &Bus) {
-        let device = Arc::clone(self);
+        let (device, announcer) = (Arc::clone(self), bus.clone());
         bus.handle(move |request: ApplySetup| {
-            device.record(DeviceCall::Apply(request.setup_revision, Box::new(request.setup)));
+            device.record(DeviceCall::Apply(
+                request.setup_revision,
+                Box::new(request.setup.clone()),
+            ));
+            device.answer(&announcer, request.setup_revision, &request.setup);
             Ok(())
         })
         .unwrap();
         let device = Arc::clone(self);
         bus.handle(move |request: SetCapturing| {
             device.record(DeviceCall::Capturing(request.on));
+            device.capturing.store(request.on, Ordering::SeqCst);
             Ok(())
         })
         .unwrap();
@@ -54,6 +64,29 @@ impl FakeDevice {
             Ok(())
         })
         .unwrap();
+    }
+
+    /// A scope that captures only while capturing is on, one frame per applied setup.
+    pub fn respond_with(&self, responder: impl Fn(&AcquisitionSetup) -> Option<Frame> + Send + 'static) {
+        *self.responder.lock().unwrap() = Some(Box::new(responder));
+    }
+
+    fn answer(&self, bus: &Bus, setup_revision: u64, setup: &AcquisitionSetup) {
+        if !self.capturing.load(Ordering::SeqCst) {
+            return;
+        }
+        let frame = self
+            .responder
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|respond| respond(setup));
+        if let Some(frame) = frame {
+            bus.publish(CaptureCompleted {
+                setup_revision,
+                outcome: CaptureOutcome::Frame(Arc::new(frame)),
+            });
+        }
     }
 
     fn record(&self, call: DeviceCall) {
@@ -97,6 +130,7 @@ pub struct Rig {
     pub status: EventRecorder<StatusChanged>,
     pub facts: EventRecorder<FactsChanged>,
     pub frames: EventRecorder<FrameCaptured>,
+    pub rolls: EventRecorder<RollCaptured>,
     pub storage: MemoryStorage,
     pub module: AcquisitionModule,
     connection_revision: AtomicU64,
@@ -117,6 +151,7 @@ pub fn rig_with(storage: MemoryStorage, picker: ScriptedPicker) -> Rig {
     let status = EventRecorder::new(&bus);
     let facts = EventRecorder::new(&bus);
     let frames = EventRecorder::new(&bus);
+    let rolls = EventRecorder::new(&bus);
     let module = AcquisitionModule::new(AcquisitionDeps {
         bus: bus.clone(),
         clock: Arc::new(clock.clone()),
@@ -132,6 +167,7 @@ pub fn rig_with(storage: MemoryStorage, picker: ScriptedPicker) -> Rig {
         status,
         facts,
         frames,
+        rolls,
         storage,
         module,
         connection_revision: AtomicU64::new(1),
@@ -240,6 +276,33 @@ impl Rig {
             setup_revision,
             CaptureOutcome::Frame(Arc::new(frame(TriggerOutcome::Auto))),
         );
+    }
+
+    /// Steps the time base until the instrument is in (or out of) roll mode.
+    pub fn step_time_base_until_roll(&self, roll: bool) {
+        let direction = if roll { 1 } else { -1 };
+        while self.snapshot().instrument.unwrap().horizontal.roll != roll {
+            self.bus
+                .request(StepSetting {
+                    target: SettingTarget::TimeBase,
+                    direction,
+                })
+                .unwrap();
+        }
+    }
+
+    pub fn poll_samples(&self, setup_revision: u64, first_index: u64) {
+        self.bus.publish(RollPolled {
+            setup_revision,
+            item: RollPolledItem::Samples {
+                first_index,
+                frame: Arc::new(frame(TriggerOutcome::None)),
+            },
+        });
+    }
+
+    pub fn roll_items(&self) -> Vec<RollCaptured> {
+        self.rolls.events()
     }
 
     /// The module handles events in order, so seeing the newest sentinel frame means every earlier event was handled.

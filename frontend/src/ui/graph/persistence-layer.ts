@@ -1,11 +1,12 @@
+import { tokens } from '../../design-system';
 import type { GraphFrame, PersistenceOptions, PixelSize } from './graph-frame';
 import { drawGhostTraces } from './traces';
 
 export const BUCKETS = 8;
 /** Design 5.2 opacities (tokens opacity-persist-*); the newest ghost is never brighter than the live trace. */
-export const OPACITY_NEWEST = 0.85;
-export const OPACITY_OLDEST = 0.3;
-export const OPACITY_HOLD = 0.6;
+export const OPACITY_NEWEST = Number(tokens['opacity-persist-newest']);
+export const OPACITY_OLDEST = Number(tokens['opacity-persist-oldest']);
+export const OPACITY_HOLD = Number(tokens['opacity-persist-hold']);
 const FROZEN_OPACITY = 0.4;
 
 export interface Surface {

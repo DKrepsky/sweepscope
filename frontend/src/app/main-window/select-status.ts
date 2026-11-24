@@ -1,6 +1,7 @@
 import type { ConnectionSnapshot, InstrumentFacts, InstrumentState, MeasurementsState } from '../../api';
 import { connectionChip } from '../instrument';
 import { NOT_MEASURED } from './select-common';
+import { aliasSummary } from './select-warnings';
 import type { StatusModel } from './types';
 
 type Fact = InstrumentFacts['sampleRate'];
@@ -22,11 +23,13 @@ export function selectStatus(
   measurements: MeasurementsState | undefined,
 ): StatusModel {
   const dead = facts?.deadTime;
+  const alias = aliasSummary(measurements);
   return {
     connection: connectionChip(connection),
     sampleRate: {
       value: factText(facts?.sampleRate),
       tooltip: 'Effective sample rate for this time base and channel count',
+      ...(alias && { alias }),
     },
     record: { points: factText(facts?.recordPoints), span: recordSpan(instrument) },
     capture: {

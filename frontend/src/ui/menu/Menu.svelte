@@ -43,6 +43,11 @@
     return () => opener?.focus();
   });
 
+  function itemRole(entry: MenuItem): string {
+    if (entry.checked === undefined) return 'menuitem';
+    return entry.radio ? 'menuitemradio' : 'menuitemcheckbox';
+  }
+
   function activate(entry: MenuItem) {
     if (entry.disabled) return;
     onselect(entry.id);
@@ -70,7 +75,7 @@
   <button
     bind:this={buttons[index]}
     type="button"
-    role={entry.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+    role={itemRole(entry)}
     class="entry"
     aria-checked={entry.checked === undefined ? undefined : entry.checked}
     aria-disabled={entry.disabled ? 'true' : undefined}
@@ -95,6 +100,7 @@
     {onkeydown}
   >
     {#each items as entry, index (entry.id)}
+      {#if entry.separatorBefore}<div class="separator" role="separator"></div>{/if}
       {#if entry.disabled && entry.disabledReason}
         <Tooltip text={entry.disabledReason}>{@render row(entry, index)}</Tooltip>
       {:else}
@@ -145,6 +151,10 @@
   .entry[aria-disabled='true'] {
     color: var(--ss-color-text-disabled);
     cursor: not-allowed;
+  }
+  .separator {
+    margin-block: var(--ss-space-2);
+    border-top: var(--ss-border-width) solid var(--ss-color-border-subtle);
   }
   .check {
     inline-size: 1em;

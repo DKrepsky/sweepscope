@@ -5,6 +5,7 @@
     MainWindowActions,
     MathModel,
     TriggerModel,
+    ViewsModel,
   } from '../../app/main-window';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import HorizontalGroup from './HorizontalGroup.svelte';
@@ -14,6 +15,7 @@
   interface Props {
     channels: ChannelModel[];
     horizontal: HorizontalModel;
+    views: ViewsModel;
     trigger: TriggerModel;
     math: MathModel;
     actions: MainWindowActions;
@@ -27,7 +29,8 @@
     groupTabs: boolean;
   }
 
-  const { channels, horizontal, trigger, math, actions, wrapped, smallRows, channelTabs, groupTabs }: Props = $props();
+  const { channels, horizontal, views, trigger, math, actions, wrapped, smallRows, channelTabs, groupTabs }: Props =
+    $props();
 
   const groupOptions = [
     { id: 'vertical', label: 'Vertical' },
@@ -50,7 +53,7 @@
     </div>
   {/if}
   {#if shows('vertical')}<VerticalGroup {channels} {math} {actions} tabs={channelTabs} />{/if}
-  {#if shows('horizontal')}<HorizontalGroup {horizontal} {actions} />{/if}
+  {#if shows('horizontal')}<HorizontalGroup {horizontal} {views} {actions} />{/if}
   {#if shows('trigger')}<TriggerGroup {trigger} {channels} {actions} />{/if}
 </div>
 

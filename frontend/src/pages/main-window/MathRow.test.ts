@@ -17,7 +17,7 @@ describe('MathRow', () => {
   it('given math off, when the M toggle is pressed, then math is enabled', async () => {
     const { actions, user } = setup();
 
-    await user.click(screen.getByRole('button', { name: 'Math channel enabled' }));
+    await user.click(screen.getByRole('button', { name: 'M, math channel enabled' }));
 
     expect(actions.setMathEnabled).toHaveBeenCalledExactlyOnceWith(true);
   });
@@ -25,7 +25,7 @@ describe('MathRow', () => {
   it('given math on, when the M toggle is pressed, then math is disabled', async () => {
     const { actions, user } = setup({ enabled: true });
 
-    await user.click(screen.getByRole('button', { name: 'Math channel enabled' }));
+    await user.click(screen.getByRole('button', { name: 'M, math channel enabled' }));
 
     expect(actions.setMathEnabled).toHaveBeenCalledExactlyOnceWith(false);
   });
@@ -82,6 +82,6 @@ describe('MathRow', () => {
   it('given a backend that blocks the vertical group, when rendered, then the toggle is disabled', () => {
     setup({ availability: { enabled: false, reason: 'Math is not available in roll mode.' } });
 
-    expect(screen.getByRole('button', { name: 'Math channel enabled' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'M, math channel enabled' })).toHaveAttribute('aria-disabled', 'true');
   });
 });

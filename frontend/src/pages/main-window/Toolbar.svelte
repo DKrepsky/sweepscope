@@ -2,7 +2,17 @@
   import type { TextScalePercent } from '../../app/text-scale';
   import { textScaleOptions } from '../../app/text-scale';
   import type { FileActions } from '../../app/files';
-  import type { Availability, ToolbarModel } from '../../app/main-window';
+  import type {
+    Availability,
+    AutosetModel,
+    ChipKind,
+    PersistenceModel,
+    PersistenceValue,
+    RecordingModel,
+    ToolbarModel,
+    ViewTab,
+    ViewsModel,
+  } from '../../app/main-window';
   import Button from '../../ui/button/Button.svelte';
   import Icon from '../../ui/icon/Icon.svelte';
   import Menu from '../../ui/menu/Menu.svelte';
@@ -15,6 +25,10 @@
 
   interface Props {
     toolbar: ToolbarModel;
+    views: ViewsModel;
+    persistence: PersistenceModel;
+    autoset: AutosetModel;
+    recording: RecordingModel;
     toolLabels: boolean;
     /** W3 and below: Single, Force and Autoset keep their icons and tooltips but lose their text. */
     runLabels: boolean;
@@ -23,6 +37,14 @@
     textScale: TextScalePercent;
     ontogglerun: () => void;
     onforce: () => void;
+    onarmsingle: () => void;
+    onautoset: () => void;
+    onsetview: (view: ViewTab) => void;
+    onsetpersistence: (value: PersistenceValue) => void;
+    onclearpersistence: () => void;
+    ontogglemath: () => void;
+    onstartrecording: () => void;
+    onstoprecording: () => void;
     ontogglecursors: () => void;
     ontoggledrawer: () => void;
     ontextscale: (percent: TextScalePercent) => void;
@@ -31,6 +53,10 @@
 
   const {
     toolbar,
+    views,
+    persistence,
+    autoset,
+    recording,
     toolLabels,
     runLabels,
     drawerButton,
@@ -38,22 +64,55 @@
     textScale,
     ontogglerun,
     onforce,
+    onarmsingle,
+    onautoset,
+    onsetview,
+    onsetpersistence,
+    onclearpersistence,
+    ontogglemath,
+    onstartrecording,
+    onstoprecording,
     ontogglecursors,
     ontoggledrawer,
     ontextscale,
     onfile,
   }: Props = $props();
 
-  const noop = () => {};
-  const LATER = 'Arrives in a later release';
+  const AUTOSET_RUNNING = 'Auto-setup is running';
+  const CLEAR_PERSISTENCE = 'clear';
+  const PERSISTENCE_TIP =
+    'Persistence: overlays successive frames. Its update rate is the capture rate shown in the status bar.';
   const runOff = $derived(toolbar.availability?.enabled === false);
   const forceOff = $derived(toolbar.force?.enabled === false);
-  const persistenceItems = ['Off', '0.5 s', '1 s', '2 s', 'Infinite'].map((label) => ({ id: label, label }));
-  const viewOptions = [
-    { id: 'yt', label: 'Yt' },
-    { id: 'xy', label: 'XY' },
-    { id: 'fft', label: 'FFT', badge: 'SW' },
-  ];
+  const single = $derived(toolbar.single);
+  const singleOff = $derived(single?.availability.enabled === false);
+  const autosetOff = $derived(autoset.busy || !autoset.available.enabled);
+  const persistenceLabel = $derived(persistence.options.find((o) => o.value === persistence.value)?.label);
+  const persistenceItems = $derived([
+    ...persistence.options.map((option) => ({
+      id: option.value,
+      label: option.label,
+      checked: option.value === persistence.value,
+      radio: true,
+    })),
+    { id: CLEAR_PERSISTENCE, label: 'Clear persistence', separatorBefore: true },
+  ]);
+  const viewOptions = $derived(
+    (
+      [
+        ['yt', 'Yt', undefined],
+        ['xy', 'XY', undefined],
+        ['fft', 'FFT', 'SW'],
+      ] as const
+    ).map(([id, label, badge]) => ({
+      id,
+      label,
+      badge,
+      disabled: !views.tabAvailability[id].enabled,
+      disabledReason: views.tabAvailability[id].reason,
+    })),
+  );
+  const chipKind = (kind: ChipKind) => (kind === 'roll' ? 'info' : kind);
   const scaleOptions = textScaleOptions.map((percent) => ({ id: String(percent), label: `${percent} %` }));
 
   const fileItems = $derived(
@@ -88,6 +147,12 @@
   function openFileMenu() {
     const box = fileHost.getBoundingClientRect();
     fileAnchor = { x: box.left, y: box.bottom };
+  }
+
+  function selectPersistence(id: string) {
+    persistenceAnchor = null;
+    if (id === CLEAR_PERSISTENCE) onclearpersistence();
+    else onsetpersistence(id as PersistenceValue);
   }
 
   function selectFile(id: string) {
@@ -132,10 +197,12 @@
     />
     <Button
       size="lg"
-      title="Single shot: arm once, stop after one trigger (S)"
+      title="Single shot: arm once, stop after one trigger. Press again to cancel."
       ariaLabel={runLabels ? undefined : 'Single'}
-      disabled
-      disabledReason={LATER}
+      pressed={single?.armed ?? false}
+      onclick={single?.armed ? ontogglerun : onarmsingle}
+      disabled={singleOff}
+      disabledReason={single?.availability.reason}
     >
       {#snippet left()}<Icon name="single" />{/snippet}
       {#if runLabels}Single{/if}
@@ -155,8 +222,10 @@
       size="lg"
       title="Pick volts/div and time/div from a short capture (A)"
       ariaLabel={runLabels ? undefined : 'Autoset'}
-      disabled
-      disabledReason={LATER}
+      busy={autoset.busy}
+      onclick={onautoset}
+      disabled={autosetOff}
+      disabledReason={autoset.busy ? AUTOSET_RUNNING : autoset.available.reason}
     >
       {#snippet left()}<Icon name="autoset" />{/snippet}
       {#if runLabels}Autoset{/if}
@@ -167,24 +236,27 @@
     {#each toolbar.chips as chip (chip.id)}
       {#if chip.tooltip}
         <Tooltip text={chip.tooltip}>
-          <StatusChip kind={chip.kind} filled={chip.filled} dim={chip.dim}>{chip.text}</StatusChip>
+          <StatusChip kind={chipKind(chip.kind)} filled={chip.filled} dim={chip.dim}>{chip.text}</StatusChip>
         </Tooltip>
       {:else}
-        <StatusChip kind={chip.kind} filled={chip.filled} dim={chip.dim}>{chip.text}</StatusChip>
+        <StatusChip kind={chipKind(chip.kind)} filled={chip.filled} dim={chip.dim}>{chip.text}</StatusChip>
       {/if}
     {/each}
   </div>
 
   <div class="group" role="group" aria-label="View">
     {#if toolLabels}<span class="ss-caps">View</span>{/if}
-    <Segmented value={toolbar.view} options={viewOptions} onchange={noop} ariaLabel="View" />
+    <Segmented value={views.tab} options={viewOptions} onchange={(id) => onsetview(id as ViewTab)} ariaLabel="View" />
     <span class="anchor" bind:this={persistenceHost}>
       <Button
-        title="Persistence decay: Off, 0.5 s, 1 s, 2 s, infinite"
+        title={PERSISTENCE_TIP}
+        pressed={persistence.value !== 'off'}
         onclick={openPersistence}
+        disabled={!persistence.available.enabled}
+        disabledReason={persistence.available.reason}
         {...menuTriggerAttributes(persistenceAnchor !== null)}
       >
-        {toolbar.persistence}
+        Persist: {persistenceLabel}
         {#snippet right()}<Icon name="chevron" />{/snippet}
       </Button>
     </span>
@@ -201,11 +273,30 @@
       ontogglecursors,
       toolbar.cursorsAvailability,
     )}
-    {@render toolButton('Math', 'math', toolbar.tools.math, 'Math channel (A+B, A-B, AxB)')}
+    {@render toolButton(
+      'Math',
+      'math',
+      toolbar.tools.math,
+      'Math channel (A+B, A-B, AxB)',
+      ontogglemath,
+      toolbar.mathAvailability,
+    )}
     {@render toolButton('Ref', 'reference', toolbar.tools.reference, 'Store or show a reference waveform')}
   </div>
 
   <div class="group" role="group" aria-label="Data">
+    <Button
+      title="Record roll data to a file"
+      ariaLabel={runLabels ? undefined : 'Record'}
+      tone={recording.active ? 'record' : undefined}
+      pressed={recording.active}
+      onclick={recording.active ? onstoprecording : onstartrecording}
+      disabled={!recording.available.enabled && !recording.active}
+      disabledReason={recording.available.reason}
+    >
+      {#snippet left()}<Icon name="record" />{/snippet}
+      {#if runLabels}{recording.active ? 'Stop rec' : 'Record'}{/if}
+    </Button>
     <span class="anchor" bind:this={fileHost}>
       <Button
         title="Save or load a setup, export the capture, save a screenshot"
@@ -271,7 +362,7 @@
     items={persistenceItems}
     open={true}
     anchor={persistenceAnchor}
-    onselect={() => (persistenceAnchor = null)}
+    onselect={selectPersistence}
     onclose={() => (persistenceAnchor = null)}
   />
 {/if}

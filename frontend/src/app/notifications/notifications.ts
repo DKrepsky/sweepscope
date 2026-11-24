@@ -1,8 +1,15 @@
 import { derived, writable, type Readable } from 'svelte/store';
 
+/** A button the toast offers, such as `Retry`. */
+export interface NotificationAction {
+  label: string;
+  run: () => void;
+}
+
 export interface NotificationRequest {
   kind: 'info' | 'warning' | 'error';
   text: string;
+  action?: NotificationAction;
 }
 
 export interface Notification extends NotificationRequest {

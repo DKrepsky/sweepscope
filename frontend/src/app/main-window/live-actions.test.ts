@@ -51,6 +51,7 @@ function setup(
     canToggleCursors: () => canToggleCursors,
     pinned,
     files,
+    dismissRecordingFailure: vi.fn(),
   });
   return { actions, commands, copyText, notify, select, cursors, pinned, files };
 }

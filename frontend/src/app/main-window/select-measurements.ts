@@ -1,4 +1,5 @@
 import type { MeasurementsState } from '../../api';
+import { aliasOf } from './select-warnings';
 import type { GraphModel, MeasurementCellModel, MeasurementsModel } from './types';
 
 type ChannelMeasurements = MeasurementsState['channels'][number];
@@ -7,6 +8,9 @@ type Measurement = ChannelMeasurements['measurements'][number];
 type Row = MeasurementsModel['rows'][number];
 
 const EMPTY: MeasurementsModel = { columns: [], rows: [], footnotes: [], accuracyNote: '', pinnable: [] };
+const MATH_CHANNEL = 5;
+const ALIAS_AFFECTED = new Set<string>(['frequency', 'period']);
+const ROLL_NOTE = 'Measurements are not available in roll mode. Use a faster time base to measure.';
 
 /** Numbers each distinct reason text once, in order of first use. */
 function footnoteRegistry() {
@@ -20,46 +24,99 @@ function footnoteRegistry() {
   return { notes, keyFor };
 }
 
-function toCell(
-  measurement: Measurement,
-  unverified: string | null,
-  keyFor: (text: string) => number,
-): MeasurementCellModel {
-  if (measurement.invalid) return { state: 'invalid', text: '-', footnote: keyFor(measurement.invalid.text) };
-  const { text, unit } = measurement.value ?? { text: '-', unit: '' };
-  const shown = { text, ...(unit && { unit }) };
-  return unverified ? { ...shown, state: 'unverified', tooltip: unverified } : { ...shown, state: 'valid' };
+/** The backend measures the math trace in volts; a product of two channels is in volts squared, prefix kept. */
+function withMathUnit(unit: string, mathUnit: string | undefined): string {
+  if (!mathUnit || mathUnit === 'V' || !unit.endsWith('V')) return unit;
+  return `${unit.slice(0, -1)}${mathUnit}`;
 }
 
-function toRows(channels: ChannelMeasurements[], pinned: ReadonlySet<string>, keyFor: (text: string) => number): Row[] {
-  const shown = channels[0]?.measurements.filter((measurement) => pinned.has(measurement.id)) ?? [];
+interface CellContext {
+  unverified: string | null;
+  keyFor: (text: string) => number;
+  aliasMessage?: string;
+  mathUnit?: string;
+}
+
+function toCell(measurement: Measurement, context: CellContext): MeasurementCellModel {
+  const { unverified, keyFor, aliasMessage, mathUnit } = context;
+  if (measurement.invalid) return { state: 'invalid', text: '-', footnote: keyFor(measurement.invalid.text) };
+  const { text, unit } = measurement.value ?? { text: '-', unit: '' };
+  const shownUnit = withMathUnit(unit, mathUnit);
+  const shown = { text, ...(shownUnit && { unit: shownUnit }) };
+  const suspect = aliasMessage !== undefined && ALIAS_AFFECTED.has(measurement.id);
+  const flagged = suspect ? { ...shown, warning: true, footnote: keyFor(aliasMessage) } : shown;
+  return unverified ? { ...flagged, state: 'unverified', tooltip: unverified } : { ...flagged, state: 'valid' };
+}
+
+const columnId = (channel: number) => `ch${channel}`;
+
+interface RowContext {
+  pinned: ReadonlySet<string>;
+  keyFor: (text: string) => number;
+  measurements: MeasurementsState;
+  mathUnit?: string;
+}
+
+function cellContext(channel: ChannelMeasurements, { keyFor, measurements, mathUnit }: RowContext): CellContext {
+  const aliasMessage = aliasOf(measurements, channel.channel)?.message;
+  return {
+    unverified: channel.unverified,
+    keyFor,
+    ...(aliasMessage && { aliasMessage }),
+    ...(channel.channel === MATH_CHANNEL && mathUnit && { mathUnit }),
+  };
+}
+
+function toRows(context: RowContext): Row[] {
+  const channels = context.measurements.channels;
+  const shown = channels[0]?.measurements.filter((measurement) => context.pinned.has(measurement.id)) ?? [];
   return shown.map(({ id, label }) => ({
     id,
     label,
     cells: Object.fromEntries(
       channels.flatMap((channel) => {
         const measurement = channel.measurements.find((other) => other.id === id);
-        return measurement ? [[`ch${channel.channel}`, toCell(measurement, channel.unverified, keyFor)]] : [];
+        return measurement ? [[columnId(channel.channel), toCell(measurement, cellContext(channel, context))]] : [];
       }),
     ),
   }));
+}
+
+function toColumn(measurements: MeasurementsState, channel: number): MeasurementsModel['columns'][number] {
+  const alias = aliasOf(measurements, channel);
+  const math = channel === MATH_CHANNEL;
+  return {
+    id: columnId(channel),
+    label: math ? 'M' : `CH${channel}`,
+    color: math ? 'color-math' : `color-ch${channel}`,
+    ...(alias && { alias }),
+  };
+}
+
+const hasValues = (
+  measurements: MeasurementsState | undefined,
+  graph: GraphModel['state'],
+): measurements is MeasurementsState => !!measurements && measurements.channels.length > 0 && graph !== 'empty';
+
+export interface MeasurementContext {
+  /** Unit the math state reports for the math trace (`V` or `V²`). */
+  mathUnit?: string;
+  roll?: boolean;
 }
 
 export function selectMeasurements(
   measurements: MeasurementsState | undefined,
   pinned: readonly string[],
   graph: GraphModel['state'],
+  { mathUnit, roll = false }: MeasurementContext = {},
 ): MeasurementsModel {
-  if (!measurements || measurements.channels.length === 0 || graph === 'empty') return EMPTY;
+  if (roll) return { ...EMPTY, unavailableNote: ROLL_NOTE };
+  if (!hasValues(measurements, graph)) return EMPTY;
   const chosen = new Set(pinned);
   const { notes, keyFor } = footnoteRegistry();
-  const rows = toRows(measurements.channels, chosen, keyFor);
+  const rows = toRows({ pinned: chosen, keyFor, measurements, ...(mathUnit && { mathUnit }) });
   return {
-    columns: measurements.channels.map(({ channel }) => ({
-      id: `ch${channel}`,
-      label: `CH${channel}`,
-      color: `color-ch${channel}`,
-    })),
+    columns: measurements.channels.map(({ channel }) => toColumn(measurements, channel)),
     rows,
     footnotes: notes,
     ...(graph === 'frozen' && { frozenLabel: 'Frozen' as const }),

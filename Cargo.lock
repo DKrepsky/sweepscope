@@ -3321,7 +3321,10 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 name = "sweepscope-acquisition"
 version = "0.1.0"
 dependencies = [
+ "autoset",
  "engineering-format",
+ "math-channel",
+ "measurements",
  "serde",
  "serde_json",
  "sweepscope-kernel",
@@ -3402,6 +3405,7 @@ name = "sweepscope-recording"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "sweepscope-kernel",
  "ts-rs",
 ]

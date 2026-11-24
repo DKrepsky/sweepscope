@@ -327,3 +327,27 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Generated api types are importable by deep path (`../../api/generated/X`) when `api/index.ts` (another package's file) lacks the export.
 - Editing another developer's file even temporarily is blocked by the permission classifier: verify against their pending fixture changes in a scratch copy (`cp -r src` + symlinked node_modules + `server.fs.strict:false` in the copied vite config).
 - Sandbox refuses compound commands that `cd ../..` or contain the word "enable" in grep/sed; use Read/Edit and separate commands.
+## M3 acquisition core (B7)
+- Roll sessions live in `acquisition/src/module/roll.rs` (`RollSessions::sync` after every state change; compares a `RollKey` of device setup, invert and probes). A Single keeps `Model.single`; the device gets `Model::device_setup()` (sweep Normal), the published sweep is untouched. Every path that ends a Single re-sends the setup.
+- Backend value units are ASCII (`us`); error texts that the spec fixes with `µs` convert the unit in the message only.
+- Module tests cannot flush the consumer thread for "nothing published" cases; use an ordered sentinel on the same subscription (stale poll then good poll) or an unplug as barrier.
+- Float traps: `50 * 1e-6 < 50e-6`; compare widths in rounded ns.
+- Tool calls with `cd` plus heredocs are refused in a worktree: write scripts to the scratchpad and run them with absolute paths.
+
+## Auto-setup adapter B9 (developer-4)
+- `acquisition` cannot use the device crate's `SimulatedDevice`; tests drive a synthetic input through `FakeDevice::respond_with` (answers each applied setup with a frame while capturing is on) in `tests/autoset_support`.
+- A local module named `autoset` shadows the lib crate of the same name inside `module/`; domain re-exports `Plan` and the lib is imported only in `domain/autoset_run.rs`.
+- `Capabilities` has no counts per division; adapter uses a nominal 23.0 (driver measured 21.1, 21.6, 24.15). engineering-format writes micro as `u` (`500 us/div`).
+- Setup edits are refused in `Instrument::edit` while the auto-setup lock is on; `autoset_apply` runs after the lock is released.
+## M3 F5 stage and views (developer-9)
+- `selectGraph(inputs, { views, persistence, roll })` is the one place that picks Yt, XY, FFT or roll data; `GraphModel` now carries `view`, `running`, `dimmed` (only disconnected dims; stopped is full intensity), `math`, ticks (graph convention: Y ticks count from the bottom, the backend counts from the top), `xy`, `persistence {decayMs, epoch, revision}` and `tags`.
+- Persistence ghosts age by an injected clock: `createPausableClock` (app/views) is held still while `graph.running` is false. Ghost opacities now come from `tokens['opacity-persist-*']`.
+- XY: a division on X is a tenth of the width, so the X ground marker uses `xFractionFromGround` / `divisionsFromXFraction`. `formatFrequency` gives four digits (`300.0 Hz`).
+- `Menu` only has `checked` (role `menuitemcheckbox`), no radio role. Segmented segments cannot carry their own aria-label (name is the visible text).
+- Tests: `app/main-window/test-inputs.ts` builds `ModelInputs` from `app/instrument/test-data`. Playwright with a temp config copy: ports 5173/4173 are often taken by other agents, pick unusual ones and set `E2E_PREVIEW_PORT`.
+## M3 B8 math and F6 toolbar (developer-10)
+- Math lives in `Model.math: MathSetting` (domain/math.rs); every math edit goes through `Instrument::edit` so it stays all-or-nothing. `math::state(caps, model, gate)` and `reset(caps, ...)` gained `caps` (hooks only had the model). Math unit text: ScaleChoice label for `A×B` reads `0.1 V²/div` (V² never takes a prefix). `Instrument::derive_math(frame)` is the single entry used by `derive_trace`.
+- Worktree shell refuses python heredocs, `cd X && ...`, `git -C`, and chained rm/git commands: use Write/Edit tools and one plain command per call.
+- Frontend: segmented buttons have role `button` with aria-pressed (not radio); Menu radio items are `menuitemradio` (added `radio` and `separatorBefore` to MenuItem); Button tone `record` added; Toast takes an `actions` snippet; `NotificationRequest.action` {label, run}.
+- e2e for temporary Playwright: temp config with `npm run dev -- --port 5373 --strictPort`, `reuseExistingServer: false`, chromium only, delete afterwards.
+- A Single armed state is not published by the backend: UI infers `waitingForTrigger && sweep auto` (Normal sweep also waits). Ask for a backend flag if it matters.
