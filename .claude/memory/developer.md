@@ -310,3 +310,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## M3 B3 lessons
 - Worktree-isolated shell refuses compound commands that mix git with other pipes; run one simple command per call. Fresh worktrees lack `frontend/node_modules`: `npm ci --prefer-offline` works.
 - Shared golden vectors: `engineering-format/tests/golden*.tsv` (value, quantity, text, unit); TS reads `golden.tsv` and `golden_analyse.tsv` in `frontend/tools/formatting-golden.test.ts`. Rust negative values that round to zero print no minus.
+## Autoset lib facts (B4)
+- `libs/autoset` budget: 3 probes per rung (1us, 100us, 20ms), 2 vertical retries, 1 period correction => at most 13 probes; `with_probe_limit` is cfg(test) for the budget test. Range fit must also check that the DC offset is reachable by the position (else a 3 V offset clips).
+- Harness in `libs/autoset/tests/harness` mirrors the 6254BC tables (2 mV..10 V, roll from index 25, 25 counts/div, centre code 128). Bash with heredocs plus `cd` is refused in worktrees; use Write and python3 edits.
