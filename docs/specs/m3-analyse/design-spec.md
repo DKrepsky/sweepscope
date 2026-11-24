@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | `NEEDS_HUMAN_APPROVAL` (gate G2) |
+| Status | Approved at G2 by the human, all defaults D1 to D11 (D11: persistence Yt only). `docs/design.md` amended |
 | Scope | One spec for the milestone. Full design for #26, #29, #31 (Design: needed). UI touchpoints for #22, #23, #24, #25, #27, #28, #30 |
 | Sources | `docs/prd.md` (5.2, 6, US-05 to US-16), `docs/design.md` (3.5, 4, 5, 8, 9, 10), `docs/architecture.md` 5, issues #22 to #31 |
 | Wireframes | `prototypes/persistence.html`, `fft.html`, `xy.html` (full window, 1440 x 900), `touchpoints.html` (state sheet). Tokens from `docs/design-prototype/tokens.css` plus the PROPOSED block in `prototypes/m3.css` |

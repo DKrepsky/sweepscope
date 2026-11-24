@@ -176,8 +176,8 @@ Text scale and OS scale are independent: the OS scale changes device pixels per 
 
 ### 3.5 Other views and empty state
 
-- **XY**: same regions; the screen shows X vs Y with the same graticule; the Horizontal group's Time/div row is replaced in place by the X/Y channel selectors (the group does not change size).
-- **FFT**: the screen shows the spectrum; window selector replaces Interp in the Horizontal group; carries an `SW` badge (the SW rule: section 4).
+- **XY** (M3, spec `specs/m3-analyse/design-spec.md` 4): same regions; one trace in the Y channel colour; scale tags `Y CH2 200 mV/div` and `X CH1 500 mV/div`. The Horizontal group keeps `Time/div` (it sets the sample rate); the `Trig pos` and `Interp` rows become `X axis` and `Y axis` selectors. Trigger markers are hidden, Persist and Cursors are disabled with reasons. A missing channel gives a `ScreenNote` with the cause.
+- **FFT** (M3, spec 3): spectrum per enabled channel, tick labels inside the frame; the Horizontal group shows `Time/div`, `Scale` (`dBV | Linear`) and a `Window` menu (Rectangular, Hann, Hamming, Blackman) with the `SW` badge and the readline `Fs ... bin ... (Fs / N)`; the sidebar Cursors panel is replaced by the Peak marker panel (`Off | Auto | Manual`). Persist and Cursors are disabled with reasons.
 - **Roll**: moving time axis; trigger controls disabled with a tooltip; gap markers (4).
 - **No device**: graticule only with a centred note (state and next step). Controls are disabled, never hidden.
 
@@ -190,11 +190,11 @@ fixes **where** and **how** each is shown. Values in the prototype are placehold
 |---|---|---|---|
 | Effective sample rate, sample interval, record length (PRD 5.2, US-05) | Status bar items; Horizontal group readline | `Readout` with unit; changes highlight for the duration of one `motion-normal` | `Fs <value> <unit>`, `Ts <value>`, `Record <n> pts/ch` |
 | Capture rate and dead time (PRD 5.2) | Status bar item | Same | `Capture <n> /s  dead time <n> %` (exact quantities: Q-E1) |
-| Warning that the displayed signal may be misread (aliasing, US-05) | Banner (warning) over the screen; `Badge warning` on the affected measurement | Amber, dismissable, clears when the backend clears it | `<message from backend>` |
+| Warning that the displayed signal may be misread (aliasing, US-05) | `Badge warning` `Alias` on the status bar Fs item (amber, icon), the channel scale chip and the measurement column header; amber edge and footnote on that channel's Frequency and Period cells. No banner (M3 D6) | Dashed amber, clears with the backend state | Tooltip text in the M3 spec 6.2 |
 | Unverified value (PRD 5.2) | `Badge warning` `?` on channel row; `Badge warning` `Unverified` in scale strip; `?` after value and amber left edge in a measurement cell; badge inside dropdown items; tooltip | Dashed amber outline | Tooltip: `Unverified (see accuracy note).` plus note text from PM |
 | Accuracy note (PRD 5.2) | Status bar item `Accuracy` opening a Popover; cursor panel note line; trigger tooltip | Secondary text, `info` icon | Text owned by the PM (Q-E4) |
 | Software-computed feature (PRD open question 2) | `Badge software` `SW` next to the control or view | Solid blue outline | `SW` plus tooltip "Computed in software" |
-| Roll data gap (PRD 5.2, US-08) | Scope screen overlay | Amber translucent band between two dashed lines, label `GAP`; the gap region has no trace | `GAP` |
+| Roll data gap (PRD 5.2, US-08) | Scope screen overlay; status bar `Gaps n` item | Band in `color-gap-fill` between two dashed `status-warning` lines, label `GAP <duration>`, scrolls with the trace, no trace inside | `GAP` |
 | Invalid measurement (MEA-4) | Measurement cell | Muted `-` followed by footnote key `[n]`; reasons listed under the table and in a tooltip | `[n] <reason from backend>` |
 | Frozen data (disconnected, stopped by loss, offline) | Panel header; numeric cells | Muted values and `Frozen` or `Offline` badge | |
 | Experimental feature (PRD 5.2 video trigger) | `Badge experimental` | Dotted outline, control disabled | `Exp` plus tooltip |
@@ -276,6 +276,7 @@ Always with a text label and a glyph.
 | `color-status-warning` | `#e0a030` | `Unverified`, gap, warnings | dashed border or warning triangle |
 | `color-status-info` | `#7fb0e0` | `SW` | none |
 | `color-status-offline` | `#b0b8c4` | `Offline` | none |
+| `color-status-record` | `#ff8fb1` (M3) | `Rec` | filled dot |
 | `color-status-ok` | `#4fd18b` | calibration OK | dot |
 
 ### 5.6 Typography
@@ -331,7 +332,7 @@ Appearance only. Implementation (performance, algorithms, WebGL or Canvas) is in
 | Trigger guides | `color-trigger` at 45 % opacity, 1 px, dotted 3/5 |
 | Graticule | 1 px, `grid-major` lines each division, `grid-axis` centre axes with 5 ticks per division (`grid-tick`), `grid-frame` border |
 | Frozen frame | Traces at 40 % opacity; graticule unchanged |
-| Persistence (DSP-5) | Newest data in the full channel colour; older data fades by opacity only, hue unchanged; never brighter than the live trace |
+| Persistence (DSP-5) | Live frame in full channel colour on top; ghosts fade by age in opacity only, hue unchanged, from `opacity-persist-newest` 0.85 to `-oldest` 0.30 over the decay (`Infinite`: `-hold` 0.60); overlaps brighten by alpha compositing, capped below the live trace; a one-sample glitch keeps its min/max span of 8.3. Layer sits above the graticule and below reference, math, traces, cursors |
 | Draw order (bottom to top) | graticule, reference, math, CH4, CH3, CH2, CH1, selected channel on top, trigger guides, cursors, tags |
 
 ### 8.2 Interpolation modes (DSP-2) as appearance
@@ -389,13 +390,15 @@ All in `ui/`, props and callbacks only, composition by snippets, no application 
 | Menu | `items[]`, `onselect` | `item` | open, hover, disabled, with badge |
 | Tooltip | `delay` 500 ms | `children` | on hover and on focus |
 
+M3 additions (spec `specs/m3-analyse/design-spec.md` 7): `ScreenNote` (snippets `title`, `children`, `actions`; kind info or warning); `Graph` props `ticksX[]`, `ticksY[]`; `Menu` item `checked` (radio); `Marker` kinds `peak` and `axis="x"`; `StatusChip` kind `record` and text `Done`; `Button` busy look; `MeasurementMatrix` snippet `columnHeader`; icons `record`, `pulse-positive`, `pulse-negative`, `peak`, `info`. Token additions: `opacity-persist-newest/oldest/hold`, `color-gap-fill`, `color-status-record` (to be added to `tokens.css` by the developer).
+
 ### 9.1 Channel row
 
 `[number toggle] [Stepper volts/div] [NumberField position] [Segmented AC|DC] [ToggleButton BW] [ToggleButton probe] [ToggleButton Inv] [Badge ?]`. 3 px left border in the channel colour; selected row on `ch-tint`. A disabled channel: number toggle outline only, other controls at 40 % opacity, still keyboard reachable.
 
 ### 9.2 Trigger group
 
-Type (Edge, Pulse, Video disabled with `Exp`), source 1 to 4 (coloured, disabled when the channel is off), slope, level stepper, sweep (Auto, Normal), accuracy-note slot. Pulse swaps the level row for polarity, condition and width in place; the group keeps its size.
+Type (Edge, Pulse, Video disabled with `Exp`), source 1 to 4 (coloured, disabled when the channel is off), slope, level stepper, sweep (Auto, Normal), accuracy-note slot. **Pulse (M3, spec 6.4)**: the slope Segmented becomes polarity (positive or negative pulse), a `Width` row is added with condition Segmented `> < = ≠` and a `NumberField` (invalid input: error border and message, applied value kept), and the accuracy note moves to the Type row tooltip. **Roll**: the group is disabled in place with a visible reason line.
 
 ### 9.3 Acceptance criteria per component
 
@@ -561,7 +564,7 @@ For the Staff Engineer to validate against the driver's `docs/protocol.md`, `prd
 | Q-E8 | How is signal clipping detected and reported (for the `Clip` badge, MEA-4)? Full list of invalid-measurement reasons: backend strings or codes? | Staff |
 | Q-E9 | Fixed default values for the reset gestures (volts/div, time/div, trigger position). | PM |
 | Q-E10 | Anchor point for time zoom with the wheel (centre, trigger, pointer). | PM, Staff |
-| Q-E11 | Persistence presets and decay options (DSP-5). | PM |
+| Q-E11 | Persistence presets and decay options (DSP-5). | Closed: Off, 0.5 s, 1 s, 2 s, Infinite (architecture Q-E11) |
 | Q-E12 | Default text scale at first run on high-DPI screens; where the text scale is stored (presentation state in `app`, persisted via settings blob). | PM, Staff |
 | Q-E13 | Rendering implementation, for `architecture.md` section 5.7: performance budget (PRD 8.3 gives 60 fps and 33 ms), decimation and interpolation algorithms, WebGL2 and Canvas 2D parity with the visual contract of section 8, device-pixel snapping and multi-monitor scale changes, and how marker ghosts are reconciled with backend confirmation (including the 250 ms pending style). | Staff |
 | Q-E14 | Window minimum enforced in Tauri config, rem media queries support in the target WebKitGTK, and whether CSS container units may be used or the screen is sized in code. | Staff |
