@@ -6,7 +6,7 @@ Test plan: [test-plan.md](test-plan.md). Evidence (not committed): `.claude/tmp/
 
 ## Summary
 
-**Verdict: fail.** One blocker (BUG-M3-1) stops release; five further bugs are open (two medium, three low).
+**Verdict (round 1, superseded by the final verdict at the end of this file: conditional pass): fail.** One blocker (BUG-M3-1) stops release; five further bugs are open (two medium, three low).
 
 The blocker: the live app is built without its analysis wiring. `frontend/src/main.ts` calls `createLiveApp` without the `analysis` dependency, so the model gets `inertAnalysisSources()` and `inertAnalyseCommands`. In the real window **Single, Autoset (button and `A`), Persist, Math, Record, and the FFT view's data do nothing, and roll mode shows no trace**, although the backend, the IPC capabilities and both new streams work. Unit tests (1249) and Rust tests (996) cannot see this. Everything below marked "with QA shim" was verified only after I wired the missing sources and commands through a QA-only overlay in the scratchpad (no product file changed). Those results show what works once BUG-M3-1 is fixed; they must be retested against the real fix.
 
@@ -157,3 +157,54 @@ Fixed by QA (test code): `frontend/e2e/gallery.spec.ts` compared every colour to
 
 ## Screenshots and logs
 Kept in `.claude/tmp/m3-analyse/` (not committed): `s02` to `s25` screenshots (`s05-inert`, `s04-roll-c`, `s06-backend-driven` show BUG-M3-1; `s16-gap-a` the gap band; `s20-roll-1024` the toolbar overflow; `s24-pulse-abc` the duplicate error), `cargo-test.log`, `e2e-baseline.log`, `e2e-full.log`, `e2e-m3-run*.log`, app and vite logs.
+
+---
+
+# Retest round 2 (final): commit 590e813
+
+Date: 2026-11-24. Real window under Xvfb + Mesa, `SWEEPSCOPE_NO_HARDWARE=1`, USB masked (`unshare -rm`, 0 entries visible), isolated HOME, **no QA shim** (only the scratchpad bridge for DOM and IPC). Evidence in `.claude/tmp/m3-final/` and `.claude/tmp/m3-analyse/f*.png` (not committed). The 6254BC was never opened.
+
+## Final verdict: conditional pass
+
+BUG-M3-1 (blocker) and BUG-M3-2, 3 (except one residual), 4, 5, 6, 7 are fixed on the real wiring. No blocker remains. Four new findings, none a blocker (two medium, two low/medium); they are on the bus. Release needs the owners' decision on BUG-M3-10 (wrong math numbers on a held frame) and the 1024 roll toolbar; the rest can follow.
+
+## Automated suites (run once, alone)
+- `cargo test --workspace`: 998 passed, 0 failed; tree clean afterwards.
+- `vitest run`: pass (exit 0). `npm run typecheck`: clean.
+- Playwright chromium + webkit (default config): 564 passed, 1 skipped, 1 failed: the 33 ms frame budget probe (chromium, load sensitive); rerun alone with one worker: passed in both browsers. The `test.fail` bug annotations were removed by the developers and all those cases pass.
+
+## Real-window retest (no shim)
+| Item | Result |
+|---|---|
+| Autoset button (5 ms/div, 5 V/div start) | Pass: 1.5 s, `Auto-setup done. CH1 500 mV/div, 500 us/div.` Toast, `aria-busy`, Stop/Single/Force disabled, no dialog. `A` key (real key press) also runs it. |
+| Single | Pass: `waitingForTrigger`, then `done`, chips `Stop` + `Done`, held frame full intensity; level above signal waits; Single again cancels (`stopped`); Stop cancels; Run after Done resumes. |
+| Persist menu (UI) | Pass: items Off, 0.5 s, 1 s, 2 s, Infinite, Clear; backend `persistence: 1s`, button `Persist: 1 s`, tag `PERSIST 1 s`. Ghost fading watched live: bright-pixel share 4.67 % at 0 s, 4.31 % at 0.7 s, 3.17 % at 3.2 s after the trace stopped moving. Cursors on and 12 measurements with persistence on: pass (T-26-3). |
+| Math (UI) | Pass: M toggle, operation menu A+B, A-B, A x B (V2), Invert A; running A x B reads Vpp 1.01 V2; CH2 off gives `unavailable: CH2 is off`. Fails when changed while stopped: BUG-M3-10. |
+| Roll trace | Pass: trace drawn and filling the window (BUG-M3-1 closed); Cursors, Single, Force, Autoset, XY, FFT, Persist, Math disabled in roll (BUG-M3-2 closed). |
+| Record (UI + native Save dialog) | Pass: `Stop rec`, chip `REC 00:00:43 · 47.7 KIB` (KiB now everywhere), stop from UI. File read with `tools/roll-record-reader.py`: segments, contiguous samples, one gap record (`missed 22503`, estimated), `end: stopped`. Setup changes (channels) start new segments. |
+| Roll gap band | Pass: with 4 channels (span 32.8 s) a 45 s `SIGSTOP` gives band `GAP 45.0 s`, announcement `Data gap of 45.0 s`, gap record in the file. With 2 channels the buffer holds 65 s, so 30 s and 45 s stops correctly produce no gap (not a bug). |
+| FFT data (UI) | Pass: spectrum drawn, Auto peak 915.5 Hz at 305 Hz bins; windows Rectangular, Hamming, Blackman, Hann and dBV/Linear apply (backend and readout); at 3.05 Hz bins peak 1.001 kHz, -3.5 to -4.5 dBV. |
+| Peak marker keys | Pass: Tab reaches the `Peak marker` slider; Right/Left move one bin, Shift+Right ten bins, aria-valuetext follows. Home/End do nothing (not specified). Click gives Manual (focus stays on the screen group, keys need Tab). Marker glyph centred on its peak line (BUG-M3-7 closed). |
+| Pulse width error | Pass at 100 % and 200 %: drawn once, wraps inside the dock column (BUG-M3-4 closed). Ten H-06 style cases through the UI (`>`, `<`, `=`, `!=`): all trigger or wait as expected. |
+| `close_roll_stream`, `close_spectrum_stream` | Pass: both return null, no capability error in the vite log. (After closing, the page does not reopen the stream until reload; not a user path.) |
+| Roll Stop/Run race and display polling | Pass: ten Stop-then-Run cycles through the real buttons with 20 ms to 1 s gaps, plus five back-to-back `set_running(false)/(true)` IPC pairs: always `running`, trace scrolls, no false gap band over 7 s. No capability or console errors. |
+| Toolbar fit (scrollWidth/clientWidth, clipped, overlapping buttons) | Yt, XY, FFT: 1440, 1280 and 1024 all fit. Roll (also while recording): fits at 1440 and 1280; at 1024x720 scrollWidth 1066 vs 1024 and `Measurements drawer` (993-1017) is under `Settings` (992-1016): residual of BUG-M3-3, now BUG-M3-10 part 2. Brand text is hidden below 100 rem container width (1440 and 1280, and not rendered at 1024) as designed. `No signal` tag: cannot be produced on the simulator (fixed sine); covered by e2e only. |
+| Text scale 150 % and 200 % (1440x900) | Pass on the new rows: dock turns to tabs, M row, Pulse row and error, FFT Horizontal rows fit; the page scrolls inside the content area as designed. No clipping found. |
+| Ground X and trigger-position markers | **Fail**: BUG-M3-9. |
+
+## Bugs (round 2)
+| Bug | Severity | Owner | Status |
+|---|---|---|---|
+| BUG-M3-1 | Blocker | developer-8 | Closed |
+| BUG-M3-2 Cursors in roll | Medium | developer-10 | Closed |
+| BUG-M3-3 Toolbar overflow | Medium | developer-10 | Closed at 1440, 1280, and Yt/XY/FFT at 1024; roll at 1024 still 42 px wide (see M3-10) |
+| BUG-M3-4 Pulse error twice | Low | developer-8 | Closed |
+| BUG-M3-5 SW badge contrast | Low | developer-10 | Closed (axe e2e passes) |
+| BUG-M3-6 `No signal` tag | Medium | developer-10 | Closed in e2e; not reproducible in the real window |
+| BUG-M3-7 Peak marker offset | Low | developer-9 | Closed |
+| BUG-M3-8 M row: UNAVAILABLE badge over the B selector and SW badge; long roll text runs off the window | Low to medium | developer-8 | Open, sent |
+| BUG-M3-9 Ground, trigger level, trigger position and XY ground-X markers 8 px off their lines (centres y 362 vs 370, x 540 vs 548); same cause as the peak marker (hypothesis: margin offset in `.marker`) | Medium | developer-9 | Open, sent |
+| BUG-M3-10 (1) Math op changed while stopped keeps old derived data under the new unit (Vpp 46.3 mV2 instead of 1.01 V2); (2) roll toolbar 42 px too wide at 1024, drawer button under Settings | Medium | developer-10 | Open, sent |
+
+## Still not tested
+Hardware items H-01 to H-10 (human); the 1 h soaks; disk-full; `No signal` tag live; autoset on other frequencies (lib tests only); M while in FFT; real pointer hover on tooltips; Home/End on the peak marker (unspecified). The earlier SHIM results are now all repeated on the real wiring.

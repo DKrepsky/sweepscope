@@ -41,3 +41,5 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Roll/worker loops: check that end conditions are edge-triggered (generation counter), not level-read per poll, so Stop then Run inside one poll does not continue the old session.
 - Multi-source consumer loops (try_next on one subscription, timed wait on another) add latency and idle wake-ups; check POLL constants.
 - Check `git status` for untracked QA scratch files (playwright.qa.config.ts) at the end of every review.
+- Hand-maintained e2e stub command lists: check a test compares them with src-tauri/capabilities/main.json.
+- Worker session counters (bumped on state change) are the accepted fix for Stop-then-Run races; check a test restarts inside one poll.

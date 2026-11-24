@@ -131,3 +131,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Real-time Toast timing tests (feedback.spec.ts, WebKit) flake with three workers plus other load; rerun alone with `--workers=1` before calling it a regression. The frame budget probe (33 ms) is also load sensitive.
 - Toolbar layout is the weak spot: check `[data-region=toolbar]` scrollWidth against clientWidth in roll, FFT, XY at 1440 and 1024 (`xdotool windowsize <id> 1024 720`) after any toolbar change.
 - Ports used for scratch runs: vite 5373 (app), 5273 and 4273 (Playwright). Kill by PID from `ss -ltnp`; remove `playwright.qa.config.ts` when done.
+
+## M3 final retest lessons
+- Real-window recipe still works with scratchpad `qa/` (env.sh, run-app.sh, vite.qa.config.mjs bridge, ev.mjs) without QA_SHIM; rebuild with `TAURI_CONFIG` devUrl 5373. Q helpers: click by text (`startsWith`); after a click wait >= 20 ms before querying the DOM (Svelte updates async). Tab buttons for Run/Stop switch label with state.
+- Roll gap on the simulator needs `SIGSTOP` longer than 0.95 x buffer span: 65536/channels x interval (4 ch at 2 ms = 32.8 s, 2 ch = 65 s). Do not call `close_*_stream` from devtools and then judge the view: the page does not reopen the stream (reload).
+- Markers: measure `getBoundingClientRect` centres of `Channel n ground`, `Trigger level`, `Trigger position` against the canvas centre; found 8 px offset (BUG-M3-9). M row badge overlap and math-while-stopped stale data are easy to miss without zoomed crops.
+- Settings popover text scale (100/125/150/200 %) is clickable in the real window; at 150 % the dock becomes tabs and the content scrolls.
+- Full Playwright run 4.2 min on default ports; the 33 ms frame budget probe can fail under load in chromium, passes alone.
