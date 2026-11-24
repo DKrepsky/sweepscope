@@ -5,6 +5,8 @@
     dialog: CalibrationDialogModel;
     onstart: () => void;
     oncalibrate: () => void;
+    /** Accepts the rejected reading; offered only while the dialog says it may. */
+    oncontinue: () => void;
     /** Cancels before Done, closes at Done and after a failure. */
     onclose: () => void;
   }
@@ -24,7 +26,7 @@
   import NotShortedStep from './calibration-steps/NotShortedStep.svelte';
   import { channelNumbers } from './calibration-steps/channels';
 
-  const { dialog, onstart, oncalibrate, onclose }: CalibrationDialogProps = $props();
+  const { dialog, onstart, oncalibrate, oncontinue, onclose }: CalibrationDialogProps = $props();
 
   const bodyId = $props.id();
   // Read before the dialog takes the focus, so it can go back to whatever opened it (the status tag).
@@ -85,9 +87,9 @@
         {:else if dialog.step === 'measuring'}
           <MeasuringStep {channel} progress={dialog.progress} />
         {:else if dialog.step === 'notShorted'}
-          <NotShortedStep {channel} measured={dialog.notShorted} />
+          <NotShortedStep {channel} measured={dialog.notShorted} canContinue={dialog.canContinue} />
         {:else if dialog.step === 'done'}
-          <DoneStep table={dialog.table} />
+          <DoneStep table={dialog.table} overridden={dialog.overridden} />
         {:else}
           <FailedStep failure={dialog.failure ?? ''} />
         {/if}
@@ -107,6 +109,7 @@
       {:else if dialog.step === 'channel'}
         {@render primary('Calibrate', oncalibrate)}
       {:else if dialog.step === 'notShorted'}
+        {#if dialog.canContinue}<Button onclick={oncontinue}>Continue</Button>{/if}
         {@render primary('Try again', oncalibrate)}
       {:else}
         {@render primary('Measuring...', undefined)}

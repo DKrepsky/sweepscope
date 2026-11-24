@@ -1,4 +1,3 @@
-import type { CommandName } from './generated/commands';
 import type { FormattedValue } from './generated/FormattedValue';
 import type { OffsetRow } from './generated/OffsetRow';
 import type { TooltipText } from './generated/TooltipText';
@@ -140,8 +139,8 @@ export const createFakeZeroCalibration = (publish: (state: ZeroCalibrationState)
 
 type ZeroCommand = 'open' | 'start' | 'measure' | 'continue' | 'close';
 
-/** The commands answer from the session, like the shell does; `null` is their result. The names are typed loosely: `continue` is not in the generated contract yet. */
+/** The commands answer from the session, like the shell does; `null` is their result. */
 export const zeroCalibrationHandlers = (zero: FakeZeroCalibration) =>
   (['open', 'start', 'measure', 'continue', 'close'] as const).map(
-    (action: ZeroCommand) => [`${action}_zero_calibration` as CommandName, () => (zero[action](), null)] as const,
+    (action: ZeroCommand) => [`${action}_zero_calibration` as const, () => (zero[action](), null)] as const,
   );

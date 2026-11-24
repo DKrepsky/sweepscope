@@ -188,6 +188,26 @@ describe('calibration wiring in the live app', () => {
     expect(client.calls.filter((call) => call.name.endsWith('zero_calibration')).length).toBe(7);
   });
 
+  it('given a channel that is not shorted, when the user continues, then the sweep resumes and Done names the channel', async () => {
+    const { client, app } = setup();
+    await app.start();
+    const model = () => get(app.model);
+    client.zeroCalibration.leaveUnshorted(2);
+    app.model.openCalibration();
+    app.model.startCalibration();
+    app.model.calibrateChannel();
+    app.model.calibrateChannel();
+    expect(model().calibration.dialog).toMatchObject({ step: 'notShorted', channel: 2, canContinue: true });
+
+    app.model.continueChannel();
+
+    expect(client.calls.some((call) => call.name === 'continue_zero_calibration')).toBe(true);
+    expect(model().calibration.dialog).toMatchObject({ step: 'channel', channel: 3 });
+    app.model.calibrateChannel();
+    app.model.calibrateChannel();
+    expect(model().calibration.dialog).toMatchObject({ step: 'done', overridden: [false, true, false, false] });
+  });
+
   it('given a recording is active, when the user opens calibration, then the tag says why and no command is sent', async () => {
     const { client, app } = setup();
     client.respond('get_snapshot', () => stateSnapshot({ recording: recordingState({ active: true }) }));

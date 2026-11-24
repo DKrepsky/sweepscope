@@ -16,8 +16,6 @@ interface Deps {
   notify: (kind: 'error', text: string) => void;
 }
 
-// Not in the generated contract until the shell's manifest lists it; then this cast goes.
-const CONTINUE_COMMAND = 'continue_zero_calibration' as CommandName;
 const FALLBACK_MESSAGE = 'The calibration command failed';
 
 function messageOf(failure: unknown): string {
@@ -34,7 +32,7 @@ export function createCalibrationCommands({ client, notify }: Deps): Calibration
     openCalibration: run('open_zero_calibration'),
     startCalibration: run('start_zero_calibration'),
     calibrateChannel: run('measure_zero_calibration'),
-    continueChannel: run(CONTINUE_COMMAND),
+    continueChannel: run('continue_zero_calibration'),
     closeCalibration: run('close_zero_calibration'),
   };
 }
