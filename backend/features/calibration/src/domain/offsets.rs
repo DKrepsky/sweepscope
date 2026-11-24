@@ -9,6 +9,8 @@ pub const FILE_KEY: &str = "zero-offsets.json";
 pub const CORRUPT_KEY: &str = "zero-offsets.json.corrupt";
 const FORMAT: &str = "sweepscope-zero-offsets";
 const VERSION: u32 = 1;
+/// Four times the largest range (10 V/div): a stored offset beyond it is damage, not calibration.
+const MAX_OFFSET_VOLTS: f64 = 40.0;
 
 /// Offsets of one unit: volts at the input, per channel and range index.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,7 +76,13 @@ impl OffsetFile {
 
 fn parse(bytes: &[u8]) -> Option<BTreeMap<String, StoredUnit>> {
     let body: Body = serde_json::from_slice(bytes).ok()?;
-    (body.format == FORMAT && body.version == VERSION).then_some(body.units)
+    let sane = body.units.values().all(|unit| {
+        unit.volts
+            .iter()
+            .flatten()
+            .all(|v| v.is_finite() && v.abs() <= MAX_OFFSET_VOLTS)
+    });
+    (body.format == FORMAT && body.version == VERSION && sane).then_some(body.units)
 }
 
 fn keep_corrupt_copy(storage: &dyn Storage, bytes: &[u8]) -> Result<(), KernelError> {

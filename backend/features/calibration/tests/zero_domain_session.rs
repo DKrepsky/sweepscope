@@ -138,6 +138,30 @@ fn given_a_channel_with_fewer_offsets_when_done_then_the_missing_cells_are_none(
     assert!(table[11].offsets[1].is_some());
 }
 
+fn first_cell_after(first_channel: Vec<f64>) -> (String, String) {
+    let mut machine = at_channel_one();
+    machine.measure().unwrap();
+    machine.accept(first_channel).unwrap();
+    accept_channels(&mut machine, 3);
+    machine.committed().unwrap();
+    let cell = machine.view().table.unwrap()[0].offsets[0].clone().unwrap();
+    (cell.text, cell.unit)
+}
+
+#[test]
+fn given_a_stored_zero_when_done_then_the_cell_reads_zero_volts() {
+    let cell = first_cell_after(vec![0.0; RANGES.len()]);
+
+    assert_eq!(cell, ("0".to_owned(), "V".to_owned()));
+}
+
+#[test]
+fn given_a_small_stored_offset_when_done_then_the_cell_keeps_the_engineering_form() {
+    let cell = first_cell_after(vec![-41.2e-6; RANGES.len()]);
+
+    assert_eq!(cell, ("\u{2212}41.2".to_owned(), "uV".to_owned()));
+}
+
 #[test]
 fn given_a_rejected_channel_when_viewed_then_it_keeps_the_channel_and_earlier_results_and_shows_the_lines() {
     let mut machine = at_channel_one();

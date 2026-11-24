@@ -22,7 +22,7 @@ use crate::{ZeroCalibrationChanged, ZeroCalibrationState, ZeroStep};
 const HOLD_REASON: &str = "Zero calibration is open";
 const REFUSAL_SHOWN: Duration = Duration::from_secs(3);
 
-const DEVICE_LOST: &str = "The scope was disconnected. Nothing was stored.";
+const DEVICE_LOST: &str = "Device disconnected. Calibration cancelled. Nothing was stored.";
 const PROBE_FAILED: &str = "The scope delivered no data for the measurement. Nothing was stored.";
 const PROBE_TIMED_OUT: &str = "The scope did not answer in time. Nothing was stored.";
 const CHANNEL_TIMED_OUT: &str = "The channel took too long to measure. Nothing was stored.";
@@ -104,6 +104,8 @@ impl Core {
         self.slice.state()
     }
 
+    // Lock invariant (open, close, request_probe): the module lock is held across `bus.request`. Safe because the
+    // acquisition handlers for Hold/CaptureProbe return at once and never call back into this module.
     pub fn open(&mut self) -> Result<(), KernelError> {
         if self.session.is_some() {
             return Ok(());

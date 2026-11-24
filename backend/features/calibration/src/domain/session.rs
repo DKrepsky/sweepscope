@@ -133,11 +133,23 @@ impl SessionMachine {
                 range: formatted(range, Quantity::VoltsPerDiv),
                 offsets: self.results.each_ref().map(|result| {
                     let volts = result.as_ref()?.get(index)?;
-                    Some(formatted(*volts, Quantity::Volts))
+                    Some(offset_cell(*volts))
                 }),
             })
             .collect()
     }
+}
+
+/// A stored zero reads `0 V` (design), not the readout's `0.00 V`.
+fn offset_cell(volts: f64) -> FormattedValue {
+    if volts == 0.0 {
+        return FormattedValue {
+            value: 0.0,
+            text: "0".to_owned(),
+            unit: "V".to_owned(),
+        };
+    }
+    formatted(volts, Quantity::Volts)
 }
 
 fn formatted(value: f64, quantity: Quantity) -> FormattedValue {

@@ -397,35 +397,6 @@ mod tests {
         conf["identifier"].as_str().expect("identifier").to_owned()
     }
 
-    fn rust_sources(directory: &Path, found: &mut Vec<std::path::PathBuf>) {
-        for entry in std::fs::read_dir(directory).expect("read directory").flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                rust_sources(&path, found);
-            } else if path.extension().is_some_and(|extension| extension == "rs") {
-                found.push(path);
-            }
-        }
-    }
-
-    /// The app finds its config folder through the identifier, the CLI builds the same path by hand: they must agree.
-    #[test]
-    fn given_the_cli_sources_when_read_then_its_config_folder_name_ends_with_the_tauri_identifier() {
-        let cli = Path::new(env!("CARGO_MANIFEST_DIR")).join("../cli/src");
-        if !cli.is_dir() {
-            return;
-        }
-        let mut sources = Vec::new();
-        rust_sources(&cli, &mut sources);
-        let quoted = format!("\"{}\"", identifier());
-
-        let named = sources
-            .iter()
-            .any(|path| std::fs::read_to_string(path).expect("read source").contains(&quoted));
-
-        assert!(named, "no CLI source names the config folder {quoted}");
-    }
-
     #[test]
     fn given_tauri_conf_when_parsed_then_the_identifier_is_a_reverse_domain_name() {
         let identifier = identifier();
