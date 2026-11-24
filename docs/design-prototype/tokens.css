@@ -65,6 +65,15 @@
   --ss-color-status-info:         #7fb0e0;
   --ss-color-status-offline:      #b0b8c4;
   --ss-color-status-ok:           #4fd18b;
+  --ss-color-status-record:       #ff8fb1;
+
+  /* Roll gap band */
+  --ss-color-gap-fill: rgb(224 160 48 / 0.14);
+
+  /* Persistence ghosts: graded by age in opacity only, hue unchanged */
+  --ss-opacity-persist-newest: 0.85;
+  --ss-opacity-persist-oldest: 0.3;
+  --ss-opacity-persist-hold: 0.6;
 
   /* Typography */
   --ss-font-ui:   system-ui, "Segoe UI", "Noto Sans", "DejaVu Sans", sans-serif;

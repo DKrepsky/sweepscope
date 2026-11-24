@@ -34,6 +34,12 @@
     <Button pressed>On</Button>
     <Button disabled disabledReason="Stop acquisition first">Disabled</Button>
   </Row>
+  <Row label="Busy">
+    <Button busy ariaLabel="Autoset running">
+      {#snippet left()}<Icon name="autoset" />{/snippet}
+      Autoset
+    </Button>
+  </Row>
   <Row label="Sizes">
     <Button size="sm">Small</Button>
     <Button size="md">Medium</Button>

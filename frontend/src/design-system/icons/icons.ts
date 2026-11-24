@@ -36,6 +36,10 @@ export const icons = {
   'falling-edge': grid(line('M2 4h4v8h8')),
   warning: grid(line('M8 2l6.5 11.5h-13zM8 6.5v3.2M8 11.4v.4')),
   info: grid(line(circle(8, 8, 6)), line('M8 7.2v4.3M8 4.6v.4')),
+  record: grid(solid(circle(8, 8, 4.5))),
+  'pulse-positive': grid(line('M2 12h3.5V4h5v8H14')),
+  'pulse-negative': grid(line('M2 4h3.5v8h5V4H14')),
+  peak: grid(solid('M3 5h10L8 12z'), line('M8 2v1.5')),
   close: grid(line('M4 4l8 8M12 4l-8 8')),
   disconnected: grid(line('M7 5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11l-1 1a2.5 2.5 0 0 1-3.5-3.5l1-1M3 13L13 3')),
 } as const satisfies Record<string, IconDefinition>;

@@ -11,8 +11,8 @@ describe('Icon', () => {
     expect(svg?.querySelectorAll('path').length).toBeGreaterThan(0);
   });
 
-  it('given the icon set, when counted, then it has 20 names', () => {
-    expect(iconNames).toHaveLength(20);
+  it('given the icon set, when counted, then it has 24 names', () => {
+    expect(iconNames).toHaveLength(24);
   });
 
   it('given a name outside the set, when passed to Icon, then TypeScript rejects it', () => {

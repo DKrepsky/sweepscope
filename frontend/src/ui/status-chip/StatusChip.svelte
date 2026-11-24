@@ -2,7 +2,18 @@
   import type { Snippet } from 'svelte';
 
   export type StatusChipKind =
-    'run' | 'stop' | 'armed' | 'triggered' | 'auto' | 'disconnected' | 'error' | 'warning' | 'info' | 'offline' | 'ok';
+    | 'run'
+    | 'stop'
+    | 'armed'
+    | 'triggered'
+    | 'auto'
+    | 'disconnected'
+    | 'error'
+    | 'warning'
+    | 'info'
+    | 'offline'
+    | 'ok'
+    | 'record';
 
   export interface StatusChipProps {
     kind: StatusChipKind;
@@ -33,6 +44,7 @@
     info: 'info',
     offline: 'minus',
     ok: 'dot',
+    record: 'dot',
   };
   const glyph = $derived(glyphs[kind]);
 </script>
@@ -84,6 +96,10 @@
 
   .ok {
     color: var(--ss-color-status-ok);
+  }
+
+  .record {
+    color: var(--ss-color-status-record);
   }
 
   .stop {

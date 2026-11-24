@@ -13,6 +13,8 @@
     tone?: 'run' | 'stop';
     disabled?: boolean;
     disabledReason?: string;
+    /** Work in progress: shows a spinner on the right and sets `aria-busy`. The size does not change. */
+    busy?: boolean;
     title?: string;
     ariaLabel?: string;
     onclick?: () => void;
@@ -31,6 +33,7 @@
     tone,
     disabled = false,
     disabledReason,
+    busy = false,
     title,
     ariaLabel,
     onclick,
@@ -42,7 +45,7 @@
 
   let down = $state(false);
   const tip = $derived(disabled ? disabledReason : title);
-  const iconOnly = $derived(!children && !right);
+  const iconOnly = $derived(!children && !right && !busy);
 
   function activate() {
     if (!disabled) onclick?.();
@@ -64,6 +67,7 @@
     class={['btn focus-ring', size, tone, { on: pressed, icon: iconOnly, disabled }]}
     aria-disabled={disabled ? 'true' : undefined}
     aria-pressed={pressed}
+    aria-busy={busy ? 'true' : undefined}
     aria-label={ariaLabel}
     data-pressed={down ? 'true' : undefined}
     onclick={activate}
@@ -74,7 +78,12 @@
   >
     {@render left?.()}
     {@render children?.()}
-    {@render right?.()}
+    {#if busy}
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="dots" aria-hidden="true">...</span>
+    {:else}
+      {@render right?.()}
+    {/if}
   </button>
 {/snippet}
 
@@ -149,6 +158,37 @@
   .stop {
     color: var(--ss-color-status-stop);
     border-color: var(--ss-color-status-stop);
+  }
+
+  .spinner {
+    flex: none;
+    width: var(--ss-size-icon);
+    height: var(--ss-size-icon);
+    border: var(--ss-border-width-focus) solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .dots {
+    display: none;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner {
+      display: none;
+    }
+
+    .dots {
+      display: inline;
+      width: var(--ss-size-icon);
+    }
   }
 
   .btn.disabled {

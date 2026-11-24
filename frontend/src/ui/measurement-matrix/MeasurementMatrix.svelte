@@ -9,9 +9,11 @@
     frozenLabel?: 'Frozen' | 'Offline';
     footnotes: MeasurementFootnote[];
     cell?: Snippet<[MeasurementCell]>;
+    /** Rendered after the label inside the column header, for example an alias badge. */
+    columnHeader?: Snippet<[MeasurementColumn]>;
   }
 
-  const { columns, rows, frozenLabel, footnotes, cell }: Props = $props();
+  const { columns, rows, frozenLabel, footnotes, cell, columnHeader }: Props = $props();
 
   const isMuted = (c: MeasurementCell) => frozenLabel !== undefined || c.state === 'invalid' || c.state === 'stale';
   const shownText = (c: MeasurementCell) => (c.state === 'invalid' ? '-' : c.text);
@@ -33,7 +35,9 @@
     <tr>
       <th scope="col" class="corner">{frozenLabel ?? ''}</th>
       {#each columns as column (column.id)}
-        <th scope="col" class="ss-num channel" style:--column-colour="var(--ss-{column.color})">{column.label}</th>
+        <th scope="col" class="ss-num channel" style:--column-colour="var(--ss-{column.color})">
+          {column.label}{@render columnHeader?.(column)}
+        </th>
       {/each}
     </tr>
   </thead>
