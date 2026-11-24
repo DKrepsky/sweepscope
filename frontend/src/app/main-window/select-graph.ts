@@ -1,13 +1,17 @@
 import type { ConnectionSnapshot, InstrumentState } from '../../api';
 import { graphState } from '../instrument';
-import type { DecodedFrame } from '../waveform';
+import type { DecodedFrame, TraceChannel } from '../waveform';
 import type { ChannelNumber, GraphModel } from './types';
 
 const SCREEN = 'Yt display, 10 by 8 divisions.';
 
+/** The math trace (5) waits for the graph component to draw it; until then only the four inputs reach the screen. */
+const isInput = <T extends { channel: TraceChannel }>(trace: T): trace is T & { channel: ChannelNumber } =>
+  trace.channel !== 5;
+
 /** The selected trace is drawn last so it lies on top. */
 function drawOrder(frame: DecodedFrame, selected: ChannelNumber): GraphModel['channels'] {
-  const traces = frame.channels.map(({ channel, samples }) => ({ channel, samples }));
+  const traces = frame.channels.filter(isInput).map(({ channel, samples }) => ({ channel, samples }));
   return [...traces.filter((t) => t.channel !== selected), ...traces.filter((t) => t.channel === selected)];
 }
 
