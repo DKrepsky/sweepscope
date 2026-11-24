@@ -28,7 +28,6 @@ const measure = (id: Measurement['id'], label: string, text: string, unit: strin
 const channel = (number: number) => ({
   channel: number,
   clipped: false,
-  unverified: null,
   measurements: [
     measure('frequency', 'Frequency', '62.0', 'MHz'),
     measure('period', 'Period', '16.1', 'ns'),
@@ -39,7 +38,6 @@ const channel = (number: number) => ({
 const slice = (channels: number[], warnings: Warning[] = []): MeasurementsState => ({
   revision: 1,
   channels: channels.map(channel),
-  accuracyNote: '',
   warnings,
 });
 
@@ -118,7 +116,6 @@ const instrument = {
     bandwidthLimit: false,
     probeText: '1x',
     invert: false,
-    unverified: null,
     enable: { enabled: true },
   })),
 } as unknown as InstrumentState;

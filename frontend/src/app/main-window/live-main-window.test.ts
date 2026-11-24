@@ -9,13 +9,7 @@ import type {
   MeasurementsState,
 } from '../../api';
 import { createCursorsStore } from '../cursors';
-import {
-  acquisitionStatus,
-  connectionSnapshot,
-  instrumentFacts,
-  instrumentState,
-  measurementsState,
-} from '../instrument/test-data';
+import { acquisitionStatus, connectionSnapshot, instrumentFacts, instrumentState } from '../instrument/test-data';
 import type { InstrumentCommands } from '../instrument';
 import type { AnalyseCommands, RollInput, SpectrumFrameInput } from '../views';
 import type { RecordingState } from '../../api/generated/RecordingState';
@@ -193,11 +187,6 @@ describe('live main window model: channels', () => {
     });
   });
 
-  it('given an unverified range, when read, then the channel carries the reason text', () => {
-    const { window } = setup({ instrument: withChannel(2, { unverified: 'Unverified range: above 1 V per div.' }) });
-    expect(model(window).channels[1]?.unverified).toBe('Unverified range: above 1 V per div.');
-  });
-
   it('given a channel that cannot be disabled, when read, then the enable reason is shown', () => {
     const { window } = setup({
       instrument: withChannel(1, { enable: { enabled: false, reason: 'At least one channel must stay on' } }),
@@ -238,18 +227,6 @@ describe('live main window model: horizontal and trigger', () => {
       window: '10.0 of 16.4 div',
       overview: { windowStart: 0.2, windowSize: 0.6, triggerTick: 0.5 },
     });
-  });
-
-  it('given a verified time base, when read, then the horizontal model carries no unverified marker', () => {
-    const { window } = setup();
-    expect(model(window).horizontal.unverified).toBeUndefined();
-  });
-
-  it('given an unverified time base, when read, then the horizontal model carries the unverified marker text', () => {
-    const state = instrumentState();
-    const timeBase = { ...state.horizontal.timeBase, verified: false };
-    const { window } = setup({ instrument: { ...state, horizontal: { ...state.horizontal, timeBase } } });
-    expect(model(window).horizontal.unverified).toBe('Unverified (see accuracy note).');
   });
 
   it('given facts with a rate and an interval, when read, then the rate note shows them', () => {
@@ -511,12 +488,6 @@ describe('live main window model: status accuracy note', () => {
     const { window } = setup();
     expect(model(window).status.accuracy).toBe('No measurement yet');
   });
-
-  it('given a measurements slice, when read, then the status accuracy is the slice note', () => {
-    const { window, measurements } = setup();
-    measurements.set(measurementsState({ accuracyNote: 'Backend wording.' }));
-    expect(model(window).status.accuracy).toBe('Backend wording.');
-  });
 });
 
 describe('live main window model: analysis actions', () => {
@@ -700,7 +671,7 @@ describe('live main window model: pulse trigger and math', () => {
       trigger: {
         ...base.trigger,
         kind: 'pulse',
-        pulse: { condition: 'greater', width: value('500', 'µs') as never, verified: true },
+        pulse: { condition: 'greater', width: value('500', 'µs') as never },
       },
     };
   };
@@ -710,7 +681,7 @@ describe('live main window model: pulse trigger and math', () => {
 
     expect(model(window).trigger).toMatchObject({
       type: 'pulse',
-      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, verified: true },
+      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' } },
     });
     expect(model(window).trigger.pulse?.error).toBeUndefined();
   });
@@ -814,7 +785,7 @@ describe('live main window model: pulse trigger and math', () => {
       trigger: {
         ...base.trigger,
         kind: 'pulse',
-        pulse: { condition: 'greater', width: value('500', 'µs'), verified: true },
+        pulse: { condition: 'greater', width: value('500', 'µs') },
       },
     };
   };
@@ -826,7 +797,7 @@ describe('live main window model: pulse trigger and math', () => {
 
     expect(model(window).trigger).toMatchObject({
       type: 'pulse',
-      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, verified: true },
+      pulse: { condition: 'greater', width: { value: '500', unit: 'µs' } },
     });
     expect(model(window).trigger.pulse?.error).toBeUndefined();
   });

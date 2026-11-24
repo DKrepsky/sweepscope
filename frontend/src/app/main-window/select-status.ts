@@ -12,7 +12,7 @@ const factText = (fact: Fact | undefined): string => (fact ? `${fact.text} ${fac
 const recordSpan = (instrument: InstrumentState | undefined): string =>
   /\bof (.+)$/.exec(instrument?.horizontal.windowText ?? '')?.[1] ?? NOT_MEASURED;
 
-/** Shown when no measurements slice exists yet; the wording itself is backend-owned. */
+/** Kept until the status bar shows the calibration tag instead of the accuracy popover. */
 const NO_ACCURACY_NOTE = 'No measurement yet';
 
 export function selectStatus(
@@ -38,6 +38,6 @@ export function selectStatus(
       tooltip: 'Frames per second the USB cycle delivers, and the share of time the scope is actually capturing',
     },
     renderer,
-    accuracy: measurements?.accuracyNote || NO_ACCURACY_NOTE,
+    accuracy: NO_ACCURACY_NOTE,
   };
 }

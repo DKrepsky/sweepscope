@@ -35,7 +35,6 @@ function toChannel(
     bandwidthLimit: state.bandwidthLimit,
     probe: state.probeText.replace('x', '×'),
     inverted: state.invert,
-    ...(state.unverified && { unverified: state.unverified }),
     ...(clipped && { clipped }),
     groundPosition: fractionFromCentre(state.positionDivs),
     ...(!state.enable.enabled && state.enable.reason && { enableReason: state.enable.reason }),

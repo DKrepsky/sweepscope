@@ -9,18 +9,17 @@ import {
 } from './select-common';
 import type { PulseModel, TriggerModel } from './types';
 
-/** Empty until the accuracy wording is decided (PRD 5.2, question Q-E4); the group hides an empty note. */
+/** Placeholder slot for the trigger position accuracy (PRD 5.2); the group hides an empty note. */
 const ACCURACY_NOTE = '';
 
 type PulseState = NonNullable<InstrumentState['trigger']['pulse']>;
 
 /** The error text is fixed wording around the width the backend still applies. */
-function toPulse({ condition, width, verified }: PulseState, rejected: boolean): PulseModel {
+function toPulse({ condition, width }: PulseState, rejected: boolean): PulseModel {
   const applied = toQuantity(width);
   return {
     condition,
     width: applied,
-    verified,
     ...(rejected && {
       error: `Invalid width. Enter a time such as 500 µs. Applied: ${applied.value} ${applied.unit.replace(/^us$/, 'µs')}.`,
     }),
