@@ -24,6 +24,8 @@ pub enum SignalKind {
     Square,
     Triangle,
     Calibrator,
+    /// An input shorted to ground: 0 V plus the offset; the device adds the per-range zero error and noise.
+    Shorted,
     /// Pulses of `width_s` between the centres of their edges, one per period, starting at `t = 0`.
     /// A negative `amplitude_v` in the spec turns them into negative pulses (an inverted train).
     PulseTrain {
@@ -83,7 +85,25 @@ impl From<SignalKind> for SignalSpec {
 
 /// Voltage at simulated time `t` (seconds), noise included.
 pub fn sample(spec: &SignalSpec, t: f64) -> f64 {
-    clean(spec, t) + noise(t)
+    match spec.kind {
+        SignalKind::Shorted => clean(spec, t),
+        _ => clean(spec, t) + noise(t),
+    }
+}
+
+/// Normally distributed noise with standard deviation `sd_volts`, a different sequence per channel.
+pub fn gaussian_noise(channel: usize, t: f64, sd_volts: f64) -> f64 {
+    if sd_volts == 0.0 {
+        return 0.0;
+    }
+    let mut state = t.to_bits() ^ NOISE_SEED ^ (channel as u64 + 1).wrapping_mul(0xD6E8_FEB8_6659_FD93);
+    let sum: f64 = (0..12)
+        .map(|_| {
+            state = xorshift64(state);
+            state as f64 / u64::MAX as f64
+        })
+        .sum();
+    sd_volts * (sum - 6.0)
 }
 
 /// Voltage without noise. All waveforms start a period at `t = 0` going up (or high).
@@ -94,6 +114,7 @@ pub fn clean(spec: &SignalSpec, t: f64) -> f64 {
         SignalKind::Sine => (TAU * phase).sin(),
         SignalKind::Square => square_wave(phase),
         SignalKind::Triangle => triangle_wave(phase),
+        SignalKind::Shorted => 0.0,
         SignalKind::Calibrator => trapezoid_level(phase * period, period, period / 2.0),
         SignalKind::PulseTrain { width_s } => trapezoid_level(phase * period, period, width_s),
     };
@@ -291,6 +312,29 @@ mod tests {
             .collect();
         assert!(noises.iter().all(|n| n.abs() <= NOISE_AMPLITUDE_V));
         assert!(noises.iter().any(|n| *n > 0.0) && noises.iter().any(|n| *n < 0.0));
+    }
+
+    #[test]
+    fn given_a_shorted_input_when_sampled_then_it_is_exactly_zero_volts_without_noise() {
+        let spec = SignalSpec::new(SignalKind::Shorted);
+
+        assert!((0..100).all(|i| sample(&spec, i as f64 * 1e-4) == 0.0));
+    }
+
+    #[test]
+    fn given_gaussian_noise_when_many_instants_are_drawn_then_mean_is_zero_and_sd_matches() {
+        let draws: Vec<f64> = (0..20_000).map(|i| gaussian_noise(0, i as f64 * 1e-6, 2.0)).collect();
+        let mean = draws.iter().sum::<f64>() / draws.len() as f64;
+        let sd = (draws.iter().map(|d| (d - mean).powi(2)).sum::<f64>() / draws.len() as f64).sqrt();
+
+        assert!(mean.abs() < 0.05, "{mean}");
+        assert!((sd - 2.0).abs() < 0.05, "{sd}");
+    }
+
+    #[test]
+    fn given_two_channels_when_noise_is_drawn_at_one_instant_then_they_differ_and_zero_sd_gives_zero() {
+        assert_ne!(gaussian_noise(0, 0.5, 1.0), gaussian_noise(1, 0.5, 1.0));
+        assert_eq!(gaussian_noise(0, 0.5, 0.0), 0.0);
     }
 
     #[test]

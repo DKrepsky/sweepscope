@@ -70,7 +70,14 @@ fn identity_of<T: Transport>(scope: &mut Scope<T>) -> DeviceIdentity {
         fpga_version: Some(format!("0x{:04X}", info.fpga_version)),
         calibration: CalibrationStatus::Valid,
         simulated: false,
+        unit_id: unit_id(&info.name, &info.pcb_version, &info.serial),
     }
+}
+
+/// `None` when the vendor's serial-like field is empty, so two blank units never share an offset file.
+fn unit_id(family: &str, pcb: &str, serial: &str) -> Option<String> {
+    let serial = serial.trim_matches(|c: char| c.is_whitespace() || c == '\0');
+    (!serial.is_empty()).then(|| format!("{family}/{pcb}/{serial}"))
 }
 
 impl<T: Transport + Send> ScopeDevice for HantekDevice<T> {
@@ -117,5 +124,29 @@ impl<T: Transport + Send> ScopeDevice for HantekDevice<T> {
 
     fn stop(&mut self) -> Result<(), DeviceError> {
         self.scope.stop().map_err(device_error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unit_id;
+
+    #[test]
+    fn given_family_pcb_and_serial_when_the_unit_id_is_built_then_they_are_joined_with_slashes() {
+        assert_eq!(unit_id("6000", "P1.06", "ABC123").as_deref(), Some("6000/P1.06/ABC123"));
+    }
+
+    #[test]
+    fn given_a_serial_with_padding_when_the_unit_id_is_built_then_the_padding_is_trimmed() {
+        assert_eq!(
+            unit_id("6000", "P1.06", "  ABC123 \0\0").as_deref(),
+            Some("6000/P1.06/ABC123")
+        );
+    }
+
+    #[test]
+    fn given_an_empty_or_blank_serial_when_the_unit_id_is_built_then_there_is_none() {
+        assert_eq!(unit_id("6000", "P1.06", ""), None);
+        assert_eq!(unit_id("6000", "P1.06", "   \0"), None);
     }
 }

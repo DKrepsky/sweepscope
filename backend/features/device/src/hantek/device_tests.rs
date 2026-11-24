@@ -127,6 +127,11 @@ fn given_a_scripted_scope_when_opened_then_the_identity_is_labelled_with_what_th
 }
 
 #[test]
+fn given_a_scripted_scope_with_an_empty_serial_field_when_opened_then_the_unit_id_is_none() {
+    assert_eq!(device().identity().unit_id, None);
+}
+
+#[test]
 fn given_a_scope_when_opened_then_the_capabilities_are_the_shared_tables() {
     assert_eq!(device().capabilities(), &crate::profile::capabilities());
 }
