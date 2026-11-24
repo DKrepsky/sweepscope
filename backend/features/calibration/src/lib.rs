@@ -5,6 +5,8 @@ pub mod domain;
 mod messages;
 mod module;
 
+pub use module::{CalibrationDeps, CalibrationModule};
+
 pub use messages::{
     CloseZeroCalibration, GetZeroCalibration, MeasureZeroChannel, OffsetRow, OpenZeroCalibration, StartZeroCalibration,
     TooltipRow, TooltipText, UnitCalibration, ZeroCalibrationChanged, ZeroCalibrationState, ZeroSession, ZeroStep,
