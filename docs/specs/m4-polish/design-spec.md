@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | NEEDS_HUMAN_APPROVAL (G2). Revision 4 (Done table per range, Q10 resolved); revision 3 (copy, status bar layout, connection item); revision 2 supersedes the first G2 draft (task-panel wizard, Zero offset row, marker popovers), which is void after the M4 G1 re-approval |
+| Status | NEEDS_HUMAN_APPROVAL (G2). Revision 5 (hardware feedback: no focus ring on the step heading, `Continue` in the not-shorted step, per-channel tooltip rows; changes marked "rev 5"); revision 4 (Done table per range, Q10 resolved); revision 3 (copy, status bar layout, connection item); revision 2 supersedes the first G2 draft (task-panel wizard, Zero offset row, marker popovers), which is void after the M4 G1 re-approval |
 | Scope | Full design: #33 calibration dialog and bottom-bar status tag, #37 application icon. UI touchpoints: #34 (status tooltip), #50 (removal of the UNVERIFIED and PARTIALLY VERIFIED tags). #38 (CLI) needs no design |
 | Sources | `docs/prd.md` (5.2, VER-3, US-14, APP-4), `docs/design.md` (3, 4, 9, 10.3), issues #33, #34, #37, #50 as amended |
 | Wireframes | `prototypes/calibration-dialog.html` (all dialog states), `status-tag.html` (tag in both states, tooltips, focus, no device, connection item states), `main-window.html` and `main-window-calibrated.html` (1440 x 900, markers removed, tag in place), `main-window-dialog.html` (dialog over the window, acquisition paused), `icon-preview.html`. Tokens from `docs/design-prototype/tokens.css`, PROPOSED rules in `prototypes/m4.css` |
@@ -22,15 +22,30 @@ Journey: see `NO CALIBRATION` in the bottom bar -> click it -> read why and pres
 
 | State | Look | Text | Hover or focus tooltip |
 |---|---|---|---|
-| Not calibrated (device connected) | Amber outline, warning icon, solid border (no dashed look: that belonged to the removed Unverified tag) | `NO CALIBRATION` | Standard previously measured values (placeholder) and "Click to calibrate." |
-| Calibrated (all channels stored) | Green outline, check icon | `CALIBRATED` | Stored date, stored offsets per channel, the accuracy summary with offsets, "Click to calibrate again." |
+| Not calibrated (device connected) | Amber outline, warning icon, solid border (no dashed look: that belonged to the removed Unverified tag) | `NO CALIBRATION` | Lead `No calibration`, caption `Typical zero error:`, one row per enabled channel (2.2), `Click to calibrate.` |
+| Calibrated (all channels stored) | Green outline, check icon | `CALIBRATED` | Lead `Calibrated <date time>`, one row per enabled channel (2.2), `Click to calibrate again.` |
 | No device or offline | Dimmed, disabled | `Calibration -` | Native title: "No device. Connect the scope to calibrate." |
 
 - It is a button (`aria-label` "No calibration. Open calibration dialog" / "Calibrated. Open calibration dialog"). Click, Enter or Space opens the dialog (section 3). State is conveyed by text and icon, never by colour alone.
 - Slot: the **right end** of the status bar, after Renderer, essential priority (never dropped by the status bar collapse; Renderer drops first). It **replaces** the status bar `Accuracy` button and popover (decision D4, question Q7); the tooltip carries the accuracy information.
-- Tooltip: existing Tooltip component (500 ms delay, also on keyboard focus), multi-line, with a small two-column table for the offsets (engineering notation, U+2212 minus). Text and numbers come from the backend; the wireframe values are placeholders.
+- Tooltip: existing Tooltip component (500 ms delay, also on keyboard focus), multi-line, with a small table of offset rows (2.2). Text and numbers come from the backend; the wireframe values are placeholders.
 - Wireframe: `prototypes/status-tag.html`, `main-window.html`, `main-window-calibrated.html`.
 - **Known limit (QA C-6, accepted by the PM):** at text scale 150 to 200 % in a 1440 px window the tag, which is never dropped, makes the width fall in the existing scroll tier of `docs/design.md` 3.2; no new tier is added.
+
+### 2.2 Tooltip rows (rev 5)
+
+The notes about gain, extreme vertical positions and resolution are removed. The body is one row per **enabled** channel, in channel order, at the range **currently selected** for that channel (the rows follow the scale strip while the tooltip is open). Disabled channels get no row.
+
+| Part | Form |
+|---|---|
+| Row | `CH1 +0.66 mV at 2 mV/div`: three columns, channel name in its channel colour (mono, bold), offset right-aligned in mono, muted `at <range>` |
+| Offset | engineering notation (`formatQuantity`), explicit `+` for positive, U+2212 for negative, `0 V` for zero |
+| Calibrated | offset stored for that channel and range, rows only (no caption) |
+| No calibration | caption `Typical zero error:` above the rows; rows in the same form with the typical zero error for those ranges, shown as `+-` values (for example `+-2.0 mV at 2 mV/div`), uncorrected |
+| No channel enabled | muted line `No channel enabled` instead of rows |
+| Unchanged | lead heading (and date when calibrated), click hint |
+
+Numbers come from the backend (Q11). Wireframe: `prototypes/status-tag.html` (both states and variants).
 
 ### 2.1 Connection item (replaces the `CONNECTED` chip)
 
@@ -61,8 +76,8 @@ Header: title `Zero calibration`, right `Step n of 6`. Channel progress row (ste
 | 1 Why and Start | `Why calibrate`, one sentence, then three bullets: you short each of the 4 inputs in turn; acquisition is paused while this dialog is open; nothing is stored until you finish, and the factory calibration is never changed | `Cancel`, `Start` | Reopened from `CALIBRATED`: a note with bold "This device is calibrated" and, on its own line below, "Last calibrated at <date time>" |
 | 2 to 5 Channel n | Heading `Channel n: short the input`, three numbered instructions, probe picture, note "An open input is not zero: it picks up the neighbouring channels." | `Cancel`, `Calibrate` | Repeats for CH1 to CH4. A channel that is off still gets its step: the dialog never asks the user to enable it (Q2) |
 | Measuring | Heading `Channel n: measuring`, status line "Measuring CHn, keep the input shorted and still" and a progress bar with percent. The bar covers the sweep over all voltage ranges of that channel; no range names, no range selection UI (the app sweeps ranges itself, Q1) | hint "Cancel stores nothing.", `Cancel`, disabled `Measuring...` | Progress is determinate when the backend reports it, otherwise an indeterminate bar without a percent |
-| Not shorted | Error note (`role="alert"`): "The CHn input does not look shorted. Nothing was stored for this channel." plus the measured numbers and "Check the connection between probe tip and ground clip, then try again." | `Cancel`, `Try again` | Stays on the same channel; no `Skip` (all channels are needed for `CALIBRATED`). Earlier channels are not lost while the dialog is open |
-| 6 Done | Success note: bold "Calibration completed" and below it, on its own line, "Offsets applied per channel and range and kept after restart, the device is now CALIBRATED"; the **offset table per voltage range and channel** (3.4), volts only. No accuracy summary here (it lives in the status tag tooltip) | `Done` | The status tag changes to `CALIBRATED` when this step appears |
+| Not shorted | Error note (`role="alert"`): "The CHn input does not look shorted. Nothing was stored for this channel." plus the measured numbers and "Check the connection between probe tip and ground clip, then try again." Below the steps list a warning note (rev 5): `Continue keeps the measured offsets for CHn, use it only if the input is shorted` | `Cancel`, `Continue`, `Try again` (primary) | Stays on the same channel until the user chooses. `Try again` measures again. `Continue` accepts the measured offsets for this channel (the user vouches the input is shorted) and moves to the next channel step, or to Done after CH4; the channel chip becomes done. Still no `Skip`: a channel is never left without offsets. Offsets are still written only at Done, `Cancel` stores nothing |
+| 6 Done | Success note: bold "Calibration completed" and below it, on its own line, "Offsets applied per channel and range and kept after restart, the device is now CALIBRATED"; the **offset table per voltage range and channel** (3.4), volts only. No accuracy summary here (it lives in the status tag tooltip). For each channel accepted with `Continue` a quiet line under the table (rev 5): `CHn accepted although the input did not look shorted` (muted, `font-size-xs`, no icon, no tag, no colour; none when no channel was accepted) | `Done` | The status tag changes to `CALIBRATED` when this step appears |
 
 ### 3.4 Done table: offset per voltage range and channel (Q10 resolved)
 
@@ -79,7 +94,7 @@ The calibration samples every voltage range of every channel, so the Done step s
 - **Cancel at any step stores nothing.** Offsets are written only when the last channel finished (the Done step). `Cancel` and `Esc` close the dialog; on the Done step `Esc` and `Done` both just close (already stored).
 - **Acquisition is paused** while the dialog is open. The toolbar state chip reads `Paused (calibration)` (stop colour) behind the scrim; the previous run state is restored on close if acquisition was running (decision D3, Q3). While measuring, `Cancel` is enabled and aborts the measurement (nothing stored).
 - **Device lost** while open: the body is replaced by an error note "Device disconnected. Calibration cancelled. Nothing was stored." with one button `Close` (`role="alert"`). No device: the tag is disabled and cannot open the dialog.
-- **Keyboard and focus:** native modal dialog gives the focus trap and `Esc` = Cancel (inert background, scrim `rgb(8 9 10 / .66)` token-proposed `color-scrim`). On open and on every step change focus moves to the step heading (`tabindex="-1"`), never to `Calibrate`, so Enter cannot start a measurement before the input is shorted. Tab order: body links (none), `Cancel`, primary. On close focus returns to the status tag. Step changes and results are announced (`role="status"`; errors `role="alert"`). Dialog has `aria-labelledby` (title) and `aria-describedby` (body).
+- **Keyboard and focus:** native modal dialog gives the focus trap and `Esc` = Cancel (inert background, scrim `rgb(8 9 10 / .66)` token-proposed `color-scrim`). On open and on every step change focus moves to the step heading (`tabindex="-1"`), never to `Calibrate`, so Enter cannot start a measurement before the input is shorted. **No visible ring on it (rev 5):** a heading is not interactive, so focus is programmatic only (for screen readers) and the dialog styles `[tabindex="-1"]:focus` and `:focus-visible` with `outline: none`. The same rule covers every element that only receives programmatic focus (the focus-target `Note` in the dialog, the drawer region, the popover container). Audit: the rings that stay are on elements the user operates with the keyboard (buttons, the status tag, the scrollable offset table, which scrolls with arrow keys, and the scope screen, which takes arrow-key shortcuts). Tab order: body links (none), `Cancel`, primary. On close focus returns to the status tag. Step changes and results are announced (`role="status"`; errors `role="alert"`). Dialog has `aria-labelledby` (title) and `aria-describedby` (body).
 - Errors stay inside the dialog; no toast.
 
 ## 4. Removal of UNVERIFIED and PARTIALLY VERIFIED tags (#50)
@@ -149,14 +164,16 @@ Design: a scope screen. Rounded square in `bg-scope` #101214 with a frame in `gr
 | Where | Text |
 |---|---|
 | Tag | `NO CALIBRATION`, `CALIBRATED`, `Calibration -` |
-| Tooltip, not calibrated | `No calibration`; `Standard values from a previously measured unit:` table; `Click to calibrate.` |
-| Tooltip, calibrated | `Calibrated <date time>`; `Stored offsets (largest per channel):` table; accuracy line; `Click to calibrate again.` |
+| Tooltip, not calibrated | `No calibration`; `Typical zero error:`; rows `CHn +-<value> at <range>` per enabled channel; `Click to calibrate.` |
+| Tooltip, calibrated | `Calibrated <date time>`; rows `CHn +0.66 mV at 2 mV/div`, `CHn 0 V at 1 V/div` per enabled channel; `Click to calibrate again.` |
+| Tooltip, no channel enabled | `No channel enabled` instead of the rows |
 | Title | `Zero calibration` |
 | Step 1 | `Why calibrate`; "Calibration measures the zero error of each input while it is shorted and subtracts it, so small voltages read correctly."; bullets "You short each of the 4 inputs in turn", "Acquisition is paused while this dialog is open", "Nothing is stored until you finish, and the factory calibration is never changed"; `Cancel`, `Start` |
 | Channel step | `Channel n: short the input`; 1 `Disconnect the probe from the circuit. Never short a live circuit.` 2 `Short the CHn input: touch the probe tip to its ground clip, or join the BNC centre pin to its shell.` 3 `Click Calibrate when ready, and keep the input still.`; note `An open input is not zero: it picks up the neighbouring channels.`; picture alt `Probe tip touching the probe ground clip` |
 | Measuring | `Channel n: measuring`; `Measuring CHn, keep the input shorted and still`; `Cancel stores nothing.`; button `Measuring...` |
-| Not shorted | `The CHn input does not look shorted. Nothing was stored for this channel.` + numbers from the backend + `Check the connection between probe tip and ground clip, then try again.`; button `Try again` |
+| Not shorted | `The CHn input does not look shorted. Nothing was stored for this channel.` + numbers from the backend + `Check the connection between probe tip and ground clip, then try again.`; note `Continue keeps the measured offsets for CHn, use it only if the input is shorted`; buttons `Cancel`, `Continue`, `Try again` (primary, right) |
 | Done | bold `Calibration completed`; line below `Offsets applied per channel and range and kept after restart, the device is now CALIBRATED`; table header `Range`, `1`, `2`, `3`, `4`, rows `2 mV/div` to `10 V/div`; button `Done` |
+| Done, accepted channel | `CHn accepted although the input did not look shorted` (one line per accepted channel, under the table) |
 | Reopened note | bold `This device is calibrated`; line below `Last calibrated at <date time>` |
 | Device lost | `Device disconnected. Calibration cancelled. Nothing was stored.`; `Close` |
 | Toolbar | `Paused (calibration)` |
@@ -180,6 +197,7 @@ Modal with focus trap, inert background, `Esc` = Cancel (except the Done step: c
 | Q7 | Status bar `Accuracy` button: replaced by the tag (design default). Does the PM want to keep a separate Accuracy item (the tag tooltip already holds the summary)? | PM |
 | Q8 | Dialog copy in section 7 is proposed final wording for PM approval; tooltip texts and numbers (standard values, offsets, accuracy summary) come from engineering. | PM, Staff |
 | Q9 | Is the `Exp` badge on the Video trigger in or out of #50? | PM |
+| Q11 (rev 5) | Tooltip rows: can the backend give, for each enabled channel, the stored offset at its selected range, and the typical zero error per range when not calibrated (and a value for a range that was never measured)? Does `Continue` store exactly the measured offsets, and is the "accepted despite the warning" flag kept per channel for the Done step only (design: not persisted, not in the tooltip)? | Staff |
 | Q10 | RESOLVED by the human: the Done step shows the offset per voltage range per channel (section 3.4). | Human |
 
 ## 10. Acceptance mapping
@@ -195,7 +213,7 @@ Modal with focus trap, inert background, `Esc` = Cancel (except the Done step: c
 | #33 | Applied per channel and range, persists | Done text; data behaviour Q5; no separate UI |
 | #33 | Click on CALIBRATED reopens the dialog | 2 and 3.2 reopened note |
 | #33 | Acquisition paused, cancel at any step stores nothing | 3.3 |
-| #34 | Hover on the status gives the accuracy summary tooltip, standard values when not calibrated, offsets values when calibrated | Section 2 tooltips |
+| #34 | Hover on the status gives the accuracy summary tooltip, standard values when not calibrated, offsets values when calibrated | Section 2 and 2.2 (per enabled channel at its selected range) |
 | #34 | Page content (statuses, one-unit limitation) | Documentation, no design |
 | #50 | No UNVERIFIED or PARTIALLY VERIFIED tag, badge or marker on any screen, setting or range selector | Section 4.1 (14 places) |
 | #50 | Previously flagged ranges behave as before | Section 4 rule |
@@ -208,7 +226,7 @@ Modal with focus trap, inert background, `Esc` = Cancel (except the Done step: c
 | # | Decision | Default |
 |---|---|---|
 | D1 | Dialog shape | One modal dialog, 6 fixed steps, same frame every step, channel chips row |
-| D2 | Not-shorted | Stay on the channel, `Try again`, no skip |
+| D2 | Not-shorted | Stay on the channel; `Cancel`, `Continue` (accept offsets), `Try again` (primary); no skip |
 | D3 | Pause | Acquisition pauses while open, chip `Paused (calibration)`, previous run state restored on close |
 | D4 | Accuracy item in the status bar | Replaced by the calibration tag (tooltip carries the summary) |
 | D5 | `Exp` badge on Video trigger | Keep, reword the tooltip (not an UNVERIFIED tag) |
@@ -216,5 +234,10 @@ Modal with focus trap, inert background, `Esc` = Cancel (except the Done step: c
 | D7 | Done table | Offset per voltage range and channel (12 rows x CH1 to CH4), volts only, scrolls inside the dialog body with sticky header, no divisions, no accuracy block (human answer to Q10) |
 | D9 | Status bar layout | Calibration tag at the right end; connection shown as `Ready Hantek 6254BC` style item with the states of 2.1 |
 | D8 | Icon | As shown in `icon-preview.html` (true sinusoid) |
+
+| D10 (rev 5) | Focus on the step heading | Programmatic only, no visible ring on any non-interactive focus target; rings stay on operable controls |
+| D11 (rev 5) | `Continue` copy and weight | Note `Continue keeps the measured offsets for CHn, use it only if the input is shorted`; order `Cancel`, `Continue`, `Try again`; `Try again` primary (the safe action); `Continue` secondary |
+| D12 (rev 5) | Accepted channel on Done | Quiet muted line per channel under the table, no tag, no colour |
+| D13 (rev 5) | Tooltip rows | Enabled channels only, signed offset at the selected range, no caption when calibrated, caption `Typical zero error:` and `+-` values when not |
 
 Next after approval: handoff to `staff-engineer`.
