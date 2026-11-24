@@ -111,6 +111,7 @@
               trigger={model.trigger}
               cursors={model.cursors}
               dots={model.horizontal.interpolation === 'dots'}
+              interpolation={model.horizontal.interpolation}
               actions={windowActions}
             />
             <ScaleStrip
