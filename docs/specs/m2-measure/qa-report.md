@@ -5,7 +5,7 @@ Date: 2026-11-23 (host clock 2026-11-24 UTC)
 Plan: [test-plan.md](test-plan.md)
 
 ## Summary
-Verdict: **fail** (release blocked). The feature works end to end in the real window, but four defects block release: BUG-11, BUG-12 (acceptance criteria of #14), BUG-13 (pin menu unusable) and BUG-15 (`cargo test` dirties the tree and rewrites committed generated files with broken imports). Everything else passed or is a minor finding.
+Initial verdict (superseded by the retest section at the end): **fail** (release blocked). The feature works end to end in the real window, but four defects block release: BUG-11, BUG-12 (acceptance criteria of #14), BUG-13 (pin menu unusable) and BUG-15 (`cargo test` dirties the tree and rewrites committed generated files with broken imports). Everything else passed or is a minor finding.
 
 Guards held in every real-app run: `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off`), USB hidden with `unshare -rm` and tmpfs over `/dev/bus/usb` and `/sys/bus/usb/devices` (0 devices visible; a 6254BC is plugged into this host), isolated HOME, Xvfb :77, Mesa forced. The real scope was never opened.
 
@@ -81,3 +81,44 @@ e2e cases that pin the bugs use `test.fail` (BUG-11, BUG-12, BUG-13) so the suit
 ## Screenshots and logs
 Kept in `.claude/tmp/m2/` (not committed): `01-start.png` to `45-sys-raw.png`, `shot-saved.png`, `data/` (CSV and raw sample, cargo and Playwright logs).
 New test code: `frontend/e2e/m2-measure.spec.ts` (28 cases x 2 browsers), `frontend/e2e/support/tauri-stub.ts` (scripted command results), `frontend/e2e/csp.spec.ts` (preview port from `E2E_PREVIEW_PORT`), `backend/libs/measurements/tests/qa_calibrator_frequency.rs`.
+
+## Retest (branch `feat/m2-measure` at 2390719)
+Date: 2026-11-24 (host clock). Guards as before: `SWEEPSCOPE_NO_HARDWARE=1` (log line `hardware discovery is off`), USB hidden with `unshare -rm` (0 devices visible; a 6254BC is plugged into this host), isolated HOME, Xvfb :77 with Mesa, vite on 5373 (debug app built with `TAURI_CONFIG` devUrl override), e2e on 5273 and 4273. The real scope was never opened. The final full suites ran alone.
+
+**Verdict: PASS** for release of M2 on the simulator, with two non-blocking findings (F-1 simulator sine accuracy in the real window, C-8 cosmetic). Hardware items H-01 to H-10 remain the human's.
+
+| Item | Result | Evidence |
+|---|---|---|
+| BUG-11 Cursors tool | fixed | empty window: toolbar `Cursors` dimmed; after Run: enabled, one click adds four cursors, tooltip `Cursors (C)`, readouts `X1 600 us, X2 1.40 ms, DX 800 us, 1/DX 1.25 kHz, Y1 1.60 V, Y2 -1.60 V` (r01, r05); e2e case `Cursors tool ... disabled with the reason No waveform` green (the test.fail annotation is gone) |
+| BUG-12 C on empty screen | fixed | real window, `c` on the empty screen: no cursor appears (r02); e2e green |
+| BUG-13 pin menu | fixed | menu opens inside the window, twelve rows with check marks, labels visible (r04); e2e `all menu labels are inside the window` green |
+| BUG-14 screenshot | fixed | real window PNG (928 x 1208): accuracy note wraps over two lines and is complete, T1 label sits at the left edge, off the centre line (shot.png) |
+| BUG-15 cargo tree | fixed | `cargo test --workspace` twice: 0 failed in every result line; `git status` shows no change (only the other agents' memory files, modified before I started); `backend/frontend`, `frontend/.claude`, `.claude/frontend` do not exist |
+| BUG-16 placeholders and pins | fixed | no `Illustrative numbers` or `Accuracy note slot` text in the window; first run (empty settings) shows all twelve rows pinned (PM ruling, spec 1.3) |
+| Status bar Accuracy popover | pass | click on `Accuracy` shows the same backend note as the table: `Voltage readings are accurate to about 2 to 3 counts ... Verified on one unit.` (r06) |
+| Export rollback | pass | real window: raw export onto an existing `cap.bin` with `cap.format.txt` a folder: toast `cannot write cap.format.txt: the path is a folder`, `cap.bin` still `old data`. The mirror case (raw path a folder, old sidecar kept) cannot be reached through the GTK dialog; covered by the four cargo cases in `backend/features/export/tests/export_module.rs` (green) |
+| Symlink-safe temp files | pass (cargo only) | `files.rs` cases `symlink planted at the temp name ... target untouched` and `every temp name taken ... fails and leaves the planted files` green; not exercised in the window (needs a race on the temp name) |
+| Frequency estimator, calibrator model | confirmed | `qa_calibrator_frequency.rs`, 200 phases, noise 0 and 0.4 counts: worst 0.0113 % (100 us), 0.0098 % (200 us), 0.0074 % (500 us), 0.0072 % (1 ms), 0.0018 % (2 ms); both tests pass (0.01 % at 500 us and slower, 0.02 % faster). Same as developer-3. At 100 us/div 71 of 200 phases are `FewerThanOnePeriod` (shown as `-` with footnote `[1] Fewer than one period in the record`) |
+| test.fail annotations | none left | `grep` over `frontend/e2e` finds none; the full run has no unexpected pass |
+
+### F-1 (non-blocking): real-window simulator sine misses the calibrator bounds
+The window's simulator signal is a 1 kHz sine with noise (the calibrator cannot be selected from the app), 100 reads of the numeric `value` per time base through `get_snapshot`:
+- 200 us/div: -0.0286 % to +0.0286 % (was +-0.040 %); values 999.829, 999.886, 1000.000, 1000.057, 1000.114, 1000.171 Hz
+- 500 us/div: -0.0196 % to +0.0147 %
+- 1 ms/div: +-0.0131 %
+- 100 us/div: no value (`FewerThanOnePeriod` on every read, 100 of 100)
+This is better than round 1 but above the numbers of #15 AC2 (0.02 % faster than 500 us, 0.01 % at 500 us and slower). I judge the AC to be about the calibrator, for which the library sweep above is within bounds, so this does not block; but the full chain with the calibrator in the app and the hardware figures (H-01, H-02) are still unverified. Hypothesis, not tested: a sine with noise has a shallower slope at the crossing than the calibrator edge, so noise moves the crossings more.
+
+### New cosmetic finding
+- C-8: Vmean of the sine sometimes reads a floating residue with a sub-pico unit, for example `0.0000637 pV` and `0.00000584 pV`, instead of `0 V` or a value in uV (seen twice in about 40 screenshots). Not an acceptance criterion; for a separate bug issue through the product manager.
+
+### Bugs after the retest
+BUG-11 to BUG-16: closed. Open: C-6, C-7, C-8 (cosmetic), F-1 (follow-up, hardware). Docs: Q-E6 (Q-E5, Q-E8) are recorded in `docs/architecture.md`; README has the file formats and the raw sidecar name `<name>.format.txt`; `frame-raw-v1.md` now states `.bin` plus `<stem>.format.txt`.
+
+### Full suites at 2390719 (run alone)
+- `cargo test --workspace`: 0 failed (twice); `npm run check` ok; vitest 68 files, 814 tests; `check-test-names` ok.
+- Playwright (chromium and webkit, spare ports 5273 and 4273): 445 passed, 1 skipped (pre-existing), 0 failed.
+- Evidence in `.claude/tmp/m2r/` (not committed). Temporary config `playwright.qa.config.ts` deleted; all started processes stopped by PID; the temp HOME deleted.
+
+### Not retested
+Light theme, HiDPI, dialogs on a real compositor, empty-screen tooltip text in the real window (disabled state seen, wording checked in e2e), Q-E6 recorded but hardware H-01 to H-10 for the human.
