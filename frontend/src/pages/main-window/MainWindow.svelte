@@ -104,13 +104,23 @@
       <div class="floor">
         <div class="body">
           <main class="left">
-            <HorizontalReadout horizontal={model.horizontal} showOverview={collapse.recordOverview} />
+            <HorizontalReadout
+              horizontal={model.horizontal}
+              views={model.views}
+              roll={model.roll}
+              persistence={model.persistence}
+              recording={model.recording}
+              showOverview={collapse.recordOverview}
+            />
             <ScopeStage
               rootFontPx={tier.rootFontPx}
               graph={model.graph}
               channels={model.channels}
               trigger={model.trigger}
               cursors={model.cursors}
+              views={model.views}
+              peak={model.peak}
+              roll={model.roll}
               dots={model.horizontal.interpolation === 'dots'}
               interpolation={model.horizontal.interpolation}
               actions={windowActions}
@@ -123,6 +133,7 @@
             <FrontPanelDock
               channels={model.channels}
               horizontal={model.horizontal}
+              views={model.views}
               trigger={model.trigger}
               actions={windowActions}
               wrapped={compact}
@@ -134,10 +145,13 @@
           {#if !compact}
             <div class="slot">
               <Sidebar
+                view={model.views.tab}
                 cursors={model.cursors}
                 measurements={model.measurements}
+                peak={model.peak}
                 onclearcursors={windowActions.clearCursors}
                 onpin={windowActions.setMeasurementPinned}
+                onpeakmode={windowActions.setPeakMode}
               />
             </div>
           {:else if drawerOpen}
@@ -149,10 +163,13 @@
               role="region"
             >
               <Sidebar
+                view={model.views.tab}
                 cursors={model.cursors}
                 measurements={model.measurements}
+                peak={model.peak}
                 onclearcursors={windowActions.clearCursors}
                 onpin={windowActions.setMeasurementPinned}
+                onpeakmode={windowActions.setPeakMode}
               />
             </div>
           {/if}

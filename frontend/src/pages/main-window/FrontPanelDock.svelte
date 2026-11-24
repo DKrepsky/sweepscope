@@ -1,5 +1,11 @@
 <script lang="ts">
-  import type { ChannelModel, HorizontalModel, MainWindowActions, TriggerModel } from '../../app/main-window';
+  import type {
+    ChannelModel,
+    HorizontalModel,
+    MainWindowActions,
+    TriggerModel,
+    ViewsModel,
+  } from '../../app/main-window';
   import Segmented from '../../ui/segmented/Segmented.svelte';
   import HorizontalGroup from './HorizontalGroup.svelte';
   import TriggerGroup from './TriggerGroup.svelte';
@@ -8,6 +14,7 @@
   interface Props {
     channels: ChannelModel[];
     horizontal: HorizontalModel;
+    views: ViewsModel;
     trigger: TriggerModel;
     actions: MainWindowActions;
     /** W3: Vertical takes the first row, Horizontal and Trigger share the second. */
@@ -20,7 +27,7 @@
     groupTabs: boolean;
   }
 
-  const { channels, horizontal, trigger, actions, wrapped, smallRows, channelTabs, groupTabs }: Props = $props();
+  const { channels, horizontal, views, trigger, actions, wrapped, smallRows, channelTabs, groupTabs }: Props = $props();
 
   const groupOptions = [
     { id: 'vertical', label: 'Vertical' },
@@ -43,7 +50,7 @@
     </div>
   {/if}
   {#if shows('vertical')}<VerticalGroup {channels} {actions} tabs={channelTabs} />{/if}
-  {#if shows('horizontal')}<HorizontalGroup {horizontal} {actions} />{/if}
+  {#if shows('horizontal')}<HorizontalGroup {horizontal} {views} {actions} />{/if}
   {#if shows('trigger')}<TriggerGroup {trigger} {channels} {actions} />{/if}
 </div>
 

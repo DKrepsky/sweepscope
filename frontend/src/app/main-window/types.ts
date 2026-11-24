@@ -183,12 +183,36 @@ export interface StatusModel {
   accuracy: string;
 }
 
+/** A label on the screen: `edge-right` is the roll `now` mark; `channel` colours it. */
+export interface GraphTag {
+  id: string;
+  corner: 'top-left' | 'top-right' | 'bottom-right' | 'edge-right';
+  text: string;
+  channel?: ChannelNumber;
+}
+
 export interface GraphModel {
+  /** Whether the shown data is current; the measurements say `Frozen` from it. */
   state: 'live' | 'frozen' | 'empty';
+  /** Which screen the traces belong to. */
+  view: ViewTab;
+  /** Acquisition is running: persistence ageing pauses when it is not. */
+  running: boolean;
+  /** Only a disconnected or offline scope dims the held frame; a stopped or finished one stays at full intensity. */
+  dimmed: boolean;
+  /** Values are divisions from the top edge (0 to 8); spectra use the same convention. */
   channels: { channel: ChannelNumber; samples: ArrayLike<number> }[];
+  /** The math trace (channel 5). */
+  math?: { samples: ArrayLike<number> };
   selected: ChannelNumber;
-  /** Values are divisions from the top edge (0 to 8). */
   summary: string;
+  /** Labels inside the frame, graph convention: 0 left or bottom, 1 right or top. */
+  ticksX?: { at: number; text: string }[];
+  ticksY?: { at: number; text: string }[];
+  xy?: { x: ArrayLike<number>; y: ArrayLike<number>; xChannel: ChannelNumber; yChannel: ChannelNumber };
+  /** Set only while ghosts are drawn (Yt, not roll, not Off). */
+  persistence?: { decayMs: number | 'infinite'; epoch: number; revision: number };
+  tags: GraphTag[];
 }
 
 export type BannerActionId = 'copy-command' | 'retry' | 'use-simulator' | 'choose-new-file' | 'dismiss';
@@ -217,6 +241,10 @@ export interface XyModel {
   y: ChannelNumber;
   xOptions: AxisOption[];
   yOptions: AxisOption[];
+  /** `CH1 500 mV/div` and `CH2 200 mV/div`. */
+  scales: { x: string; y: string };
+  /** Under the Horizontal group, such as `Fs 1.25 MS/s · straight segments`. */
+  readline: string;
   problem?: ScreenProblem;
 }
 
@@ -227,8 +255,14 @@ export interface FftModel {
   available: Availability;
   ticksX: { at: number; text: string }[];
   ticksY: { at: number; text: string }[];
-  /** Backend texts of the Horizontal readout: span, bin spacing, top label. */
-  readout: { span: string; binSpacing: string; topLabel: string };
+  windows: { value: SpectrumWindowName; label: string }[];
+  /** Menu button text (`Rect` for Rectangular) and the full name. */
+  windowShort: string;
+  windowLabel: string;
+  /** Backend texts of the Horizontal readout; `scale` is the step, such as `10 dB/div`. */
+  readout: { span: string; binSpacing: string; topLabel: string; scale: string };
+  /** Under the Horizontal group, such as `Fs 50 kS/s · bin 12.21 Hz (Fs / N)`. */
+  readline: string;
   problem?: ScreenProblem;
 }
 
@@ -257,6 +291,22 @@ export interface PeakModel {
   frequency: string;
   level: string;
   available: Availability;
+  /** Footnote of the panel: `Frequency resolution is one bin (12.21 Hz).` */
+  note: string;
+  /** Bins in the shown spectrum, 0 before the first one; a click on the screen turns into a bin of it. */
+  bins: number;
+  /** Absent while the marker is off or there is no spectrum; its text equals the panel's. */
+  marker?: PeakMarkerModel;
+}
+
+export interface PeakMarkerModel {
+  /** Along the frequency axis, 0 left to 1 right, and the level, 0 bottom to 1 top. */
+  position: number;
+  level: number;
+  /** One bin as a fraction of the axis, so an arrow key moves one bin. */
+  step: number;
+  /** Shown and spoken, `1.001 kHz −6.9 dBV`. */
+  valueText: string;
 }
 
 export interface GapModel {
@@ -272,6 +322,8 @@ export interface RollModel {
   window: string;
   gaps: GapModel[];
   gapCount: number;
+  /** Polite live-region text for the newest gap, such as `Data gap of 1.2 s`; empty without one. */
+  announcement: string;
 }
 
 export interface RecordingModel {
