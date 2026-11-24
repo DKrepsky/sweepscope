@@ -3,7 +3,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use sweepscope_acquisition::{InstrumentChanged, LoadSetup, SetRunning};
+use sweepscope_acquisition::{InstrumentChanged, LoadSetup, SetRunning, ZeroOffsetsApplied};
 use sweepscope_calibration::domain::offsets::OffsetFile;
 use sweepscope_export::{encode_frame, iso_8601_utc};
 use sweepscope_kernel::contracts::{
@@ -28,7 +28,7 @@ pub fn capture(options: &CaptureOptions, environment: Environment, log: &mut dyn
     let _backend = compose(&bus, environment, Arc::new(SetupPath(options.setup.clone()))).map_err(failure)?;
 
     let unit_id = wait_until_ready(&connections, &instruments, options.device_wait)?;
-    publish_stored_offsets(&bus, storage.as_ref(), unit_id.as_deref())?;
+    publish_stored_offsets(&bus, storage.as_ref(), unit_id.as_deref(), options.device_wait)?;
     load_setup(&bus, log)?;
     let frames = bus.subscribe::<FrameCaptured>();
     bus.request(SetRunning { running: true }).map_err(failure)?;
@@ -80,11 +80,21 @@ fn no_device(wait: Duration, last_issue: Option<String>) -> CliError {
     )
 }
 
-fn publish_stored_offsets(bus: &Bus, storage: &dyn Storage, unit_id: Option<&str>) -> Result<(), CliError> {
+/// Returns once acquisition applied the offsets, so the first frame is already calibrated.
+fn publish_stored_offsets(
+    bus: &Bus,
+    storage: &dyn Storage,
+    unit_id: Option<&str>,
+    wait: Duration,
+) -> Result<(), CliError> {
     let offsets = OffsetFile::load(storage).map_err(failure)?;
     let offsets = unit_id.and_then(|unit| offsets.offsets_for(unit));
+    let applied = bus.subscribe::<ZeroOffsetsApplied>();
     bus.publish(ZeroOffsetsChanged { offsets });
-    Ok(())
+    applied
+        .recv_timeout(wait)
+        .map(|_| ())
+        .ok_or_else(|| CliError::failure("the stored zero offsets were not applied"))
 }
 
 fn load_setup(bus: &Bus, log: &mut dyn Write) -> Result<(), CliError> {

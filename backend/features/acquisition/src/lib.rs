@@ -16,7 +16,7 @@ pub use messages::{
     InstrumentFacts, InstrumentSnapshot, InstrumentState, LoadSetup, MathOperation, MathPatch, MathState, MathStatus,
     Phase, PulseState, ResetSetting, SaveSetup, ScaleChoice, SetChannel, SetMath, SetRunning, SetTrigger,
     SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, SetupNotice, StartAutoset, StatusChanged,
-    StepSetting, TriggerKindName, TriggerPatch, TriggerState,
+    StepSetting, TriggerKindName, TriggerPatch, TriggerState, ZeroOffsetsApplied,
 };
 pub use module::{AcquisitionDeps, AcquisitionModule, COMMANDS};
 pub use sweepscope_kernel::contracts::{Availability, FormattedValue};

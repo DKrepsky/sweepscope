@@ -95,21 +95,29 @@ struct Inputs {
     offsets: Subscription<ZeroOffsetsChanged>,
 }
 
-/// Connection changes go first, so a capture is judged against the newest connection state.
+/// Connection changes and zero offsets go first, so a capture is judged against the newest state. They are drained
+/// again after the wait, because they can arrive while it blocks and the capture that wakes it may depend on them.
 fn consume(shared: &Shared, inputs: &Inputs, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
-        for change in inputs.connections.drain() {
-            shared.connection(change);
-        }
-        for change in inputs.offsets.drain() {
-            shared.zero_offsets(change);
-        }
+        apply_pending(shared, inputs);
         for polled in inputs.polled.drain() {
             shared.roll_polled(polled);
         }
         match inputs.completed.recv_timeout(TICK) {
-            Some(outcome) => shared.capture(outcome),
+            Some(outcome) => {
+                apply_pending(shared, inputs);
+                shared.capture(outcome);
+            }
             None => shared.tick(),
         }
+    }
+}
+
+fn apply_pending(shared: &Shared, inputs: &Inputs) {
+    for change in inputs.connections.drain() {
+        shared.connection(change);
+    }
+    for change in inputs.offsets.drain() {
+        shared.zero_offsets(change);
     }
 }

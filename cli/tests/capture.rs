@@ -223,6 +223,18 @@ fn given_stored_offsets_of_the_unit_when_captured_then_the_frame_is_calibrated_a
 }
 
 #[test]
+fn given_stored_offsets_of_the_unit_when_several_frames_are_captured_then_every_frame_is_calibrated_from_the_first() {
+    let rig = Rig::new("auto");
+    store_offsets(rig.config.path(), SIMULATOR_UNIT);
+
+    rig.run(&rig.options(3, ExportFormat::Raw)).expect("capture");
+
+    for file in ["capture-0001.bin", "capture-0002.bin", "capture-0003.bin"] {
+        assert_eq!(rig.raw_header(file)["channels"][0]["calibrated"], true, "{file}");
+    }
+}
+
+#[test]
 fn given_no_stored_offsets_when_captured_then_the_frame_is_not_calibrated_and_the_config_stays_empty() {
     let rig = Rig::new("auto");
 

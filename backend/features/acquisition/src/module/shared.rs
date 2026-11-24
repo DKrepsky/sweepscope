@@ -9,7 +9,7 @@ use sweepscope_kernel::{Bus, Clock, KernelError, Storage};
 use super::core::Core;
 use super::effects::{Call, Effects, Output};
 use super::last_setup::{LastSetup, Stored};
-use crate::{FactsChanged, InstrumentChanged, InstrumentSnapshot, StatusChanged};
+use crate::{FactsChanged, InstrumentChanged, InstrumentSnapshot, StatusChanged, ZeroOffsetsApplied};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -99,6 +99,7 @@ impl Shared {
 
     pub fn zero_offsets(&self, change: ZeroOffsetsChanged) {
         self.react(|core, effects, _| core.zero_offsets(change.offsets, effects));
+        self.bus.publish(ZeroOffsetsApplied);
     }
 
     pub fn tick(&self) {
