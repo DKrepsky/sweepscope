@@ -1,5 +1,5 @@
 export type MeasurementCell = {
-  state: 'valid' | 'unverified' | 'invalid' | 'stale';
+  state: 'valid' | 'invalid' | 'stale';
   text: string;
   unit?: string;
   footnote?: number;

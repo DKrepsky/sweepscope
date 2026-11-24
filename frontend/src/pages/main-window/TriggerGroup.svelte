@@ -93,7 +93,7 @@
         ariaLabel="Trigger type"
       />
     </span>
-    <Badge kind="experimental" tooltip="Experimental: video triggers are not verified on this hardware">Exp</Badge>
+    <Badge kind="experimental" tooltip="Experimental: video triggers are untested">Exp</Badge>
   </div>
   <div class="line">
     <span class="ss-caps label">Source</span>
@@ -160,9 +160,6 @@
           {#snippet unit()}<small>{pulse.width.unit}</small>{/snippet}
         </NumberField>
       </span>
-      {#if !pulse.verified}
-        <Badge kind="warning" tooltip="Pulse width outside the verified range (50 µs to 5 ms)">?</Badge>
-      {/if}
     </div>
   {/if}
   <div class="line">

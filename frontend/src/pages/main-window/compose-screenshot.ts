@@ -23,7 +23,7 @@ function cellOf(cell: MeasurementCellModel | undefined): ScreenshotCell {
   const mark = cell.footnote === undefined ? '' : ` [${cell.footnote}]`;
   if (cell.state === 'invalid' || cell.text === '') return { text: `${NO_VALUE}${mark}`, muted: true };
   const value = cell.unit ? `${cell.text} ${cell.unit}` : cell.text;
-  return { text: `${value}${cell.state === 'unverified' ? ' ?' : ''}${mark}`, muted: cell.state === 'stale' };
+  return { text: `${value}${mark}`, muted: cell.state === 'stale' };
 }
 
 function markers(model: MainWindowModel): Pick<ScreenshotSpec, 'cursors' | 'triggerMarkers'> {
@@ -61,7 +61,6 @@ export function buildScreenshotSpec(model: MainWindowModel): ScreenshotSpec {
       })),
     },
     footnotes: measurements.footnotes.map(({ key, text }) => `[${key}] ${text}`),
-    accuracyNote: measurements.accuracyNote,
     frozenLabel,
   };
 }

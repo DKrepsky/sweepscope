@@ -7,7 +7,7 @@ type Measurement = ChannelMeasurements['measurements'][number];
 
 type Row = MeasurementsModel['rows'][number];
 
-const EMPTY: MeasurementsModel = { columns: [], rows: [], footnotes: [], accuracyNote: '', pinnable: [] };
+const EMPTY: MeasurementsModel = { columns: [], rows: [], footnotes: [], pinnable: [] };
 const MATH_CHANNEL = 5;
 const ALIAS_AFFECTED = new Set<string>(['frequency', 'period']);
 const ROLL_NOTE = 'Measurements are not available in roll mode. Use a faster time base to measure.';
@@ -31,21 +31,20 @@ function withMathUnit(unit: string, mathUnit: string | undefined): string {
 }
 
 interface CellContext {
-  unverified: string | null;
   keyFor: (text: string) => number;
   aliasMessage?: string;
   mathUnit?: string;
 }
 
 function toCell(measurement: Measurement, context: CellContext): MeasurementCellModel {
-  const { unverified, keyFor, aliasMessage, mathUnit } = context;
+  const { keyFor, aliasMessage, mathUnit } = context;
   if (measurement.invalid) return { state: 'invalid', text: '-', footnote: keyFor(measurement.invalid.text) };
   const { text, unit } = measurement.value ?? { text: '-', unit: '' };
   const shownUnit = withMathUnit(unit, mathUnit);
   const shown = { text, ...(shownUnit && { unit: shownUnit }) };
   const suspect = aliasMessage !== undefined && ALIAS_AFFECTED.has(measurement.id);
   const flagged = suspect ? { ...shown, warning: true, footnote: keyFor(aliasMessage) } : shown;
-  return unverified ? { ...flagged, state: 'unverified', tooltip: unverified } : { ...flagged, state: 'valid' };
+  return { ...flagged, state: 'valid' };
 }
 
 const columnId = (channel: number) => `ch${channel}`;
@@ -60,7 +59,6 @@ interface RowContext {
 function cellContext(channel: ChannelMeasurements, { keyFor, measurements, mathUnit }: RowContext): CellContext {
   const aliasMessage = aliasOf(measurements, channel.channel)?.message;
   return {
-    unverified: channel.unverified,
     keyFor,
     ...(aliasMessage && { aliasMessage }),
     ...(channel.channel === MATH_CHANNEL && mathUnit && { mathUnit }),
@@ -120,7 +118,6 @@ export function selectMeasurements(
     rows,
     footnotes: notes,
     ...(graph === 'frozen' && { frozenLabel: 'Frozen' as const }),
-    accuracyNote: measurements.accuracyNote,
     pinnable: (measurements.channels[0]?.measurements ?? []).map(({ id, label }) => ({
       id,
       label,

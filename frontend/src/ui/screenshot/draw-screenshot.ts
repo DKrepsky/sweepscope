@@ -4,7 +4,6 @@ import type { GraphFrame } from '../graph/graph-frame';
 import { drawTraces } from '../graph/traces';
 import {
   graphPixelSize,
-  noteLineCount,
   screenshotLayout,
   screenshotNotes,
   HEADER_LINE,
@@ -42,7 +41,6 @@ export interface ScreenshotSpec {
   triggerMarkers: ScreenshotMarker[];
   table: ScreenshotTable;
   footnotes: string[];
-  accuracyNote: string;
   frozenLabel?: string;
 }
 
@@ -176,10 +174,8 @@ function drawTable(ctx: CanvasRenderingContext2D, table: ScreenshotTable, area: 
 }
 
 function drawNotes(ctx: CanvasRenderingContext2D, spec: ScreenshotSpec, area: Rect) {
-  const { footnotes, accuracy } = screenshotNotes(spec.footnotes, spec.accuracyNote);
-  const lines = [...footnotes, ...accuracy];
-  lines.forEach((line, index) => {
-    const colour = tokens[index >= footnotes.length ? 'color-text-muted' : 'color-text-secondary'];
+  screenshotNotes(spec.footnotes).forEach((line, index) => {
+    const colour = tokens['color-text-secondary'];
     text(ctx, line, area.x, area.y + index * NOTE_LINE + NOTE_LINE / 2, { colour, size: NOTE_SIZE });
   });
 }
@@ -188,7 +184,7 @@ function layoutOf(spec: ScreenshotSpec) {
   return screenshotLayout({
     header: spec.header,
     tableRows: spec.table.rows.length,
-    noteLines: noteLineCount(screenshotNotes(spec.footnotes, spec.accuracyNote)),
+    noteLines: screenshotNotes(spec.footnotes).length,
   });
 }
 

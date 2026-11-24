@@ -8,7 +8,7 @@ import { spyActions } from './test-support';
 
 const pulse = (change: Partial<NonNullable<TriggerModel['pulse']>> = {}): Partial<TriggerModel> => ({
   type: 'pulse',
-  pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, verified: true, ...change },
+  pulse: { condition: 'greater', width: { value: '500', unit: 'µs' }, ...change },
 });
 
 function setup(change: Partial<TriggerModel> = {}) {
@@ -75,10 +75,10 @@ describe('TriggerGroup pulse', () => {
     expect(actions.clearPulseWidthError).toHaveBeenCalled();
   });
 
-  it('given a width outside the verified range, when rendered, then the question badge shows', () => {
-    setup(pulse({ verified: false }));
+  it('given a pulse trigger, when rendered, then no question badge shows beside the width', () => {
+    setup(pulse());
 
-    expect(screen.getByText('?')).toBeInTheDocument();
+    expect(screen.queryByText('?')).not.toBeInTheDocument();
   });
 
   it('given a pulse trigger without error, when rendered, then the two-line slot is still present and empty', () => {
@@ -104,5 +104,11 @@ describe('TriggerGroup pulse', () => {
     setup();
 
     expect(screen.getByRole('button', { name: 'Video' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('given the Exp badge, when read, then its description says video triggers are untested', () => {
+    setup();
+
+    expect(screen.getByText('Experimental: video triggers are untested')).toBeInTheDocument();
   });
 });

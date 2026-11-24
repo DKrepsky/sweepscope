@@ -107,15 +107,6 @@
       ariaLabel="Volts per division"
       onstep={noop}
     />
-    <Stepper
-      value="20"
-      unit="mV/div"
-      valueText="20 millivolts per division"
-      ariaLabel="Volts per division"
-      onstep={noop}
-    >
-      {#snippet badge()}<Badge kind="warning" tooltip="Range not verified (illustrative)">Unverified</Badge>{/snippet}
-    </Stepper>
     <Stepper value="1" unit="V/div" off valueText="1 volt per division" ariaLabel="Volts per division" onstep={noop} />
     <Stepper
       value="2"

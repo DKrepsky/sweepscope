@@ -35,11 +35,10 @@ const edgeTooFast = (text: string): Measurement => ({
   invalid: { reason: 'edgeTooFast', text },
 });
 
-function channel(number: number, overrides: Partial<Record<MeasurementId, Measurement>> = {}, unverified?: string) {
+function channel(number: number, overrides: Partial<Record<MeasurementId, Measurement>> = {}) {
   return {
     channel: number,
     clipped: false,
-    unverified: unverified ?? null,
     measurements: IDS.map(([id, label]) => overrides[id] ?? valid(id, label)),
   };
 }
@@ -47,7 +46,6 @@ function channel(number: number, overrides: Partial<Record<MeasurementId, Measur
 const slice = (...channels: ReturnType<typeof channel>[]): MeasurementsState => ({
   revision: 1,
   channels,
-  accuracyNote: 'Volts accurate to 2 to 3 counts.',
   warnings: [],
 });
 
@@ -85,10 +83,11 @@ describe('selectMeasurements', () => {
     expect(model.footnotes).toHaveLength(1);
   });
 
-  it('given an unverified channel, when selected, then its valid cells are unverified with the reason as tooltip', () => {
-    const model = selectMeasurements(slice(channel(1, {}, 'Outside the verified range')), DEFAULT_PINNED, 'live');
+  it('given a valid value, when selected, then the cell is valid and its text has no marker', () => {
+    const model = selectMeasurements(slice(channel(1)), DEFAULT_PINNED, 'live');
 
-    expect(model.rows[0]?.cells['ch1']).toMatchObject({ state: 'unverified', tooltip: 'Outside the verified range' });
+    expect(model.rows[0]?.cells['ch1']).toMatchObject({ state: 'valid' });
+    expect(model.rows[0]?.cells['ch1']?.text).not.toContain('?');
   });
 
   it('given a pinned subset, when selected, then only those rows show and the pin menu lists all twelve', () => {
@@ -107,14 +106,13 @@ describe('selectMeasurements', () => {
     expect(selectMeasurements(slice(channel(1)), DEFAULT_PINNED, 'live').frozenLabel).toBeUndefined();
   });
 
-  it('given two channels, when selected, then there is one coloured column per channel and the accuracy note', () => {
+  it('given two channels, when selected, then there is one coloured column per channel', () => {
     const model = selectMeasurements(slice(channel(1), channel(3)), DEFAULT_PINNED, 'live');
 
     expect(model.columns).toEqual([
       { id: 'ch1', label: 'CH1', color: 'color-ch1' },
       { id: 'ch3', label: 'CH3', color: 'color-ch3' },
     ]);
-    expect(model.accuracyNote).toBe('Volts accurate to 2 to 3 counts.');
   });
 
   it('given no slice, when selected, then there are no columns', () => {
