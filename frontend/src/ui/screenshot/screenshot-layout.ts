@@ -73,17 +73,7 @@ function wrap(note: string): string[] {
   return line ? [...lines, line] : lines;
 }
 
-export interface ScreenshotNotes {
-  footnotes: string[];
-  accuracy: string[];
-}
-
-/** Notes wrapped to the picture width so no line runs past the right edge. */
-export const screenshotNotes = (footnotes: readonly string[], accuracyNote: string): ScreenshotNotes => ({
-  footnotes: footnotes.flatMap(wrap),
-  accuracy: wrap(accuracyNote),
-});
-
-export const noteLineCount = (notes: ScreenshotNotes): number => notes.footnotes.length + notes.accuracy.length;
+/** Footnotes wrapped to the picture width so no line runs past the right edge. */
+export const screenshotNotes = (footnotes: readonly string[]): string[] => footnotes.flatMap(wrap);
 
 export const graphPixelSize = (ratio: number): PixelSize => ({ ...GRAPH_SIZE, ratio });

@@ -8,7 +8,6 @@ const model = (overrides: Partial<MeasurementsModel> = {}): MeasurementsModel =>
   columns: [{ id: 'ch1', label: 'CH1', color: 'color-ch1' }],
   rows: [{ id: 'vpp', label: 'Vpp', cells: { ch1: { state: 'valid', text: '1.91', unit: 'V' } } }],
   footnotes: [],
-  accuracyNote: 'Volts accurate to 2 to 3 counts.',
   pinnable: [
     { id: 'vpp', label: 'Vpp', pinned: true },
     { id: 'period', label: 'Period', pinned: false },
@@ -17,12 +16,6 @@ const model = (overrides: Partial<MeasurementsModel> = {}): MeasurementsModel =>
 });
 
 describe('MeasurementsPanel', () => {
-  it('given an accuracy note, when rendered, then it shows under the table', () => {
-    render(MeasurementsPanel, { props: { measurements: model(), onpin: vi.fn() } });
-
-    expect(screen.getByText('Volts accurate to 2 to 3 counts.')).toBeInTheDocument();
-  });
-
   it('given an unavailable note, when rendered, then the reason shows as text', () => {
     const measurements = model({
       columns: [],

@@ -229,27 +229,22 @@ describe('MainWindow behaviour', () => {
   });
 });
 
-describe('MainWindow unverified time base', () => {
-  it('given a verified time base, when rendered, then the Horizontal group has no unverified badge', () => {
+describe('MainWindow verification markers', () => {
+  it('given the shell, when rendered, then no Unverified badge is on screen', () => {
     renderShell(tiers.w1);
 
-    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
-    expect(within(group).queryByText('Unverified')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unverified')).not.toBeInTheDocument();
   });
 
-  it('given an unverified time base, when rendered, then the Horizontal group and the readout show the badge', () => {
-    const model = createMockMainWindow();
-    const unverified = {
-      ...get(model),
-      horizontal: { ...get(model).horizontal, unverified: 'Unverified (see accuracy note).' },
-    };
+  it('given the component sources, when scanned, then none reads a verified or unverified field', () => {
+    const sources = import.meta.glob('../../**/*.svelte', { query: '?raw', import: 'default', eager: true });
 
-    renderShell(tiers.w1, { model: writable(unverified) });
+    const readers = Object.entries(sources)
+      .filter(([, text]) => /\.(un)?verified\b/i.test(text as string))
+      .map(([path]) => path);
 
-    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
-    const readout = document.querySelector<HTMLElement>('[data-region="readout"]')!;
-    expect(within(group).getByText('Unverified')).toBeInTheDocument();
-    expect(within(readout).getByText('Unverified')).toBeInTheDocument();
+    expect(Object.keys(sources).length).toBeGreaterThan(50);
+    expect(readers).toEqual([]);
   });
 });
 

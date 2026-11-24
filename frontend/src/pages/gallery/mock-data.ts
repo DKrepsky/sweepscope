@@ -43,11 +43,6 @@ export const matrixColumns: MeasurementColumn[] = [
 export const matrixRows: MeasurementRow[] = [
   { id: 'valid', label: 'Valid', cells: { ch1: { state: 'valid', text: '1.000', unit: 'kHz' } } },
   {
-    id: 'unverified',
-    label: 'Unverified',
-    cells: { ch2: { state: 'unverified', text: '32.0', unit: 'mV', tooltip: 'Range not verified (illustrative)' } },
-  },
-  {
     id: 'invalid',
     label: 'Invalid',
     cells: { ch3: { state: 'invalid', text: '', footnote: 2, tooltip: 'Not enough periods on screen (illustrative)' } },

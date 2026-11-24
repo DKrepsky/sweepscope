@@ -75,9 +75,6 @@
       frozenLabel={measurements.frozenLabel}
       {columnHeader}
     />
-    {#if measurements.accuracyNote}
-      <p class="footnote">{measurements.accuracyNote}</p>
-    {/if}
     {#if measurements.statistics}
       <div class="ss-caps stats-title">{measurements.statistics.title}</div>
       <div class="stats ss-num">

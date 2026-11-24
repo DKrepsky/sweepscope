@@ -35,7 +35,6 @@
 
 <Section component="Badge">
   <Row>
-    <Badge kind="warning" tooltip="Range or time base the driver has not verified">Unverified</Badge>
     <Badge kind="software" tooltip="Computed in software">SW</Badge>
     <Badge kind="offline" tooltip="Viewing a saved capture">Offline</Badge>
     <Badge kind="error" tooltip="Error">Error</Badge>
@@ -72,7 +71,7 @@
 
 <Section
   component="MeasurementMatrix"
-  note="Cell states: valid, unverified, invalid, stale. CH4 is omitted from the second table (channel off)."
+  note="Cell states: valid, invalid, stale. CH4 is omitted from the second table (channel off)."
 >
   <MeasurementMatrix columns={matrixColumns} rows={matrixRows} footnotes={matrixFootnotes}>
     {#snippet columnHeader(column)}

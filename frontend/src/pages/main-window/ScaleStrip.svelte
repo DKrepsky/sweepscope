@@ -21,13 +21,12 @@
   const summary = (channel: ChannelModel) =>
     `${channel.voltsPerDiv.value} ${channel.voltsPerDiv.unit} ${channel.coupling.toUpperCase()}`;
   const shownText = (channel: ChannelModel) => (channel.enabled ? summary(channel) : 'off');
-  const unverified = (channel: ChannelModel) => (channel.enabled && channel.unverified ? ' Unverified' : '');
   const clip = (channel: ChannelModel) => (channel.enabled && channel.clipped ? ' Clip' : '');
   const role = (channel: ChannelModel) => (channel.enabled && channel.role ? ` ${channel.role.toUpperCase()}` : '');
   const alias = (channel: ChannelModel) => (channel.enabled && channel.alias ? ' Alias' : '');
   /** WCAG 2.5.3: the name starts with the visible text. */
   const accessibleName = (channel: ChannelModel) =>
-    `${channel.number} ${shownText(channel)}${role(channel)}${alias(channel)}${unverified(channel)}${clip(channel)}, channel ${channel.number} scale`;
+    `${channel.number} ${shownText(channel)}${role(channel)}${alias(channel)}${clip(channel)}, channel ${channel.number} scale`;
 </script>
 
 <div class="strip" data-region="scale-strip" role="group" aria-label="Channel scales">
@@ -43,9 +42,6 @@
     >
       <b>{channel.number}</b>
       <span class="ss-num">{shownText(channel)}</span>
-      {#if channel.enabled && channel.unverified}
-        <Badge kind="warning" tooltip={channel.unverified}>Unverified</Badge>
-      {/if}
       {#if channel.enabled && channel.role}
         <span class="role" data-role={channel.role}>{channel.role.toUpperCase()}</span>
       {/if}
