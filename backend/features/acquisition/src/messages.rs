@@ -5,7 +5,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct Availability {
     pub enabled: bool,
     pub reason: Option<String>,
@@ -14,7 +14,7 @@ pub struct Availability {
 /// The current entry of a scale table. `faster` is a smaller volts or time per division.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct ScaleChoice {
     pub index: u8,
     pub label: FormattedValue,
@@ -25,7 +25,7 @@ pub struct ScaleChoice {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct ChannelState {
     pub number: u8,
     pub enabled: bool,
@@ -47,7 +47,7 @@ pub struct ChannelState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct HorizontalState {
     pub time_base: ScaleChoice,
     /// Percent of the screen.
@@ -61,7 +61,7 @@ pub struct HorizontalState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct TriggerState {
     pub source: u8,
     pub slope: Slope,
@@ -76,7 +76,7 @@ pub struct TriggerState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct ControlsAvailability {
     pub run: Availability,
     pub force: Availability,
@@ -90,7 +90,7 @@ pub struct ControlsAvailability {
 /// Instrument slice. `channels` always holds four entries.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct InstrumentState {
     #[ts(type = "number")]
     pub revision: u64,
@@ -106,7 +106,7 @@ pub struct InstrumentState {
 /// A message the UI shows once per `id`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct SetupNotice {
     #[ts(type = "number")]
     pub id: u64,
@@ -116,7 +116,7 @@ pub struct SetupNotice {
 /// Result of `load_setup`: values the device cannot do are listed in `warnings` and keep their current setting.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct SetupLoaded {
     pub file_name: String,
     pub warnings: Vec<String>,
@@ -124,7 +124,7 @@ pub struct SetupLoaded {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum Phase {
     Stopped,
     Armed,
@@ -135,7 +135,7 @@ pub enum Phase {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct AcquisitionStatus {
     #[ts(type = "number")]
     pub revision: u64,
@@ -144,7 +144,7 @@ pub struct AcquisitionStatus {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct InstrumentFacts {
     #[ts(type = "number")]
     pub revision: u64,
@@ -158,7 +158,7 @@ pub struct InstrumentFacts {
 /// Optional fields: a missing field leaves the setting alone.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct ChannelPatch {
     #[ts(optional)]
     pub enabled: Option<bool>,
@@ -176,7 +176,7 @@ pub struct ChannelPatch {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct TriggerPatch {
     #[ts(optional)]
     pub source: Option<u8>,
@@ -189,7 +189,7 @@ pub struct TriggerPatch {
 /// What `step_setting` and `reset_setting` act on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum SettingTarget {
     Range { channel: u8 },
     TimeBase,

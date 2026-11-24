@@ -1,7 +1,9 @@
 //! Generated TypeScript must land in `frontend/src/api/generated`, never outside the repository.
-//! ts-rs resolves `export_to` against `<crate>/bindings`, so the number of `..` depends on the crate depth.
+//! ts-rs resolves `export_to` against the cwd of whichever crate runs the export (a dependency is
+//! exported from its dependants' tests too), so no depth is right for every crate. One absolute
+//! export dir, set in `.cargo/config.toml`, is; `export_to` must not come back.
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -23,50 +25,28 @@ fn rust_files(dir: &Path, found: &mut Vec<PathBuf>) {
     }
 }
 
-fn crate_dir_of(file: &Path) -> PathBuf {
-    file.ancestors()
-        .find(|dir| dir.join("Cargo.toml").is_file())
-        .expect("a source file inside a crate")
-        .to_path_buf()
-}
+#[test]
+fn given_the_cargo_config_when_ts_rs_picks_its_export_dir_then_it_is_the_generated_folder_inside_the_repo() {
+    let export_dir = PathBuf::from(env!("TS_RS_EXPORT_DIR"));
 
-fn export_targets(source: &str) -> Vec<&str> {
-    source
-        .split("export_to = \"")
-        .skip(1)
-        .filter_map(|rest| rest.split('"').next())
-        .collect()
-}
-
-fn normalise(path: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::ParentDir => {
-                out.pop();
-            }
-            Component::CurDir => {}
-            other => out.push(other),
-        }
-    }
-    out
+    assert_eq!(export_dir, repo_root().join("frontend/src/api/generated"));
 }
 
 #[test]
-fn given_every_export_to_in_the_backend_when_resolved_then_it_is_the_generated_folder_inside_the_repo() {
-    let root = repo_root();
-    let expected = root.join("frontend/src/api/generated");
+fn given_the_backend_sources_when_scanned_then_no_type_overrides_the_export_location() {
     let mut files = Vec::new();
-    rust_files(&root.join("backend"), &mut files);
+    rust_files(&repo_root().join("backend"), &mut files);
+    let this_file = Path::new(file!()).file_name().unwrap();
 
-    let mut checked = 0;
-    for file in files {
-        let source = fs::read_to_string(&file).unwrap();
-        for target in export_targets(&source) {
-            let resolved = normalise(&crate_dir_of(&file).join("bindings").join(target));
-            assert_eq!(resolved, expected, "{} exports to {target}", file.display());
-            checked += 1;
-        }
-    }
-    assert!(checked > 0, "no export_to found: the guard is blind");
+    let offenders: Vec<_> = files
+        .iter()
+        .filter(|f| f.file_name() != Some(this_file))
+        .filter(|f| fs::read_to_string(f).unwrap().contains("export_to"))
+        .collect();
+
+    assert!(files.len() > 10, "the scan found no sources: the guard is blind");
+    assert!(
+        offenders.is_empty(),
+        "export_to would bypass the export dir: {offenders:?}"
+    );
 }

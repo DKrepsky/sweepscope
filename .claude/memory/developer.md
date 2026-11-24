@@ -294,3 +294,5 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `tauri-plugin-dialog` 2.8 used from Rust only (`ipc/picker.rs`: architecture check allows `tauri::` only in main.rs and ipc/); `main.rs` registers `.plugin(tauri_plugin_dialog::init())`; blocking dialogs run via `tauri::async_runtime::spawn_blocking` in async commands.
 - ts-rs cannot export a type from `src-tauri` that imports feature types (relative `export_to` makes garbage import paths), so `StateSnapshot.ts` is rendered by `manifest::render_state_snapshot_ts`; regenerate both generated files with `UPDATE_GENERATED=1 cargo test -p sweepscope-app`.
 - Raw command body: `tauri::ipc::Request::body()` is `InvokeBody::Raw` for bytes; JSON bodies are refused. Heredocs with many shell steps get refused in this sandbox: use the Write tool and split commands.
+
+- ts-rs export_to is resolved against the cwd of the crate whose test runs the export, and kernel types are re-exported from dependant crates, so no per-type depth works; use TS_RS_EXPORT_DIR in .cargo/config.toml (relative=true) and no export_to. Verify with cargo test --workspace then git status and ls backend.
