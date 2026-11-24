@@ -7,21 +7,17 @@ export interface IpcCall {
 }
 
 /** A connected simulator with channels 1 to 3 on and 4 off, so the dock shows both row states. */
-const readySnapshot = (unverifiedTimeBase: boolean) => {
+const readySnapshot = () => {
   const base = instrumentState();
-  const timeBase = { ...base.horizontal.timeBase, verified: !unverifiedTimeBase };
   return stateSnapshot({
     instrument: {
       ...base,
       channels: base.channels.map((channel) => ({ ...channel, enabled: channel.number < 4 })),
-      horizontal: { ...base.horizontal, timeBase },
     },
   });
 };
 
 export interface StubOptions {
-  /** The selected time base step is one the hardware has not been measured at. */
-  unverifiedTimeBase?: boolean;
   /** Per command: the value it returns, or an error message it rejects with (the M2 file commands and `set_interpolation`). */
   commands?: Record<string, { result?: unknown; error?: string }>;
 }
@@ -112,12 +108,7 @@ export async function stubTauri(
         },
       };
     },
-    [
-      initialSettings,
-      readySnapshot(options.unverifiedTimeBase ?? false),
-      options.commands ?? {},
-      ACKNOWLEDGED_COMMANDS,
-    ] as const,
+    [initialSettings, readySnapshot(), options.commands ?? {}, ACKNOWLEDGED_COMMANDS] as const,
   );
 }
 
