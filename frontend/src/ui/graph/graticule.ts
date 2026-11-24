@@ -1,5 +1,5 @@
 import { tokens } from '../../design-system';
-import type { PixelSize } from './graph-frame';
+import type { PixelSize, Tick } from './graph-frame';
 
 export const DIVISIONS_X = 10;
 export const DIVISIONS_Y = 8;
@@ -85,7 +85,43 @@ function frameLines(size: PixelSize): Line[] {
   ];
 }
 
-export function drawGraticule(ctx: CanvasRenderingContext2D, size: PixelSize) {
+export interface GraticuleTicks {
+  x?: readonly Tick[];
+  y?: readonly Tick[];
+}
+
+const EDGE_BAND = 0.03;
+
+function anchor<T extends string>(at: number, low: T, middle: T, high: T): T {
+  if (at <= EDGE_BAND) return low;
+  return at >= 1 - EDGE_BAND ? high : middle;
+}
+
+const within = (value: number, extent: number, inset: number) => Math.min(extent - inset, Math.max(inset, value));
+
+/** Labels sit inside the frame, so no gutter is needed; the ones at an edge are anchored inward to stay inside. */
+function drawTickLabels(
+  ctx: CanvasRenderingContext2D,
+  size: PixelSize,
+  ticksX: readonly Tick[],
+  ticksY: readonly Tick[],
+) {
+  const inset = Number.parseFloat(tokens['space-2']) + 1;
+  ctx.fillStyle = tokens['color-text-muted'];
+  ctx.font = `${tokens['font-size-2xs']} ${tokens['font-mono']}`;
+  ctx.textBaseline = 'bottom';
+  for (const { at, text } of ticksX) {
+    ctx.textAlign = anchor<CanvasTextAlign>(at, 'left', 'center', 'right');
+    ctx.fillText(text, within(at * size.width, size.width, inset), size.height - inset);
+  }
+  ctx.textAlign = 'left';
+  for (const { at, text } of ticksY) {
+    ctx.textBaseline = anchor<CanvasTextBaseline>(at, 'bottom', 'middle', 'top');
+    ctx.fillText(text, inset, within((1 - at) * size.height, size.height, inset));
+  }
+}
+
+export function drawGraticule(ctx: CanvasRenderingContext2D, size: PixelSize, ticks: GraticuleTicks = {}) {
   const width = hairline(size.ratio);
   ctx.fillStyle = tokens['color-bg-scope'];
   ctx.fillRect(0, 0, size.width, size.height);
@@ -93,4 +129,5 @@ export function drawGraticule(ctx: CanvasRenderingContext2D, size: PixelSize) {
   strokeLines(ctx, tokens['color-grid-tick'], width, tickLines(size));
   strokeLines(ctx, tokens['color-grid-axis'], width, axisLines(size));
   strokeLines(ctx, tokens['color-grid-frame'], width, frameLines(size));
+  drawTickLabels(ctx, size, ticks.x ?? [], ticks.y ?? []);
 }

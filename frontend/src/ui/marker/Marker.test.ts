@@ -204,3 +204,60 @@ describe('Marker value for assistive technology', () => {
     expect(marker).toHaveAttribute('aria-valuenow', '0.55');
   });
 });
+
+describe('Marker peak and x-axis kinds', () => {
+  const moveX = (el: Element, clientX: number) =>
+    fireEvent(el, new MouseEvent('pointermove', { clientX, bubbles: true }));
+
+  it('given a peak marker, when ArrowRight is pressed without Alt, then it moves one step right', async () => {
+    const { marker, oncommit } = setup({ kind: 'peak', step: 0.01 });
+    marker.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(oncommit).toHaveBeenCalledWith(0.51);
+  });
+
+  it('given a peak marker, when Shift+ArrowLeft is pressed, then it moves ten steps left', async () => {
+    const { marker, oncommit } = setup({ kind: 'peak', step: 0.01 });
+    marker.focus();
+    await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}');
+    expect(oncommit).toHaveBeenCalledWith(0.4);
+  });
+
+  it('given a peak marker, when ArrowUp is pressed, then it does not move', async () => {
+    const { marker, oncommit } = setup({ kind: 'peak', step: 0.01 });
+    marker.focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(oncommit).not.toHaveBeenCalled();
+  });
+
+  it('given a peak marker, when it is dragged to the right, then the position follows the pointer along x', async () => {
+    const { marker, ondrag } = setup({ kind: 'peak' });
+    await fireEvent(marker, new MouseEvent('pointerdown', { clientX: 100, bubbles: true }));
+    await moveX(marker, 300);
+    expect(ondrag).toHaveBeenLastCalledWith(0.75);
+  });
+
+  it('given a peak marker with a level, when rendered, then it sits at that level and left position and reads the value text', () => {
+    const { marker } = setup({ kind: 'peak', position: 0.25, level: 0.75, valueText: '1.001 kHz' });
+    expect(marker.style.left).toBe('25%');
+    expect(marker.style.top).toBe('25%');
+    expect(marker).toHaveAttribute('aria-valuetext', '1.001 kHz');
+    expect(marker).toHaveAttribute('aria-orientation', 'horizontal');
+  });
+
+  it('given a ground marker on the x axis, when rendered, then it is horizontal and moves with Alt+ArrowRight', async () => {
+    const { marker, oncommit } = setup({ axis: 'x', step: 0.1 });
+    expect(marker).toHaveAttribute('aria-orientation', 'horizontal');
+    expect(marker.className).toContain('axis-x');
+    marker.focus();
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    expect(oncommit).toHaveBeenCalledWith(0.6);
+  });
+
+  it('given a ground marker on the x axis, when ArrowUp is pressed with Alt, then it does not move', async () => {
+    const { marker, oncommit } = setup({ axis: 'x' });
+    marker.focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    expect(oncommit).not.toHaveBeenCalled();
+  });
+});

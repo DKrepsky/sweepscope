@@ -82,11 +82,25 @@ describe('Graph', () => {
       gutterLeft: text('left'),
       gutterRight: text('right'),
       gutterTop: text('top'),
+      gutterBottom: text('bottom'),
       overlay: text('overlay'),
     });
     const image = screen.getByRole('img');
-    for (const name of ['left', 'right', 'top', 'overlay']) {
+    for (const name of ['left', 'right', 'top', 'bottom', 'overlay']) {
       expect(image).not.toContainElement(screen.getByRole('button', { name }));
     }
+  });
+
+  it('given a graph, when rendered, then the renderer gets three canvases and the ghost layer sits between graticule and traces', () => {
+    let layers: { graticule: HTMLCanvasElement; ghosts: HTMLCanvasElement; traces: HTMLCanvasElement } | undefined;
+    render(Graph, {
+      summary: 's',
+      createRenderer: (given) => {
+        layers = given;
+        return fakeRenderer().renderer;
+      },
+    });
+    const canvases = [...screen.getByRole('img').querySelectorAll('canvas')];
+    expect(canvases).toEqual([layers!.graticule, layers!.ghosts, layers!.traces]);
   });
 });

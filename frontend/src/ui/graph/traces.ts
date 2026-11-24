@@ -1,6 +1,8 @@
 import { tokens } from '../../design-system';
 import type { ChannelNumber, GraphFrame, PixelSize, Trace } from './graph-frame';
 import { DIVISIONS_Y } from './graticule';
+import { strokeStyled, tracePath } from './path';
+import { drawXy } from './xy';
 
 const FROZEN_OPACITY = 0.4;
 const DOT_SIZE_CSS = 3;
@@ -31,6 +33,7 @@ function layersBottomToTop(frame: GraphFrame): Layer[] {
   return layers;
 }
 
+/** NaN in y marks a missing sample: the line breaks there. */
 function point(size: PixelSize, samples: ArrayLike<number>, index: number): [number, number] {
   const x = samples.length > 1 ? (index / (samples.length - 1)) * size.width : size.width / 2;
   const clamped = Math.min(DIVISIONS_Y, Math.max(0, samples[index] ?? 0));
@@ -41,16 +44,8 @@ const side = (value: number) => (value < 0 ? 'top' : value > DIVISIONS_Y ? 'bott
 
 function strokeLine(ctx: CanvasRenderingContext2D, layer: Layer, size: PixelSize) {
   const { samples } = layer.trace;
-  ctx.strokeStyle = layer.colour;
-  ctx.lineWidth = Math.max(1 / size.ratio, layer.width);
-  ctx.lineJoin = 'round';
-  ctx.setLineDash(layer.dash);
-  ctx.beginPath();
-  for (let i = 0; i < samples.length; i++) {
-    const [x, y] = point(size, samples, i);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
+  strokeStyled(ctx, layer.colour, Math.max(1 / size.ratio, layer.width), layer.dash);
+  tracePath(ctx, samples.length, (i) => point(size, samples, i));
   ctx.stroke();
 }
 
@@ -59,6 +54,7 @@ function fillDots(ctx: CanvasRenderingContext2D, layer: Layer, size: PixelSize) 
   const { samples } = layer.trace;
   for (let i = 0; i < samples.length; i++) {
     const [x, y] = point(size, samples, i);
+    if (Number.isNaN(y)) continue;
     ctx.fillRect(x - DOT_SIZE_CSS / 2, y - DOT_SIZE_CSS / 2, DOT_SIZE_CSS, DOT_SIZE_CSS);
   }
 }
@@ -108,12 +104,22 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, frame: GraphFram
   if (layer.channel) markOffScreen(ctx, layer, size);
 }
 
+/** Channel traces only, without edge markers: what a persistence ghost keeps of a frame. */
+export function drawGhostTraces(ctx: CanvasRenderingContext2D, frame: GraphFrame, size: PixelSize) {
+  for (const layer of layersBottomToTop(frame)) {
+    if (!layer.channel) continue;
+    if (frame.dots) fillDots(ctx, layer, size);
+    else strokeLine(ctx, layer, size);
+  }
+}
+
 export function drawTraces(ctx: CanvasRenderingContext2D, frame: GraphFrame, size: PixelSize) {
   ctx.setTransform(size.ratio, 0, 0, size.ratio, 0, 0);
   ctx.clearRect(0, 0, size.width, size.height);
   if (frame.state === 'empty') return;
   ctx.save();
   ctx.globalAlpha = frame.state === 'frozen' ? FROZEN_OPACITY : 1;
-  for (const layer of layersBottomToTop(frame)) drawLayer(ctx, layer, frame, size);
+  if (frame.xy) drawXy(ctx, frame.xy, size);
+  else for (const layer of layersBottomToTop(frame)) drawLayer(ctx, layer, frame, size);
   ctx.restore();
 }

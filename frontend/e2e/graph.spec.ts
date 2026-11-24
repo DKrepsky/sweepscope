@@ -118,8 +118,8 @@ test.describe('graph semantics', () => {
   }) => {
     await openGallery(page);
     const images = page.locator('[data-component="Graph"] [role="img"]');
-    await expect(images).toHaveCount(5);
-    for (let i = 0; i < 5; i += 1) await expect(images.nth(i)).toHaveAttribute('aria-label', /Illustrative/);
+    await expect(images).toHaveCount(9);
+    for (let i = 0; i < 9; i += 1) await expect(images.nth(i)).toHaveAttribute('aria-label', /Illustrative/);
     const frozen = page.locator('[data-component="Graph"] .graph[data-state]');
     expect(await frozen.evaluateAll((els) => els.map((e) => e.getAttribute('data-state')))).toContain('frozen');
   });
@@ -171,5 +171,64 @@ test.describe('graph semantics', () => {
     const marker = page.locator('[data-component="Marker"]').getByRole('slider', { name: /disabled/ });
     await marker.focus();
     await expect(page.getByRole('tooltip').filter({ hasText: 'Trigger not available: offline' })).toBeVisible();
+  });
+});
+
+const RENDERER = '/src/ui/graph/canvas-2d-renderer.ts';
+
+test.describe('persistence layer in a real canvas', () => {
+  test('given a one-sample glitch in 2501 points drawn at 512 px, when scanned, then ink is at the glitch column in the live layer and in a ghost', async ({
+    page,
+  }) => {
+    await openGallery(page);
+    const ink = await page.evaluate(async (path) => {
+      const { Canvas2dRenderer } = await import(/* @vite-ignore */ path);
+      const make = () => Object.assign(document.createElement('canvas'), { width: 512, height: 400 });
+      const [graticule, ghosts, traces] = [make(), make(), make()];
+      const ctx = (c: HTMLCanvasElement) => c.getContext('2d', { willReadFrequently: true })!;
+      const renderer = new Canvas2dRenderer(ctx(graticule), ctx(traces), ctx(ghosts));
+      const samples = Array.from({ length: 2501 }, () => 4);
+      samples[1250] = 0.5;
+      const size = { width: 512, height: 400, ratio: 1 };
+      const persistence = { decayMs: 1000, epoch: 0, now: () => 0 };
+      renderer.draw({ state: 'live', channels: [{ channel: 1, samples }], persistence }, size);
+      const column = (canvas: HTMLCanvasElement) => {
+        const data = ctx(canvas).getImageData(255, 0, 3, 100).data;
+        return data.some((value, i) => i % 4 === 3 && value > 0);
+      };
+      return { live: column(traces), ghost: column(ghosts) };
+    }, RENDERER);
+    expect(ink).toEqual({ live: true, ghost: true });
+  });
+
+  test('given four channels of 2501 points with Infinite persistence at 20 frames per second, when drawn 60 times, then the slowest frame is reported against the 33 ms budget', async ({
+    page,
+  }) => {
+    await openGallery(page);
+    const slowest = await page.evaluate(async (path) => {
+      const { Canvas2dRenderer } = await import(/* @vite-ignore */ path);
+      const make = () => Object.assign(document.createElement('canvas'), { width: 1100, height: 880 });
+      const [graticule, ghosts, traces] = [make(), make(), make()];
+      const renderer = new Canvas2dRenderer(
+        graticule.getContext('2d')!,
+        traces.getContext('2d')!,
+        ghosts.getContext('2d')!,
+      );
+      const size = { width: 1100, height: 880, ratio: 1 };
+      let worst = 0;
+      for (let frame = 0; frame < 60; frame += 1) {
+        const channels = [1, 2, 3, 4].map((channel) => ({
+          channel,
+          samples: Array.from({ length: 2501 }, (_, i) => 4 + 3 * Math.sin((i / 2500) * 40 + frame + channel)),
+        }));
+        const persistence = { decayMs: 'infinite', epoch: 0, now: () => frame * 50 };
+        const start = performance.now();
+        renderer.draw({ state: 'live', channels, persistence }, size);
+        worst = Math.max(worst, performance.now() - start);
+      }
+      return worst;
+    }, RENDERER);
+    test.info().annotations.push({ type: 'slowest-frame-ms', description: slowest.toFixed(1) });
+    if (!process.env.CI) expect(slowest).toBeLessThan(33);
   });
 });

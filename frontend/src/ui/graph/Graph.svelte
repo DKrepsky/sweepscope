@@ -8,6 +8,7 @@
 
   interface Layers {
     graticule: HTMLCanvasElement;
+    ghosts: HTMLCanvasElement;
     traces: HTMLCanvasElement;
   }
 
@@ -20,10 +21,11 @@
     gutterLeft?: Snippet;
     gutterRight?: Snippet;
     gutterTop?: Snippet;
+    gutterBottom?: Snippet;
   }
 
-  const canvasRenderer = ({ graticule, traces }: Layers): TraceRenderer =>
-    new Canvas2dRenderer(graticule.getContext('2d')!, traces.getContext('2d')!);
+  const canvasRenderer = ({ graticule, ghosts, traces }: Layers): TraceRenderer =>
+    new Canvas2dRenderer(graticule.getContext('2d')!, traces.getContext('2d')!, ghosts.getContext('2d')!);
 
   let {
     frame = EMPTY_FRAME,
@@ -34,17 +36,19 @@
     gutterLeft,
     gutterRight,
     gutterTop,
+    gutterBottom,
   }: Props = $props();
 
   let screen: HTMLElement;
   let graticuleCanvas: HTMLCanvasElement;
+  let ghostsCanvas: HTMLCanvasElement;
   let tracesCanvas: HTMLCanvasElement;
   let renderer = $state<TraceRenderer | null>(null);
   let box = $state({ width: 0, height: 0 });
   let ratio = $state(window.devicePixelRatio || 1);
 
   $effect(() => {
-    const created = createRenderer({ graticule: graticuleCanvas, traces: tracesCanvas });
+    const created = createRenderer({ graticule: graticuleCanvas, ghosts: ghostsCanvas, traces: tracesCanvas });
     renderer = created;
     return () => {
       created.dispose();
@@ -73,7 +77,7 @@
 
   $effect(() => {
     if (!renderer || box.width === 0 || box.height === 0) return;
-    for (const canvas of [graticuleCanvas, tracesCanvas]) resizeBitmap(canvas, box, ratio);
+    for (const canvas of [graticuleCanvas, ghostsCanvas, tracesCanvas]) resizeBitmap(canvas, box, ratio);
     renderer.draw({ ...frame, dots: dots || frame.dots }, { ...box, ratio });
   });
 </script>
@@ -82,6 +86,7 @@
   <div class="screen" bind:this={screen}>
     <div class="layers" role="img" aria-label={summary}>
       <canvas bind:this={graticuleCanvas} class="layer"></canvas>
+      <canvas bind:this={ghostsCanvas} class="layer"></canvas>
       <canvas bind:this={tracesCanvas} class="layer"></canvas>
     </div>
     {#if overlay}<div class="overlay">{@render overlay()}</div>{/if}
@@ -89,6 +94,7 @@
   {#if gutterLeft}<div class="gutter left">{@render gutterLeft()}</div>{/if}
   {#if gutterRight}<div class="gutter right">{@render gutterRight()}</div>{/if}
   {#if gutterTop}<div class="gutter top">{@render gutterTop()}</div>{/if}
+  {#if gutterBottom}<div class="gutter bottom">{@render gutterBottom()}</div>{/if}
 </div>
 
 <style>
@@ -137,6 +143,12 @@
     inset-block: 0;
     inset-inline-start: 100%;
     inline-size: calc(var(--ss-space-7) + var(--ss-space-4));
+  }
+
+  .gutter.bottom {
+    inset-inline: 0;
+    inset-block-start: 100%;
+    block-size: calc(var(--ss-space-6) + var(--ss-space-2));
   }
 
   .gutter.top {
