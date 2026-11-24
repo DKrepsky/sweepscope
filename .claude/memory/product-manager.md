@@ -53,3 +53,11 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Developer commit messages guess issue numbers (#17, #13): fix when preparing the PR. Developers' "tests that sleep" or wall-clock bounds are rejected (no-sleep rule).
 - Visible side effects to surface at G4: dock thresholds rise, brand text hidden below 100 rem toolbar width, trigger phase chip dropped in roll, binary units (KiB).
 - Usage limit can stop a subagent mid-run; resume it with SendMessage after reset instead of respawning.
+
+## M4 lessons (2026-11)
+- M4 = #33 #34 #37 #38 #50 (new: remove verification tags). Human changed scope mid-design: no UNVERIFIED/PARTIALLY VERIFIED tags anywhere; calibration is per device with a modal dialog (AC5 of #33 replaced); bottom bar shows CALIBRATED / NO CALIBRATION with accuracy tooltip; connection item restyled ("Ready Hantek 6254BC"). Edit issues and re-run G1 whenever the human changes an AC.
+- Human wants the G3 document short and for a human reviewer: modules/libs with responsibilities, interfaces, workflows, added dependencies, critical decisions only; no files, tasks, branches, QA planning. Details go to work-plan.md. Domain logic gets its own module, not a lib.
+- Human reviews icons and copy closely (sine curve, no placeholders, single phrases without dots, bold headline plus line below).
+- Merge conflicts again only in .claude/memory/developer.md (keep both sides) and tauri-stub.ts (QA edits); commit QA artefacts before merging developer branches. Worktree agents commit with `git add -A` can sweep QA's untracked files.
+- Usage limit stopped four agents at once; SendMessage resume worked.
+- Reviewer found a real race QA missed (first frame uncalibrated); tests that pass "usually" need a deterministic same-wake-up test.
