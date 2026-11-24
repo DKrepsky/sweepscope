@@ -3324,6 +3324,7 @@ dependencies = [
  "autoset",
  "engineering-format",
  "measurements",
+ "math-channel",
  "serde",
  "serde_json",
  "sweepscope-kernel",

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::time::Instant;
 
-use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, FrameContext, RollContext};
+use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, DerivedTrace, Frame, FrameContext, RollContext};
 use sweepscope_kernel::KernelError;
 
 use super::autoset_run::{self, Plan, Start};
@@ -12,7 +12,7 @@ use super::model::{nearest_index, Model, CHANNELS};
 use super::pulse;
 use super::setup_file::{self, SetupFile};
 use super::view::{self, LAST_CHANNEL, NO_SCOPE};
-use crate::{ChannelPatch, InstrumentFacts, InstrumentState, SettingTarget, SetupNotice, TriggerPatch};
+use crate::{ChannelPatch, InstrumentFacts, InstrumentState, MathPatch, SettingTarget, SetupNotice, TriggerPatch};
 
 const POSITION_STEP: f64 = 0.05;
 const LEVEL_STEP_DIVS: f64 = 0.2;
@@ -287,7 +287,7 @@ impl Instrument {
                 }
                 SettingTarget::TriggerPosition => model.trigger_fraction = defaults.trigger_fraction,
                 SettingTarget::TriggerLevel => model.setup.trigger.level_volts = 0.0,
-                SettingTarget::MathScale | SettingTarget::MathPosition => math::reset(model, target),
+                SettingTarget::MathScale | SettingTarget::MathPosition => math::reset(caps, model, target),
             }
             Ok(())
         })
@@ -327,6 +327,16 @@ impl Instrument {
             model.setup.trigger.sweep = patch.sweep.unwrap_or(model.setup.trigger.sweep);
             pulse::apply(model, &patch)
         })
+    }
+
+    pub fn set_math(&mut self, patch: MathPatch) -> Result<Change, KernelError> {
+        self.edit(&move |caps, model| math::apply(caps, model, &patch))
+    }
+
+    /// The math trace of a frame about to be published; `None` while math is off or unavailable.
+    pub fn derive_math(&self, frame: &Frame) -> Option<DerivedTrace> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        math::derive(caps, model, frame)
     }
 
     /// `None` until the first device became ready; afterwards the last state, with controls unavailable while no device is ready.

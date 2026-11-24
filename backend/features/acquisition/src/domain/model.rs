@@ -6,6 +6,7 @@ use sweepscope_kernel::contracts::{
 
 use super::defaults::Defaults;
 use super::geometry::{geometry, record_percent, Geometry};
+use super::math::MathSetting;
 
 pub const CHANNELS: usize = 4;
 pub const DEFAULT_PULSE_WIDTH_S: f64 = 500e-6;
@@ -24,6 +25,7 @@ pub struct Model {
     /// Kept while the trigger is `Edge`, so switching back to `Pulse` restores what the user typed.
     pub pulse_width_s: f64,
     pub pulse_condition: PulseCondition,
+    pub math: MathSetting,
 }
 
 pub fn nearest_index<T>(items: &[T], wanted: f64, value_of: impl Fn(&T) -> f64) -> u8 {
@@ -67,7 +69,9 @@ impl Model {
             single: false,
             pulse_width_s: DEFAULT_PULSE_WIDTH_S,
             pulse_condition: DEFAULT_PULSE_CONDITION,
+            math: MathSetting::default(),
         };
+        model.math = MathSetting::fitted(caps, &model);
         model.settle(caps);
         model
     }

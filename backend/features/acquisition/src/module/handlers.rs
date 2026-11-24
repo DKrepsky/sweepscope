@@ -8,8 +8,8 @@ use super::effects::Effects;
 use super::setup_files::SetupFiles;
 use super::shared::Shared;
 use crate::{
-    ArmSingle, ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetRunning, SetTrigger,
-    SetTriggerLevel, SetTriggerPosition, StartAutoset, StepSetting,
+    ArmSingle, ForceTriggerNow, GetInstrument, LoadSetup, ResetSetting, SaveSetup, SetChannel, SetMath, SetRunning,
+    SetTrigger, SetTriggerLevel, SetTriggerPosition, StartAutoset, StepSetting,
 };
 
 /// Registers every request of this feature. The handlers hold the module state weakly: the bus lives as long as the
@@ -37,6 +37,9 @@ pub fn register(bus: &Bus, shared: &Arc<Shared>, files: SetupFiles) -> Result<()
     })?;
     on(bus, weak, |core, r: SetTriggerLevel, fx, now| {
         core.edit(fx, now, |i| i.set_trigger_level(r.divisions))
+    })?;
+    on(bus, weak, |core, r: SetMath, fx, now| {
+        core.edit(fx, now, |i| i.set_math(r.patch))
     })?;
     on(bus, weak, |core, r: SetTrigger, fx, now| {
         core.edit(fx, now, |i| i.set_trigger(r.patch))
