@@ -8,9 +8,16 @@
     title: Snippet;
     body: Snippet;
     actions?: Snippet;
+    /** Next to the title, outside the dialog's accessible name. */
+    meta?: Snippet;
+    /** A full-width row between the header and the body. */
+    strip?: Snippet;
+    /** Id of the element inside the body that describes the dialog. */
+    describedby?: string;
+    wide?: boolean;
   }
 
-  const { open, modal, onclose, title, body, actions }: Props = $props();
+  const { open, modal, onclose, title, body, actions, meta, strip, describedby, wide = false }: Props = $props();
   const titleId = $props.id();
 
   let element: HTMLDialogElement;
@@ -32,14 +39,19 @@
   }
 </script>
 
-<dialog bind:this={element} aria-labelledby={titleId} oncancel={requestClose}>
-  <header id={titleId}>{@render title()}</header>
+<dialog bind:this={element} class:wide aria-labelledby={titleId} aria-describedby={describedby} oncancel={requestClose}>
+  <header>
+    <span id={titleId}>{@render title()}</span>
+    {#if meta}<span class="meta">{@render meta()}</span>{/if}
+  </header>
+  {#if strip}{@render strip()}{/if}
   <div class="body">{@render body()}</div>
   {#if actions}<footer>{@render actions()}</footer>{/if}
 </dialog>
 
 <style>
   dialog {
+    margin: auto;
     padding: 0;
     max-width: 28rem;
     color: var(--ss-color-text-primary);
@@ -49,15 +61,34 @@
     border-radius: var(--ss-radius-md);
     z-index: var(--ss-z-dialog);
   }
+  dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  dialog.wide {
+    inline-size: min(34rem, 100% - 2rem);
+    max-inline-size: none;
+  }
   dialog::backdrop {
-    background: var(--ss-color-bg-overlay);
+    background: var(--ss-color-scrim);
   }
   header {
+    display: flex;
+    align-items: center;
+    gap: var(--ss-space-4);
     padding: var(--ss-space-4) var(--ss-space-5);
     border-bottom: var(--ss-border-width) solid var(--ss-color-border);
     font-weight: var(--ss-font-weight-bold);
   }
+  .meta {
+    margin-inline-start: auto;
+    font-weight: var(--ss-font-weight-regular);
+    font-size: var(--ss-font-size-xs);
+    color: var(--ss-color-text-muted);
+  }
   .body {
+    min-block-size: 0;
+    overflow-y: auto;
     display: grid;
     gap: var(--ss-space-4);
     padding: var(--ss-space-5);

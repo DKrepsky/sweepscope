@@ -14,6 +14,7 @@
   --ss-color-bg-pressed: #3c4249;
   --ss-color-bg-selected: #1e3350;
   --ss-color-bg-overlay: rgb(16 18 20 / 0.72);
+  --ss-color-scrim: rgb(8 9 10 / 0.66);
 
   /* Borders */
   --ss-color-border-subtle: #2f3338;
