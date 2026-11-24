@@ -22,7 +22,13 @@
   const fitted = (start: number, size: number, room: number) => Math.max(0, Math.min(start, room - size));
 
   $effect(() => {
-    if (!open || !menu) return;
+    if (!open) {
+      position = null;
+      return;
+    }
+    if (!menu) return;
+    void items;
+
     const { width, height } = menu.getBoundingClientRect();
     position = {
       x: fitted(anchor.x, width, window.innerWidth),
