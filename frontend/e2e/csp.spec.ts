@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { stubTauri } from './support/tauri-stub';
 
-const PREVIEW = 'http://localhost:4173';
+const PREVIEW = `http://localhost:${process.env.E2E_PREVIEW_PORT ?? 4173}`;
 const config = JSON.parse(readFileSync(new URL('../../src-tauri/tauri.conf.json', import.meta.url), 'utf8')) as {
   app: { security: { csp: string } };
 };
