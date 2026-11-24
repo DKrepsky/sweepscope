@@ -8,7 +8,7 @@ use sweepscope_measurement::{GetMeasurements, MeasurementsState};
 
 /// What `get_snapshot` returns; the shell assembles it from the slice owners and holds no state of its own.
 /// Its TypeScript type is rendered by `manifest::render_state_snapshot_ts`, because ts-rs cannot place a file of the
-/// shell next to the feature types and still import them (a test compares the field names).
+/// shell next to the feature types and still import them (a test compares the field names and types).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StateSnapshot {
@@ -84,6 +84,50 @@ mod tests {
         serialised.sort_unstable();
         listed.sort_unstable();
         assert_eq!(serialised, listed);
+    }
+
+    fn short_name(path: &str) -> &str {
+        path.rsplit("::").next().expect("type name")
+    }
+
+    /// The TypeScript expression of a Rust field type: `Option<T>` is `T | null`, a struct keeps its name.
+    fn ts_expression<T>(_: &T) -> String {
+        let name = std::any::type_name::<T>();
+        match name
+            .strip_prefix("core::option::Option<")
+            .and_then(|n| n.strip_suffix('>'))
+        {
+            Some(inner) => format!("{} | null", short_name(inner)),
+            None => short_name(name).to_owned(),
+        }
+    }
+
+    #[test]
+    fn given_a_snapshot_when_its_field_types_are_read_then_they_are_those_of_the_snapshot_manifest() {
+        let backend = compose_quiet();
+        let StateSnapshot {
+            connection,
+            instrument,
+            status,
+            facts,
+            display,
+            measurements,
+        } = snapshot_with(&backend.bus).expect("snapshot");
+
+        let actual = [
+            ("connection", ts_expression(&connection)),
+            ("instrument", ts_expression(&instrument)),
+            ("status", ts_expression(&status)),
+            ("facts", ts_expression(&facts)),
+            ("display", ts_expression(&display)),
+            ("measurements", ts_expression(&measurements)),
+        ];
+
+        let listed: Vec<(&str, String)> = SNAPSHOT_FIELDS
+            .iter()
+            .map(|(name, ty, _)| (*name, (*ty).to_owned()))
+            .collect();
+        assert_eq!(listed, actual);
     }
 
     #[test]
