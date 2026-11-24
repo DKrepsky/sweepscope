@@ -409,3 +409,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Real-stack vitest: `src/calibration-dialog.composition.test.ts` composes `createLiveApp` + fake client (`client.zeroCalibration`) + `MainWindow`; other tables on the page make `findByRole('table')` ambiguous (scope by region name).
 - Shell tooling in this sandbox refuses compound commands that mix `cd`, heredocs and git; use Write for files and separate Bash calls. Svelte: `a11y_no_noninteractive_tabindex` needs a svelte-ignore (reason in a separate comment); every `.svelte` without script needs a `<script lang="ts">` block for svelte-check.
 - Icon count test in `ui/icon/Icon.test.ts` and the design set in `design-system/icons/icons.test.ts` both change when an icon is added (`ok` added here).
+
+## Acquisition consumer facts
+- Deterministic race tests: hook the fake device's ApplySetup handler (`FakeDevice::on_next_apply`), which runs on the module thread, to publish events at an exact point of the consumer loop. Trigger source 2 makes channel-2 offsets change the setup while channel-1 offsets do not.
+- `ZeroOffsetsApplied` is the acknowledgement a publisher can wait for after `ZeroOffsetsChanged`.
