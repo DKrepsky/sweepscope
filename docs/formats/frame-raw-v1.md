@@ -1,7 +1,7 @@
 # Raw frame file, version 1 (`SSR1`)
 
 SweepScope writes one captured frame as a `.bin` file (menu File, Export raw). A text copy of the Layout section is written beside it as
-`<name>.format.txt`, so the file stays readable without the application. The reader in the code is `decode_raw` in the `export` crate.
+`<stem>.format.txt`, where `<stem>` is the file name without its extension (`cap.bin` gets `cap.format.txt`), so the file stays readable without the application. The reader in the code is `decode_raw` in the `export` crate.
 
 ## Layout
 

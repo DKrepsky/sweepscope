@@ -79,11 +79,15 @@ sweepscope/
 ├── backend/
 │   ├── kernel/                   # shared kernel (crate `sweepscope-kernel`): bus, Clock, Storage, errors
 │   ├── libs/                     # feature-free crates, created by the first story that needs one
-│   │   └── (fft, interpolation, decimation, statistics, engineering-format ...)
+│   │   ├── engineering-format/ measurements/   # created by M1 and M2
+│   └── (fft, decimation ... created by their stories)
 │   └── features/
-│       ├── settings/             # exists from the scaffold: opaque UI-state blobs, setups later
-│       └── (device, acquisition, channels, timebase-trigger, measurement, spectrum, math-channels,
-│            display, export ... created by their stories)
+│       ├── settings/             # opaque UI-state blobs in settings.json (cursors, measurement pins)
+│       ├── device/  acquisition/ # device sessions; setup, run state and setup files (setup JSON, last-setup)
+│       ├── display/              # wire frame, interpolation mode (domain state)
+│       ├── measurement/          # twelve measurements per channel, accuracy note
+│       ├── export/               # CSV, raw SSR1 frame files
+│       └── (channels, timebase-trigger, spectrum, math-channels ... created by their stories)
 └── frontend/
     ├── package.json  vite.config.ts  svelte.config.js  tsconfig.json  eslint.config.js  .stylelintrc.json
     ├── index.html  gallery.html  # app entry; component gallery entry (not in production builds)
@@ -220,7 +224,7 @@ State has exactly one owner. Two kinds exist:
 
 | Kind | Owner | Test | Examples |
 |---|---|---|---|
-| **Domain state** | Backend, in the module that owns the capability | The backend computes with it, persists it, or applies it to hardware | connection, channel setup, time base, trigger, acquisition status, measurement selection, math channels, persistence setting |
+| **Domain state** | Backend, in the module that owns the capability | The backend computes with it, persists it, or applies it to hardware | connection, channel setup, time base, trigger, acquisition status, measurement selection, math channels, persistence setting, interpolation mode (`display`; automatic below 250 samples per division), setups (`acquisition`) |
 | **Presentation state** | Frontend, in one store in `app` | Only the view uses it | cursor positions, selected tab, panel sizes, which trace is highlighted, text scale, layout tier |
 
 Rules:
@@ -566,10 +570,12 @@ section 8.4). Still open, to be decided in the story that first needs them:
    frontend path that turns errors into messages (design.md 10.3 fixes the presentation: Banner, Toast, inline).
 2. **Logging and diagnostics.** Structured logging in Rust, log file location, and a "copy diagnostics" action.
 3. **Settings and file formats.** The scaffold stores UI-state blobs in one `settings.json` with a `version` field in the
-   Tauri app config directory (XDG on Linux). Setup and capture files and migrations come with their stories.
+   Tauri app config directory (XDG on Linux). Setups are `acquisition` state, saved as pretty JSON with `format` and `version` (and `last-setup.json` through `Storage`); the
+   exports are CSV and the raw `SSR1` frame file ([formats/frame-raw-v1.md](formats/frame-raw-v1.md)). All file writes go through
+   the kernel `write_atomic`; migrations arrive with the first version 2.
 4. **Offline mode as a device.** A `FileDevice` implementing `ScopeDevice` for saved captures (DAT-4).
 5. **Tauri security.** The scaffold sets a strict CSP, an app manifest listing only our commands and one capability for the
-   main window. Review again when plugins (dialogs, file system) are added.
+   main window. Reviewed in M2 for the dialog plugin (`tauri-plugin-dialog`): used from Rust only through the kernel `FilePicker`, no dialog or file-system permission is granted to the frontend (ADR 0016).
    The CSP (`src-tauri/tauri.conf.json`, JSON has no comments) allows `style-src 'unsafe-inline'` on purpose: Svelte
    sets inline `style` attributes and `style:` directives at run time (scale, positions, colours from tokens), which a
    strict `style-src` blocks. Scripts stay `'self'` only, so inline styles cannot run code. Revisit if styles move to
@@ -584,11 +590,11 @@ section 8.4). Still open, to be decided in the story that first needs them:
 | Q-E1 | The backend publishes `InstrumentFacts` as domain state (acquisition slice): effective sample rate and interval, record length in points per channel, capture rate in waveforms per second, dead time as a fraction of time. Each value travels as a number in SI base units plus the backend-formatted text (`FormattedValue { text, value, unit }`); one value and one unit per slot. Update rate at most 4 per second; changes highlight for one `motion-normal`. | Decided; implemented by the acquisition story |
 | Q-E2 | The backend decides. Aliasing and similar warnings are backend state (`Warnings` list with id, severity, message) that the UI only displays and that clears when the backend clears it. | Decided |
 | Q-E3 | The backend sends every selectable scale as `ScaleOption { value, text, verified }`; the UI never knows the table. Out-of-region values carry `verified: false`. | Decided |
-| Q-E4 | Accuracy-note text is a placeholder constant in the frontend gallery and mock; the real text is defined in a later story (PM). | Deferred to PM |
-| Q-E5 | Formatting is one implementation in Rust (`libs/engineering-format`), 3 significant digits by default (1.91 V, 500 µs), prefix rules per quantity. Domain values arrive pre-formatted. Cursor readouts (frontend state) need a formatter in the browser; the cursor story must either call a backend request per frame budget or ship a small TypeScript port checked against shared golden vectors. | Partly open (cursor story) |
-| Q-E6 | Time cursors are relative to samples. Default: X readouts are Δ-based, absolute X is relative to the first sample of the record, never to the trigger. Needs PM confirmation in the cursor story. | Open (cursor story) |
+| Q-E4 | The accuracy note is one backend constant in `measurement`, published in the measurement slice; the frontend only shows it. Wording decided by the PM in M2 (D9): "Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit." The README quotes the same sentence until the M4 accuracy page exists. | Decided (PM, M2) |
+| Q-E5 | Formatting is one implementation in Rust (`libs/engineering-format`), 3 significant digits by default (1.91 V, 500 µs), prefix rules per quantity; the digit count belongs to the `Quantity` (measured frequency and period use 4: `Quantity::Frequency`, `Quantity::Period`). Domain values arrive pre-formatted. Cursor readouts are frontend state and are formatted in the browser by a small TypeScript port of three quantities (volts, seconds, hertz) checked against shared golden vectors (`golden.tsv`, read by the Rust and the TypeScript tests). A backend round trip per cursor move cannot meet the same-frame feedback of #14 AC1. Four-digit rows live in a Rust-only golden file. | Decided (M2, ADR 0014) |
+| Q-E6 | Time cursors are relative to samples, never to the trigger (PRD 5.2). X readouts are Δ-based (ΔX and 1/ΔX). The absolute X1 and X2 values are the time from the left edge of the screen, that is the first sample of the displayed window, not the first sample of the record (the record starts 3.2 divisions left of the screen and pan would move it invisibly). Cursor positions are stored as fractions of the screen width. | Decided (M2 spec D1, approved at G3) |
 | Q-E7 | Backend publishes availability per control, `Availability { enabled, reason }`, so the UI encodes no rule (P1). Default policy: settings are accepted while stopped and applied at the next arm; offline and disconnected accept presentation settings only; roll disables trigger and fast time bases. To be confirmed against the driver in the acquisition story. | Principle decided; policy open |
-| Q-E8 | Clipping is detected in the backend from samples at the converter rails and reported as a measurement flag; invalid reasons are a code enum plus backend text. | Principle decided; details open (measurement story) |
+| Q-E8 | A channel is clipped when any sample code of the whole record is 0 or 255 (the converter rails). Clipping invalidates the amplitude-dependent quantities (Vmax, Vmin, Vpp, Vmean, Vrms, rise time, fall time) with reason `Clipped`; frequency, period, widths and duty cycle stay valid, because clipping leaves the mid-level crossings in place. Invalid values carry a reason code plus backend text (shown as `-` with a numbered footnote); the slice carries `clipped` per channel for the Clip badge. | Decided (M2, ADR 0014 item 4) |
 | Q-E9 | Ground marker 0 div; steppers to their documented default (a value in the backend scale table marked default); pan centred. | Decided (PM) |
 | Q-E10 | Wheel zoom anchors at the pointer position. | Decided (PM) |
 | Q-E11 | Persistence presets: Off, 0.5 s, 1 s, 2 s, infinite (US-07). | Decided (PM) |
@@ -596,6 +602,6 @@ section 8.4). Still open, to be decided in the story that first needs them:
 | Q-E13 | Canvas 2D first behind `TraceRenderer` (ADR 0006), device-pixel snapping in code, redraw on `devicePixelRatio` change. Marker ghosts are DOM overlays reconciled by the `app` layer: ghost on drag, `pending` prop after 250 ms, confirmed value from the store. WebGL2, persistence and budget measurement after the M0 spike. | Partly decided |
 | Q-E14 | Window minimum 1024 x 720 logical px in `tauri.conf.json` (human decision D-L1; content floor 64 x 45 rem, design 3.2); tiers and screen fit computed in TypeScript, no rem media queries or container units (ADR 0005). | Decided |
 
-Open items for the feature stories (explicit): Q-E5 (cursor formatting), Q-E6, Q-E7 policy, Q-E8 details, WebGL2 and
+Open items for the feature stories (explicit): Q-E7 policy, WebGL2 and
 persistence, the stream pattern (kernel implements events and request/response first), the state aggregator and
 snapshot (introduced by the first domain feature), first-run hints.
