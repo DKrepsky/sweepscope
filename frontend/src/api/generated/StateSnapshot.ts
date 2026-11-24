@@ -7,8 +7,9 @@ import type { InstrumentState } from "./InstrumentState";
 import type { MeasurementsState } from "./MeasurementsState";
 import type { RecordingState } from "./RecordingState";
 import type { SpectrumState } from "./SpectrumState";
+import type { ZeroCalibrationState } from "./ZeroCalibrationState";
 
 /**
  * What `get_snapshot` returns; the shell assembles it from the slice owners and holds no state of its own.
  */
-export type StateSnapshot = { connection: ConnectionSnapshot, instrument: InstrumentState | null, status: AcquisitionStatus, facts: InstrumentFacts, display: DisplayState, measurements: MeasurementsState, spectrum: SpectrumState, recording: RecordingState, };
+export type StateSnapshot = { connection: ConnectionSnapshot, instrument: InstrumentState | null, status: AcquisitionStatus, facts: InstrumentFacts, display: DisplayState, measurements: MeasurementsState, spectrum: SpectrumState, recording: RecordingState, zeroCalibration: ZeroCalibrationState, };

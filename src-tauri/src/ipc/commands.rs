@@ -3,6 +3,7 @@ use sweepscope_acquisition::{
     SetRunning, SetTrigger, SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, StartAutoset, StepSetting,
     TriggerPatch,
 };
+use sweepscope_calibration::{CloseZeroCalibration, MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration};
 use sweepscope_device::{RetryConnection, UseSimulator};
 use sweepscope_display::{InterpolationMode, Persistence, SetInterpolation, SetPersistence};
 use sweepscope_export::{ExportFormat, ExportFrame, SaveScreenshot};
@@ -52,6 +53,10 @@ pub const REGISTERED_COMMANDS: &[&str] = &[
     "close_roll_stream",
     "open_spectrum_stream",
     "close_spectrum_stream",
+    "open_zero_calibration",
+    "start_zero_calibration",
+    "measure_zero_calibration",
+    "close_zero_calibration",
 ];
 
 pub fn load_ui_state_with(bus: &Bus, namespace: String) -> Result<Option<UiStateEntry>, KernelError> {
@@ -211,6 +216,26 @@ fn retry_connection(backend: State<'_, Backend>) -> Result<(), KernelError> {
 }
 
 #[tauri::command]
+fn open_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(OpenZeroCalibration)
+}
+
+#[tauri::command]
+fn start_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(StartZeroCalibration)
+}
+
+#[tauri::command]
+fn measure_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(MeasureZeroChannel)
+}
+
+#[tauri::command]
+fn close_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(CloseZeroCalibration)
+}
+
+#[tauri::command]
 fn open_frame_stream(
     backend: State<'_, Backend>,
     streams: State<'_, FrameStreams>,
@@ -285,6 +310,10 @@ pub fn install(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry
         close_roll_stream,
         open_spectrum_stream,
         close_spectrum_stream,
+        open_zero_calibration,
+        start_zero_calibration,
+        measure_zero_calibration,
+        close_zero_calibration,
     ])
 }
 
