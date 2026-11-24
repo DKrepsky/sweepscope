@@ -43,3 +43,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Merges conflict only in .claude/memory/developer.md (keep both sides); commit spec edits before spawning worktrees or they will not see them.
 - Never let agents delete outside the repo; ask the human first (stray folder at ../frontend was deleted with approval).
 - Accuracy AC changes (#15 AC2: 0.01 % at >=500 us/div, 0.02 % faster) were decided by the human after a staff engineer analysis; run an assessment before asking.
+- Human rule (2026-11-24): security checks in CI are never lowered or split off; the Code Reviewer guarantees all non-test CI checks pass (CI parity gate in its agent file, workflow step 9, review template). When a spawned reviewer reports, check the CI parity table is filled; a missing table means the review is incomplete.

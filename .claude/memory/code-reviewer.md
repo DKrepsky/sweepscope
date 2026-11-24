@@ -31,3 +31,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Cargo `[env]` config is found by cwd, not --manifest-path: test a crate from outside the repo and check for stray `<crate>/bindings` (untracked, not ignored).
 - Rollback code: `fs::read(..).ok()` conflates NotFound with other errors; check before restoring/deleting user files.
 - Popup placement with bind:this measurement: check stale position state on reopen.
+
+## CI parity (human rule, 2026-11-24)
+- The human requires: the reviewer guarantees every non-test CI check passes (fmt, clippy, cargo deny, cargo audit, frontend lint/format/typecheck/build/npm audit, architecture and tools checks). Security checks are never lowered, ignored or skipped.
+- M2 PR #48 went red on `cargo deny` (RUSTSEC-2026-0594, `cookie` via tauri) because cargo-deny/cargo-audit were not installed locally and nobody ran them. Install them (`cargo install --locked cargo-deny cargo-audit`) and run them on every review, including the last one before G4: advisories appear without code changes.
+- Read `.github/workflows/ci.yml` at the start of each review; the CI parity table in the review template is mandatory.
