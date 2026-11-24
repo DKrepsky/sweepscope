@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 sweepscope-kernel = { path = "../../kernel" }
 engineering-format = { path = "../../libs/engineering-format" }
+math-channel = { path = "../../libs/math-channel" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ts-rs = "12"

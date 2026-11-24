@@ -3322,6 +3322,7 @@ name = "sweepscope-acquisition"
 version = "0.1.0"
 dependencies = [
  "engineering-format",
+ "math-channel",
  "serde",
  "serde_json",
  "sweepscope-kernel",

@@ -110,7 +110,7 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, locks
         trigger: trigger_state(caps, model),
         controls,
         setup_notice: None,
-        math: math::state(model),
+        math: math::state(caps, model, &gate),
     }
 }
 
