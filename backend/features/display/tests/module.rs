@@ -137,3 +137,14 @@ fn given_a_published_frame_when_a_copy_is_stamped_then_the_shared_bytes_are_unto
     assert_eq!(f64_at(&published, 16), 0.0);
     assert_eq!(f64_at(&copy, 16), 1.0);
 }
+
+#[test]
+fn given_a_running_module_when_dropped_then_both_workers_stop() {
+    let bus = Bus::new();
+    let module = start(&bus);
+    let began = std::time::Instant::now();
+
+    drop(module);
+
+    assert!(began.elapsed() < WAIT);
+}

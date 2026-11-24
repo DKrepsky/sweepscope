@@ -15,7 +15,8 @@ use crate::mode::automatic_mode;
 use crate::roll::RollEncoder;
 use crate::wire::encode_in_mode;
 
-const POLL: Duration = Duration::from_millis(10);
+/// Only bounds how long a stop request waits; events wake the workers at once.
+const STOP_CHECK: Duration = Duration::from_millis(100);
 
 pub struct DisplayDeps {
     pub bus: Bus,
@@ -24,7 +25,7 @@ pub struct DisplayDeps {
 
 pub struct DisplayModule {
     stop: Arc<AtomicBool>,
-    worker: Option<JoinHandle<()>>,
+    workers: Vec<JoinHandle<()>>,
 }
 
 impl DisplayModule {
@@ -34,24 +35,32 @@ impl DisplayModule {
         let shared = Arc::new(Shared::new(deps));
         register_handlers(&shared)?;
         let stop = Arc::new(AtomicBool::new(false));
-        let worker = std::thread::Builder::new()
-            .name("display".into())
-            .spawn({
-                let stop = Arc::clone(&stop);
-                move || run(&shared, &frames, &rolls, &stop)
-            })
-            .map_err(|e| KernelError::fatal(format!("cannot start the display thread: {e}")))?;
+        let frame_worker = spawn("display-frames", {
+            let (shared, stop) = (Arc::clone(&shared), Arc::clone(&stop));
+            move || show_frames(&shared, &frames, &stop)
+        })?;
+        let roll_worker = spawn("display-rolls", {
+            let stop = Arc::clone(&stop);
+            move || show_rolls(&shared, &rolls, &stop)
+        })?;
         Ok(Self {
             stop,
-            worker: Some(worker),
+            workers: vec![frame_worker, roll_worker],
         })
     }
+}
+
+fn spawn(name: &str, work: impl FnOnce() + Send + 'static) -> Result<JoinHandle<()>, KernelError> {
+    std::thread::Builder::new()
+        .name(name.into())
+        .spawn(work)
+        .map_err(|e| KernelError::fatal(format!("cannot start the {name} thread: {e}")))
 }
 
 impl Drop for DisplayModule {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
-        if let Some(worker) = self.worker.take() {
+        for worker in self.workers.drain(..) {
             let _ = worker.join();
         }
     }
@@ -73,13 +82,18 @@ fn register_handlers(shared: &Arc<Shared>) -> Result<(), KernelError> {
     })
 }
 
-fn run(shared: &Shared, frames: &Subscription<FrameCaptured>, rolls: &Subscription<RollCaptured>, stop: &AtomicBool) {
-    let mut encoder = RollEncoder::default();
+fn show_frames(shared: &Shared, frames: &Subscription<FrameCaptured>, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
-        if let Some(captured) = frames.try_next() {
+        if let Some(captured) = frames.recv_timeout(STOP_CHECK) {
             shared.show(captured);
         }
-        if let Some(first) = rolls.recv_timeout(POLL) {
+    }
+}
+
+fn show_rolls(shared: &Shared, rolls: &Subscription<RollCaptured>, stop: &AtomicBool) {
+    let mut encoder = RollEncoder::default();
+    while !stop.load(Ordering::Acquire) {
+        if let Some(first) = rolls.recv_timeout(STOP_CHECK) {
             for captured in std::iter::once(first).chain(rolls.drain()) {
                 shared.show_roll(&mut encoder, &captured);
             }
