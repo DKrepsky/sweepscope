@@ -5,7 +5,20 @@ import { loadUiState, saveUiState } from '../ui-state';
 const NAMESPACE = 'measurements';
 const VERSION = 1;
 
-export const DEFAULT_PINNED: readonly string[] = ['frequency', 'period', 'vpp', 'vrms', 'riseTime'];
+export const DEFAULT_PINNED: readonly string[] = [
+  'frequency',
+  'period',
+  'vpp',
+  'vmax',
+  'vmin',
+  'vmean',
+  'vrms',
+  'positiveWidth',
+  'negativeWidth',
+  'dutyCycle',
+  'riseTime',
+  'fallTime',
+];
 
 export interface PinnedMeasurements extends Readable<readonly string[]> {
   /** Restores the saved choice; a missing or unreadable blob keeps the defaults. */

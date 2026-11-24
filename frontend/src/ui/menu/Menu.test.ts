@@ -131,3 +131,26 @@ describe('nextIndex', () => {
     opener.remove();
   });
 });
+
+describe('Menu placement', () => {
+  const stubSizes = (menuWidth: number, windowWidth: number) => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(windowWidth);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ width: menuWidth, height: 40 }) as DOMRect,
+    );
+  };
+
+  it('given an anchor near the right edge, when opened, then the menu is shifted to stay inside the window', () => {
+    stubSizes(200, 1000);
+    setup({ anchor: { x: 950, y: 20 } });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '800px', top: '20px' });
+  });
+
+  it('given an anchor with room to spare, when opened, then the menu opens at the anchor', () => {
+    stubSizes(200, 1000);
+    setup({ anchor: { x: 100, y: 20 } });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '20px' });
+  });
+});

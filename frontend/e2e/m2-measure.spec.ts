@@ -218,7 +218,6 @@ test.describe('M2 measurements (#15)', () => {
   test('given the pin menu, when opened, then the twelve quantities are offered and all menu labels are inside the window', async ({
     page,
   }) => {
-    test.fail(true, 'BUG-13: the pin menu opens at the button and runs off the right edge of the window');
     await openMain(page);
     await liveFrame(page);
     await sendMeasurements(page);

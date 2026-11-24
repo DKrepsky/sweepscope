@@ -9,8 +9,8 @@ import {
 } from './select-common';
 import type { TriggerModel } from './types';
 
-/** Placeholder until the accuracy wording is decided (PRD 5.2, question Q-E4). */
-const ACCURACY_NOTE = 'Accuracy note slot (wording TBD)';
+/** Empty until the accuracy wording is decided (PRD 5.2, question Q-E4); the group hides an empty note. */
+const ACCURACY_NOTE = '';
 
 export function selectTrigger(
   connection: ConnectionSnapshot | undefined,

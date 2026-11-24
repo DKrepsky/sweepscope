@@ -296,3 +296,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Raw command body: `tauri::ipc::Request::body()` is `InvokeBody::Raw` for bytes; JSON bodies are refused. Heredocs with many shell steps get refused in this sandbox: use the Write tool and split commands.
 
 - ts-rs export_to is resolved against the cwd of the crate whose test runs the export, and kernel types are re-exported from dependant crates, so no per-type depth works; use TS_RS_EXPORT_DIR in .cargo/config.toml (relative=true) and no export_to. Verify with cargo test --workspace then git status and ls backend.
+## M2 fix lessons
+- Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
+- Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
+- Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
