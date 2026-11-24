@@ -6,7 +6,7 @@ use ts_rs::TS;
 /// The twelve quantities, in the order of `ChannelMeasurements::measurements`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum MeasurementId {
     Frequency,
     Period,
@@ -24,7 +24,7 @@ pub enum MeasurementId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum InvalidReason {
     NoSignal,
     FewerThanOnePeriod,
@@ -37,7 +37,7 @@ pub enum InvalidReason {
 /// Why a cell shows `-`: a code for logic and the text the UI shows as a footnote.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct Invalid {
     pub reason: InvalidReason,
     pub text: String,
@@ -46,7 +46,7 @@ pub struct Invalid {
 /// Exactly one of `value` and `invalid` is set.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct Measurement {
     pub id: MeasurementId,
     pub label: String,
@@ -56,7 +56,7 @@ pub struct Measurement {
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct ChannelMeasurements {
     pub channel: u8,
     /// Any sample of the record sits on a converter rail.
@@ -70,7 +70,7 @@ pub struct ChannelMeasurements {
 /// Measurements slice: the enabled channels of the newest frame, ascending.
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct MeasurementsState {
     #[ts(type = "number")]
     pub revision: u64,

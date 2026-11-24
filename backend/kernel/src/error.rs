@@ -5,7 +5,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum ErrorCategory {
     Recoverable,
     DeviceLost,
@@ -14,7 +14,7 @@ pub enum ErrorCategory {
 
 /// Error crossing module boundaries. Messages never contain file system paths.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
-#[ts(export, export_to = "../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct KernelError {
     pub category: ErrorCategory,
     pub message: String,

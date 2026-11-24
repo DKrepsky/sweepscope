@@ -14,7 +14,7 @@ impl Event for DisplayFrameReady {}
 /// How the trace is drawn between samples (ADR 0015). `Sinc` upsamples in the backend; `Dots` sends the samples only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub enum InterpolationMode {
     Sinc,
     Linear,
@@ -24,7 +24,7 @@ pub enum InterpolationMode {
 /// Display slice. `interpolation` is the effective mode; `automatic` is true until the user picks one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "../../../../frontend/src/api/generated/")]
+#[ts(export)]
 pub struct DisplayState {
     #[ts(type = "number")]
     pub revision: u64,
