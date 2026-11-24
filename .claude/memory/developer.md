@@ -395,3 +395,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Revision guard has one owner: the generic `createSlice` in `app/instrument/stores.ts`; new backend slices are a ninth slice there, not a second store. `ModelInputs` gains the slice; `MainWindowModel.calibration = { tag, dialog }`.
 - Fake client now emulates the zero calibration session (`client.zeroCalibration.leaveUnshorted/loseDevice/state`); the four commands are pre-registered.
 - Wire new use cases in `live-app.ts` (real composition) and assert the full path in `live-app.test.ts`, not only in unit tests with stubs.
+- Shell integration tests: after Ready wait for the calibration slice availability.enabled too (module thread lags the snapshot). Shorted 2 mV/div frame mean wanders ~3 codes (noise 24 codes rms): use a 3-code tolerance.
