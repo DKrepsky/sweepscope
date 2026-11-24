@@ -27,13 +27,13 @@ export const COMMANDS = [
   'set_trigger_position',
   'set_trigger_level',
   'set_trigger',
+  'save_setup',
+  'load_setup',
   'use_simulator',
   'retry_connection',
   'set_interpolation',
   'export_frame',
   'save_screenshot',
-  'save_setup',
-  'load_setup',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -49,13 +49,13 @@ export type CommandArgs = {
   set_trigger_position: { fraction: number };
   set_trigger_level: { divisions: number };
   set_trigger: { patch: TriggerPatch };
+  save_setup: Record<string, never>;
+  load_setup: Record<string, never>;
   use_simulator: { enabled: boolean };
   retry_connection: Record<string, never>;
   set_interpolation: { mode: InterpolationMode };
   export_frame: { format: ExportFormat };
   save_screenshot: Uint8Array;
-  save_setup: Record<string, never>;
-  load_setup: Record<string, never>;
 };
 
 export type CommandResult = {
@@ -70,13 +70,13 @@ export type CommandResult = {
   set_trigger_position: null;
   set_trigger_level: null;
   set_trigger: null;
+  save_setup: SavedFile | null;
+  load_setup: SetupLoaded | null;
   use_simulator: null;
   retry_connection: null;
   set_interpolation: null;
   export_frame: SavedFile | null;
   save_screenshot: SavedFile | null;
-  save_setup: SavedFile | null;
-  load_setup: SetupLoaded | null;
 };
 
 export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed'] as const;
