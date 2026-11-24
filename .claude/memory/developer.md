@@ -313,3 +313,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## Autoset lib facts (B4)
 - `libs/autoset` budget: 3 probes per rung (1us, 100us, 20ms), 2 vertical retries, 1 period correction => at most 13 probes; `with_probe_limit` is cfg(test) for the budget test. Range fit must also check that the DC offset is reachable by the position (else a 3 V offset clips).
 - Harness in `libs/autoset/tests/harness` mirrors the 6254BC tables (2 mV..10 V, roll from index 25, 25 counts/div, centre code 128). Bash with heredocs plus `cd` is refused in worktrees; use Write and python3 edits.
+- Fresh worktrees have no `frontend/node_modules`: `cp -al /home/kr/workspace/sweepscope/frontend/node_modules frontend/node_modules` (a symlink breaks vitest `/@fs`); remove it before finishing (it is gitignored).
+- New design tokens go in three places: `frontend/src/design-system/tokens.css`, `docs/design-prototype/tokens.css` (a test compares them) and `node frontend/tools/gen-tokens.mjs` to regenerate `tokens.generated.ts`.
+- Heredocs that write many files in one Bash call can be refused in worktrees; use the Write tool.

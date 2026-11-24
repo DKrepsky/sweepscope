@@ -15,6 +15,7 @@ const kinds: StatusChipKind[] = [
   'info',
   'offline',
   'ok',
+  'record',
 ];
 const text = (value: string) => createRawSnippet(() => ({ render: () => `<span>${value}</span>` }));
 const chip = () => screen.getByText('State').closest('.chip') as HTMLElement;
@@ -37,6 +38,17 @@ describe('StatusChip', () => {
     await view.rerender({ kind: 'stop', children: text('Stop') });
     expect(region).toHaveTextContent('Stop');
     expect(region).toHaveClass('stop');
+  });
+
+  it('given kind record, when rendered, then it shows a dot glyph and the text', () => {
+    render(StatusChip, { kind: 'record', children: text('State') });
+    expect(chip()).toHaveClass('record');
+    expect(chip().querySelector('.dot')).not.toBeNull();
+  });
+
+  it('given kind triggered and the text Done, when rendered, then the live region announces Done', () => {
+    render(StatusChip, { kind: 'triggered', children: text('Done') });
+    expect(screen.getByText('Done').closest('[aria-live="polite"]')).toHaveClass('triggered');
   });
 
   it('given a left snippet, when rendered, then it replaces the default glyph', () => {

@@ -22,10 +22,14 @@ const designSet = [
   'info',
   'close',
   'disconnected',
+  'record',
+  'pulse-positive',
+  'pulse-negative',
+  'peak',
 ];
 
 describe('icons', () => {
-  it('given the icon set, when names are listed, then they are the 20 names of design section 7', () => {
+  it('given the icon set, when names are listed, then they are the design set including the M3 icons', () => {
     expect([...iconNames].sort()).toEqual([...designSet].sort());
   });
 

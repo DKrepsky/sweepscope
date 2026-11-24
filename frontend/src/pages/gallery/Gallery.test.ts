@@ -18,6 +18,7 @@ const designComponents = [
   'Marker',
   'StatusBar',
   'Banner',
+  'ScreenNote',
   'Toast',
   'Dialog',
   'Menu',
