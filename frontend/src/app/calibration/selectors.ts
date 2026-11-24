@@ -1,12 +1,31 @@
-import type { ConnectionSnapshot, RecordingState, ZeroCalibrationState } from '../../api';
+import type { TooltipText, ConnectionSnapshot, InstrumentState, RecordingState, ZeroCalibrationState } from '../../api';
 import { formatStoredDate } from './format-date';
-import { CALIBRATION_STEPS, type CalibrationDialogModel, type CalibrationTagModel } from './types';
+import {
+  CALIBRATION_STEPS,
+  type CalibrationDialogModel,
+  type CalibrationTagModel,
+  type CalibrationTooltip,
+} from './types';
 
 /** Deliberate UI-only guard (PM ruling): the backend does not refuse calibration while recording; the tag and the shortcut do. */
 export const STOP_RECORDING_FIRST = 'Stop recording first';
 export const NO_DEVICE = 'No device';
 
-const NO_TOOLTIP = { rows: [], notes: [] };
+const NO_TOOLTIP: CalibrationTooltip = { heading: '', lines: [] };
+const PROBE_SLOTS: Record<number, number> = { 1: 0, 10: 1, 100: 2 };
+
+/** One line per enabled channel: the backend text for the range and probe the channel is on now, so a knob turn needs no backend event. */
+function tooltipOf(text: TooltipText, instrument: InstrumentState | undefined): CalibrationTooltip {
+  const lines = (instrument?.channels ?? []).flatMap((channel) => {
+    const slot = PROBE_SLOTS[channel.probe];
+    const cell =
+      channel.enabled && slot !== undefined
+        ? text.channels[channel.number - 1]?.cells[channel.range.index]?.[slot]
+        : undefined;
+    return cell === undefined ? [] : [`CH${channel.number} ${cell}`];
+  });
+  return { heading: text.heading, lines };
+}
 
 /** Why calibration cannot be opened now, or null. A device problem comes before the recording, which only needs stopping. */
 function blockedReason(
@@ -22,10 +41,11 @@ export function selectCalibrationTag(
   zero: ZeroCalibrationState | undefined,
   connection: ConnectionSnapshot | undefined,
   recording: RecordingState | undefined,
+  instrument: InstrumentState | undefined,
 ): CalibrationTagModel {
   const reason = blockedReason(zero, connection, recording);
   if (reason !== null || !zero) return { state: 'unavailable', reason: reason ?? NO_DEVICE };
-  const tooltip = zero.unit?.tooltip ?? NO_TOOLTIP;
+  const tooltip = zero.unit ? tooltipOf(zero.unit.tooltip, instrument) : NO_TOOLTIP;
   if (!zero.unit?.calibrated) return { state: 'none', tooltip };
   return { state: 'calibrated', tooltip, storedAt: formatStoredDate(zero.unit.storedAtUtc) };
 }
@@ -52,6 +72,8 @@ export function selectCalibrationDialog(zero: ZeroCalibrationState | undefined):
     doneChannels: session.doneChannels,
     progress: session.progress,
     notShorted: session.notShorted ?? [],
+    canContinue: session.canContinue,
+    overridden: session.overridden,
     failure: session.failure,
     table: session.table,
     calibrated: zero.unit?.calibrated ?? false,

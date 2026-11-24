@@ -123,7 +123,7 @@ const initialModel = (): MainWindowModel => ({
   status: status(),
   graph: mockGraph(),
   banners: [],
-  calibration: { tag: { state: 'none', tooltip: { rows: [], notes: [] } }, dialog: undefined },
+  calibration: { tag: { state: 'none', tooltip: { heading: '', lines: [] } }, dialog: undefined },
   ...mockAnalysis(),
 });
 
@@ -155,6 +155,14 @@ const withSelected = (model: MainWindowModel, number: ChannelNumber): MainWindow
 });
 
 const nothing = () => {};
+
+const inertCalibrationActions = {
+  openCalibration: nothing,
+  startCalibration: nothing,
+  calibrateChannel: nothing,
+  continueChannel: nothing,
+  closeCalibration: nothing,
+};
 
 const inertCursorAndFileActions = {
   toggleCursors: nothing,
@@ -245,10 +253,7 @@ export function createMockMainWindow(): MockMainWindow {
       change((current) => ({ ...current, horizontal: { ...current.horizontal, interpolation } })),
     ...inertCursorAndFileActions,
     ...analysisActions(change),
-    openCalibration: nothing,
-    startCalibration: nothing,
-    calibrateChannel: nothing,
-    closeCalibration: nothing,
+    ...inertCalibrationActions,
     bannerAction: nothing,
     copyText: nothing,
   };

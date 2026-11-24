@@ -45,6 +45,7 @@ function setup(
     openCalibration: vi.fn(),
     startCalibration: vi.fn(),
     calibrateChannel: vi.fn(),
+    continueChannel: vi.fn(),
     closeCalibration: vi.fn(),
   };
   const calibrationBlocked = vi.fn((): string | null => null);
@@ -335,13 +336,15 @@ describe('live actions: calibration', () => {
     expect(calibration.openCalibration).not.toHaveBeenCalled();
   });
 
-  it('given an open dialog, when start, calibrate and close are pressed, then each use case runs once', () => {
+  it('given an open dialog, when start, calibrate, continue and close are pressed, then each use case runs once', () => {
     const { actions, calibration } = setup();
     actions.startCalibration();
     actions.calibrateChannel();
+    actions.continueChannel();
     actions.closeCalibration();
     expect(calibration.startCalibration).toHaveBeenCalledOnce();
     expect(calibration.calibrateChannel).toHaveBeenCalledOnce();
+    expect(calibration.continueChannel).toHaveBeenCalledOnce();
     expect(calibration.closeCalibration).toHaveBeenCalledOnce();
   });
 });

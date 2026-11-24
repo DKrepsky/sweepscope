@@ -83,6 +83,7 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
       openCalibration: vi.fn(),
       startCalibration: vi.fn(),
       calibrateChannel: vi.fn(),
+      continueChannel: vi.fn(),
       closeCalibration: vi.fn(),
     },
     cursors,

@@ -66,6 +66,7 @@ const NAMES = [
   'openCalibration',
   'startCalibration',
   'calibrateChannel',
+  'continueChannel',
   'closeCalibration',
 ] as const satisfies readonly (keyof MainWindowActions)[];
 

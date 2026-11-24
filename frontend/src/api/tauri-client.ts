@@ -87,7 +87,7 @@ export function createTauriClient(
   };
 
   return {
-    send: (name, args) => transport.invoke(tauriCommandNames[name], args) as Promise<never>,
+    send: (name, args) => transport.invoke(tauriCommandNames[name] ?? name, args) as Promise<never>,
     sendBytes: <R>(command: string, bytes: Uint8Array) => transport.invoke(command, bytes) as Promise<R>,
     subscribe: (name, listener) =>
       unsubscribeWhenReady(
