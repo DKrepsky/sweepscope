@@ -300,3 +300,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no node_modules: run `npm ci` in `frontend/`. Playwright ports are hardcoded (5173/4173): run with a temporary config copy (sed ports, `reuseExistingServer: false`, `E2E_PREVIEW_PORT`), delete it afterwards.
 - Menu (ui) clamps itself into the viewport via an effect measuring `getBoundingClientRect`; tests stub that and `window.innerWidth`.
 - Shell commands mixing heredocs and `cd` may be refused in worktrees: use Edit tool or separate calls.
+
+## Autoset lib facts (B4)
+- `libs/autoset` budget: 3 probes per rung (1us, 100us, 20ms), 2 vertical retries, 1 period correction => at most 13 probes; `with_probe_limit` is cfg(test) for the budget test. Range fit must also check that the DC offset is reachable by the position (else a 3 V offset clips).
+- Harness in `libs/autoset/tests/harness` mirrors the 6254BC tables (2 mV..10 V, roll from index 25, 25 counts/div, centre code 128). Bash with heredocs plus `cd` is refused in worktrees; use Write and python3 edits.
