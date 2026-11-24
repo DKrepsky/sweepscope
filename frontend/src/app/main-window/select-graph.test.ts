@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { InstrumentState } from '../../api';
-import { connectionSnapshot, displayState, instrumentState, spectrumState } from '../instrument/test-data';
+import {
+  acquisitionStatus,
+  connectionSnapshot,
+  displayState,
+  instrumentState,
+  spectrumState,
+} from '../instrument/test-data';
 import type { DecodedFrame } from '../waveform';
 import type { SpectrumFrameInput } from '../views';
 import type { ModelInputs } from './select-common';
@@ -176,5 +182,18 @@ describe('selectGraph in roll', () => {
     const graph = graphOf(modelInputs({ instrument: rollInstrument(), roll }));
     expect(graph.channels).toHaveLength(1);
     expect(graph.tags).toContainEqual({ id: 'now', corner: 'edge-right', text: 'now' });
+  });
+});
+
+describe('selectGraph no-signal tag', () => {
+  it.each([
+    [true, ['no-signal']],
+    [false, []],
+  ])('given noSignal %s from the backend, when selected, then the tags are %j', (noSignal, ids) => {
+    const status = acquisitionStatus({ autoset: { running: false, noSignal, outcome: null } });
+
+    const graph = graphOf(modelInputs({ status }));
+
+    expect(graph.tags.filter((t) => t.id === 'no-signal').map((t) => t.id)).toEqual(ids);
   });
 });

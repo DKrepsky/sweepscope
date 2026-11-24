@@ -4,8 +4,8 @@ type Failure = NonNullable<RecordingState['failure']>;
 
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_MINUTE = 60;
-const BYTE_UNITS = ['B', 'kB', 'MB', 'GB', 'TB'];
-const BYTES_PER_STEP = 1000;
+const BYTE_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+const BYTES_PER_STEP = 1024;
 
 const twoDigits = (value: number) => String(value).padStart(2, '0');
 
@@ -16,7 +16,7 @@ export function formatElapsed(seconds: number): string {
   return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(whole % SECONDS_PER_MINUTE)}`;
 }
 
-/** Three significant digits, decimal prefixes (`12.4 MB`), like the backend's engineering format. */
+/** Three significant digits, binary prefixes (`12.4 MiB`), like the backend's recording readout. */
 export function formatBytes(bytes: number): string {
   let value = Math.max(0, bytes);
   let unit = 0;

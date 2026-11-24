@@ -369,6 +369,7 @@
 
 <style>
   .toolbar {
+    container-type: inline-size;
     display: flex;
     align-items: center;
     gap: var(--ss-space-4);
@@ -386,13 +387,19 @@
     padding-inline-end: var(--ss-space-4);
     border-inline-end: var(--ss-border-width) solid var(--ss-color-border);
   }
+  /* The title is redundant with the window; the roll chip and the tool labels need its room below this width. */
+  @container (max-width: 100rem) {
+    .brand {
+      display: none;
+    }
+  }
   .group {
     display: flex;
     align-items: center;
     gap: var(--ss-space-2);
   }
   .group + .group {
-    padding-inline-start: var(--ss-space-4);
+    padding-inline-start: var(--ss-space-3);
     border-inline-start: var(--ss-border-width) solid var(--ss-color-border-subtle);
   }
   .grow {

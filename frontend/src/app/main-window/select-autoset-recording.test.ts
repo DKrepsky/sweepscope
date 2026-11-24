@@ -39,10 +39,10 @@ describe('selectRecording', () => {
     const recording = recordingState({
       active: true,
       duration: { value: 3, text: '3', unit: 's' },
-      bytesWritten: { value: 12000, text: '12', unit: 'kB' },
+      bytesWritten: { value: 12288, text: '12.0', unit: 'KiB' },
     });
 
-    expect(selectRecording(modelInputs({ recording })).chip).toBe('Rec 00:00:03 · 12 kB');
+    expect(selectRecording(modelInputs({ recording })).chip).toBe('Rec 00:00:03 · 12.0 KiB');
   });
 
   it('given no recording, when selected, then there is no chip', () => {
@@ -72,7 +72,7 @@ describe('recording failure banner', () => {
       {
         id: 'recording',
         kind: 'error',
-        text: 'Recording stopped: the disk is full. 1.20 GB written to roll.ssroll. The display is still running.',
+        text: 'Recording stopped: the disk is full. 1.12 GiB written to roll.ssroll. The display is still running.',
         actions: [
           { id: 'choose-new-file', label: 'Choose new file' },
           { id: 'dismiss', label: 'Dismiss' },

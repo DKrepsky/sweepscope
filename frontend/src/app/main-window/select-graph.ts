@@ -74,6 +74,7 @@ function tagsOf(
   }
   if (shown.persistence) tags.push({ id: 'persistence', corner: 'top-right', text: persistence.tag });
   if (roll.active) tags.push({ id: 'now', corner: 'edge-right', text: 'now' });
+  if (inputs.status?.autoset.noSignal) tags.push({ id: 'no-signal', corner: 'top-left', text: 'No signal' });
   return tags;
 }
 

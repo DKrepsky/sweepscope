@@ -76,4 +76,13 @@ describe('ScaleStrip', () => {
 
     expect(screen.queryByText('Clip')).not.toBeInTheDocument();
   });
+
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])('given persistenceNote %s, when rendered, then the note shows %s times', (persistenceNote, count) => {
+    render(ScaleStrip, { props: { channels: mockChannels(), cursorSource: 1, persistenceNote } });
+
+    expect(screen.queryAllByText(/^Persistence builds from successive frames/)).toHaveLength(count);
+  });
 });
