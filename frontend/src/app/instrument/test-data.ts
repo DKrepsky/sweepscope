@@ -8,6 +8,7 @@ import type {
   RecordingState,
   SpectrumState,
   StateSnapshot,
+  ZeroCalibrationState,
 } from '../../api';
 
 const enabled = { enabled: true, reason: null };
@@ -163,6 +164,14 @@ export const recordingState = (patch: Partial<RecordingState> = {}): RecordingSt
   ...patch,
 });
 
+export const zeroCalibrationState = (patch: Partial<ZeroCalibrationState> = {}): ZeroCalibrationState => ({
+  revision: 1,
+  availability: enabled,
+  unit: { calibrated: false, storedAtUtc: null, tooltip: { rows: [], notes: [] } },
+  session: null,
+  ...patch,
+});
+
 export const stateSnapshot = (patch: Partial<StateSnapshot> = {}): StateSnapshot => ({
   connection: connectionSnapshot(),
   instrument: instrumentState(),
@@ -172,5 +181,6 @@ export const stateSnapshot = (patch: Partial<StateSnapshot> = {}): StateSnapshot
   measurements: measurementsState(),
   spectrum: spectrumState(),
   recording: recordingState(),
+  zeroCalibration: zeroCalibrationState(),
   ...patch,
 });

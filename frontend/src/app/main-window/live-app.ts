@@ -1,4 +1,5 @@
 import type { BackendClient } from '../../api';
+import { createCalibrationCommands } from '../calibration';
 import { followAutosetOutcomes } from '../autoset';
 import { createCursorsStore } from '../cursors';
 import { createFileActions } from '../files';
@@ -81,6 +82,7 @@ export function createLiveApp(deps: Deps): LiveApp {
     stores,
     analysis: analysisSources(client, stores),
     commands,
+    calibration: createCalibrationCommands({ client, notify }),
     analyseCommands: commands,
     cursors,
     pinned,

@@ -383,3 +383,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Crates without a `COMMANDS` const (calibration) get their descriptors in `manifest.rs` (`command_without_arguments`).
 - When a sibling WP's module is not merged, compile locally with an uncommitted stub in its crate and `git checkout` it before committing.
 - Plain `python3 - <<EOF` with many edits can be refused by the sandbox as too complex; write the script to the scratchpad and run it.
+
+## WP15 lessons (frontend calibration app layer, developer-11)
+- Worktree bash tool refuses compound commands that `cd` plus heredocs; use the Write/Edit tools or python with absolute paths, and run `cd <worktree>/frontend && npx ...` as a separate simple call.
+- `max-lines-per-function` is 40 (blank lines count): extract class-based fakes (`api/fake-zero-calibration.ts`) and `selectX` helpers early.
+- Revision guard has one owner: the generic `createSlice` in `app/instrument/stores.ts`; new backend slices are a ninth slice there, not a second store. `ModelInputs` gains the slice; `MainWindowModel.calibration = { tag, dialog }`.
+- Fake client now emulates the zero calibration session (`client.zeroCalibration.leaveUnshorted/loseDevice/state`); the four commands are pre-registered.
+- Wire new use cases in `live-app.ts` (real composition) and assert the full path in `live-app.test.ts`, not only in unit tests with stubs.

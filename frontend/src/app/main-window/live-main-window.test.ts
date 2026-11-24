@@ -13,6 +13,7 @@ import { acquisitionStatus, connectionSnapshot, instrumentFacts, instrumentState
 import type { InstrumentCommands } from '../instrument';
 import type { AnalyseCommands, RollInput, SpectrumFrameInput } from '../views';
 import type { RecordingState } from '../../api/generated/RecordingState';
+import type { ZeroCalibrationState } from '../../api';
 import type { SpectrumState } from '../../api/generated/SpectrumState';
 import { decodeFrame, type DecodedFrame } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
@@ -66,6 +67,7 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     startRecording: vi.fn(),
     stopRecording: vi.fn(),
   };
+  const zeroCalibration: Writable<ZeroCalibrationState | undefined> = writable(undefined);
   const spectrum: Writable<SpectrumState | undefined> = writable(undefined);
   const spectrumFrame: Writable<SpectrumFrameInput | undefined> = writable(undefined);
   const recording: Writable<RecordingState | undefined> = writable(undefined);
@@ -73,10 +75,16 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
   const copyText = vi.fn();
   const notify = vi.fn();
   const window = createLiveMainWindow({
-    stores: { connection, instrument, status, facts, display, measurements },
+    stores: { connection, instrument, status, facts, display, measurements, zeroCalibration },
     analysis: { spectrum, spectrumFrame, recording, roll },
     analyseCommands,
     commands,
+    calibration: {
+      openCalibration: vi.fn(),
+      startCalibration: vi.fn(),
+      calibrateChannel: vi.fn(),
+      closeCalibration: vi.fn(),
+    },
     cursors,
     pinned,
     files,
@@ -93,6 +101,7 @@ function setup(initial: { instrument?: InstrumentState; connection?: ConnectionS
     facts,
     display,
     measurements,
+    zeroCalibration,
     cursors,
     frames,
     commands,

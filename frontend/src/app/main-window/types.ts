@@ -1,5 +1,6 @@
 /** View model of the main window. Strings are already formatted (units, signs, precision); the backend will feed it. */
 
+import type { CalibrationDialogModel, CalibrationTagModel } from '../calibration';
 import type { CursorId } from '../cursors';
 
 export type { CursorId };
@@ -380,6 +381,12 @@ export interface BannerModel {
   actions: BannerAction[];
 }
 
+/** Zero calibration: the status bar tag, and the dialog while a session exists (undefined otherwise). */
+export interface CalibrationModel {
+  tag: CalibrationTagModel;
+  dialog: CalibrationDialogModel | undefined;
+}
+
 export interface MainWindowModel {
   toolbar: ToolbarModel;
   horizontal: HorizontalModel;
@@ -397,4 +404,5 @@ export interface MainWindowModel {
   recording: RecordingModel;
   autoset: AutosetModel;
   math: MathModel;
+  calibration: CalibrationModel;
 }

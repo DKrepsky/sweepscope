@@ -41,6 +41,7 @@ function setup() {
       facts: writable(instrumentFacts()),
       display: writable(displayState()),
       measurements: writable(undefined),
+      zeroCalibration: writable(undefined),
     },
     analysis: {
       spectrum: writable(undefined),
@@ -50,6 +51,12 @@ function setup() {
     },
     analyseCommands,
     commands,
+    calibration: {
+      openCalibration: vi.fn(),
+      startCalibration: vi.fn(),
+      calibrateChannel: vi.fn(),
+      closeCalibration: vi.fn(),
+    },
     cursors: createCursorsStore(),
     pinned: { ...writable<readonly string[]>([]), set: vi.fn(() => Promise.resolve()), load: vi.fn() },
     files: inert(['saveSetup', 'loadSetup', 'exportCsv', 'exportRaw', 'saveScreenshot']),
@@ -137,6 +144,13 @@ describe('banner actions on their own', () => {
     const commands = inert<InstrumentCommands>(['startRecording', 'retryConnection', 'useSimulator']);
     const actions = createLiveActions({
       commands,
+      calibration: {
+        openCalibration: vi.fn(),
+        startCalibration: vi.fn(),
+        calibrateChannel: vi.fn(),
+        closeCalibration: vi.fn(),
+      },
+      calibrationBlocked: () => null,
       read: () => ({ instrument: undefined, connection: undefined }),
       copyText: vi.fn(),
       notify: vi.fn(),

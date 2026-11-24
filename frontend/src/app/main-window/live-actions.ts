@@ -1,4 +1,5 @@
 import type { ChannelPatch, ConnectionSnapshot, InstrumentState } from '../../api';
+import type { CalibrationCommands } from '../calibration';
 import type { CursorsStore } from '../cursors';
 import type { FileActions } from '../files';
 import type { InstrumentCommands } from '../instrument';
@@ -10,6 +11,9 @@ type ChannelState = InstrumentState['channels'][number];
 
 interface Deps {
   commands: InstrumentCommands;
+  calibration: CalibrationCommands;
+  /** Why calibration cannot open now, or null; the tag is disabled then, a shortcut or stale click must not reach the backend. */
+  calibrationBlocked: () => string | null;
   /** Current values at the moment of the call; toggles need them, nothing is cached. */
   read: () => { instrument: InstrumentState | undefined; connection: ConnectionSnapshot | undefined };
   copyText: (text: string) => void;
@@ -110,6 +114,17 @@ function cursorAndMeasurementActions({ cursors, pinned, canToggleCursors }: Deps
   };
 }
 
+function calibrationActions({ calibration, calibrationBlocked }: Deps) {
+  return {
+    openCalibration: () => {
+      if (calibrationBlocked() === null) calibration.openCalibration();
+    },
+    startCalibration: calibration.startCalibration,
+    calibrateChannel: calibration.calibrateChannel,
+    closeCalibration: calibration.closeCalibration,
+  };
+}
+
 function fileActions({ files, notify }: Deps) {
   const run = (action: () => Promise<void>) => {
     action().catch(() => notify('error', 'The file action failed'));
@@ -137,6 +152,7 @@ export function createLiveActions(deps: Deps): Omit<MainWindowActions, keyof Ana
     setInterpolation: commands.setInterpolation,
     ...cursorAndMeasurementActions(deps),
     ...fileActions(deps),
+    ...calibrationActions(deps),
     bannerAction: (id) => bannerAction(deps, id),
     copyText,
   };
