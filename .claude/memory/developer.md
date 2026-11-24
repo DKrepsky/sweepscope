@@ -383,3 +383,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Crates without a `COMMANDS` const (calibration) get their descriptors in `manifest.rs` (`command_without_arguments`).
 - When a sibling WP's module is not merged, compile locally with an uncommitted stub in its crate and `git checkout` it before committing.
 - Plain `python3 - <<EOF` with many edits can be refused by the sandbox as too complex; write the script to the scratchpad and run it.
+
+## Headless CLI (WP14, developer-5)
+- `cli/` is the second composition root (lib `sweepscope_cli` + bin `sweepscope-cli`); `capture()` takes an `Environment` (storage, clock, catalogs), tests use `simulated_environment` with a `SimulatorControl` (unplug for exit 10, `SignalSpec` Sine amplitude 0 + Normal sweep for exit 11).
+- After `ConnectionChanged` says Ready, acquisition has not necessarily taken the device over: commands fail with "No scope connected". Wait for the first `InstrumentChanged` too. Stored offsets: publish `ZeroOffsetsChanged` yourself (the calibration module is a stub until WP10); acquisition drains offsets before captures.
+- `ReadOnlyStorage` swallows writes (acquisition writes last-setup.json, `OffsetFile::load` may write a .corrupt copy). The config-folder test reads `src-tauri/tauri.conf.json`: it fails until the identifier `io.github.dkrepsky.sweepscope` lands (WP7/WP11).
+- Tool sandbox refuses `cd && python3 - <<EOF` or `cat > file <<EOF` chains in a worktree; use Write/Edit, or a plain `python3 - <<EOF` alone.

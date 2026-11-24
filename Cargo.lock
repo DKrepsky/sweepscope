@@ -3366,6 +3366,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sweepscope-cli"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sweepscope-acquisition",
+ "sweepscope-calibration",
+ "sweepscope-device",
+ "sweepscope-export",
+ "sweepscope-kernel",
+]
+
+[[package]]
 name = "sweepscope-device"
 version = "0.1.0"
 dependencies = [

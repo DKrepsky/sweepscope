@@ -60,6 +60,24 @@ test('given a tauri plugin in the kernel, when check-architecture runs, then it 
   assert.deepEqual(rulesOf(checkMetadata(metadataOf(badKernel))), ['tauri-outside-shell']);
 });
 
+test('given the cli lists tauri, when check-architecture runs, then it fails with rule cli-without-tauri', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel', 'tauri']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(kernel, cli))), ['cli-without-tauri']);
+});
+
+test('given the cli lists a tauri plugin, when check-architecture runs, then it fails with rule cli-without-tauri', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['tauri-plugin-dialog']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(cli))), ['cli-without-tauri']);
+});
+
+test('given the cli depends on features and the kernel only, when check-architecture runs, then there are no violations', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel', 'sweepscope-device']);
+
+  assert.deepEqual(checkMetadata(metadataOf(kernel, device, cli)), []);
+});
+
 test('given the driver in a crate other than device, when check-architecture runs, then it fails with rule hantek-outside-device', () => {
   const acquisition = crate('sweepscope-acquisition', 'backend/features/acquisition', ['hantek6xx4-lib']);
 
