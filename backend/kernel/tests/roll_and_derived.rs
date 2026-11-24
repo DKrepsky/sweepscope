@@ -44,7 +44,7 @@ fn given_a_frame_with_a_derived_trace_when_published_then_the_subscriber_gets_th
             window_len: 2,
             invert: [false; 4],
             probe: [1.0; 4],
-            range_verified: [true; 4],
+            calibrated: [false; 4],
             seconds_per_div: 1e-3,
         },
         derived: Some(Arc::clone(&trace)),

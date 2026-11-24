@@ -15,9 +15,9 @@ pub use connection::{
 pub use frame::{ChannelData, Frame, TriggerOutcome};
 pub use identity::{CalibrationStatus, DeviceIdentity};
 pub use messages::{
-    ApplySetup, CaptureCompleted, CaptureOutcome, ConnectionChanged, DerivedTrace, DerivedUnit, ForceTrigger,
-    FrameCaptured, FrameContext, RollCaptured, RollCloseReason, RollContext, RollItem, RollPolled, RollPolledItem,
-    SetCapturing,
+    ApplySetup, CaptureCompleted, CaptureOutcome, CaptureProbe, ConnectionChanged, DerivedTrace, DerivedUnit,
+    ForceTrigger, FrameCaptured, FrameContext, HoldInstrument, ProbeCaptured, RollCaptured, RollCloseReason,
+    RollContext, RollItem, RollPolled, RollPolledItem, SetCapturing, ZeroOffsets, ZeroOffsetsChanged,
 };
 pub use setup::{AcquisitionSetup, ChannelSetup, Coupling, PulseCondition, Slope, Sweep, TriggerKind, TriggerSetup};
 pub use shared::{Availability, FormattedValue, SavedFile};
