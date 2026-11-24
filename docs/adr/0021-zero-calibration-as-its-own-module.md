@@ -30,5 +30,5 @@ Facts: a frame carries `zero_code` per channel and every consumer converts with 
 ## Consequences
 - Four new kernel messages and one new feature crate; acquisition's touchpoints are exactly the hold, the probe and the offsets event.
 - A saved capture carries the corrected `zero_code` and a `calibrated` flag.
-- The CLI (ADR 0022) loads the same offsets file, so headless captures are calibrated.
+- The CLI (ADR 0022) does not compose the module: it reads the same offsets file through the crate's `OffsetFile` and publishes `ZeroOffsetsChanged` itself, so headless captures are calibrated. `OffsetFile` is therefore part of the crate's public surface.
 - Risk: serial-like field is vendor data; shorted-input limits are tuned on one unit.

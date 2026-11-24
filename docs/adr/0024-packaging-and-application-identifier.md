@@ -12,7 +12,8 @@ Bundling is off and the identifier `dev.sweepscope.app` is a placeholder. The Ta
 2. Tauri bundler, targets `deb` and `appimage`, all generated icon sizes listed.
 3. The .deb installs the udev rule, reloads rules after install and removal, and declares WebKitGTK 4.1, GTK 3 and libusb. The rule also carries `uaccess`, so no group is created.
 4. The AppImage cannot install a rule; the install guide covers it.
-5. A manual or tag-only CI `bundle` job builds both packages and uploads artifacts; it publishes nothing.
+5. `mainBinaryName` is `sweepscope` (stable binary name); the .deb package name is `sweep-scope`, derived by the bundler from the product name `SweepScope`.
+6. A manual or tag-only CI `bundle` job builds both packages and uploads artifacts; it publishes nothing.
 
 ## Alternatives considered
 `cargo-deb` plus a hand-made AppImage (two tools, two sources of truth); installing the rule from the app with elevation (privileged action from the UI); keeping the placeholder (later data migration); Flatpak first (USB portal story).
