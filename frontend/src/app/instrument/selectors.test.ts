@@ -67,6 +67,14 @@ describe('statusChips', () => {
     expect(chips('stopped', false)).toEqual([{ id: 'state', kind: 'stop', text: 'Stop' }]);
   });
 
+  it('given a finished single capture, when selected, then the chips are Stop and Done', () => {
+    expect(chips('done', false).map((c) => c.text)).toEqual(['Stop', 'Done']);
+  });
+
+  it('given a stopped instrument in a phase other than done, when selected, then the phase chip is not shown', () => {
+    expect(chips('armed', false).map((c) => c.text)).toEqual(['Stop']);
+  });
+
   it('given a disconnected scope, when selected, then the only chip is Offline', () => {
     expect(chips('armed', true, disconnected)).toEqual([{ id: 'state', kind: 'offline', text: 'Offline' }]);
   });

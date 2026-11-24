@@ -1,8 +1,8 @@
-import type { ChannelNumber } from '../main-window/types';
+import type { TraceChannel } from './trace-channel';
 
 export interface TestFrame {
   sequence?: number;
-  channels?: ChannelNumber[];
+  channels?: TraceChannel[];
   samplesPerChannel?: number;
   triggerIndex?: number;
   sentUs?: number;

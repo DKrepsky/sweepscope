@@ -7,10 +7,15 @@ import type { ExportFormat } from './ExportFormat';
 import type { InstrumentFacts } from './InstrumentFacts';
 import type { InstrumentState } from './InstrumentState';
 import type { InterpolationMode } from './InterpolationMode';
+import type { MathPatch } from './MathPatch';
 import type { MeasurementsState } from './MeasurementsState';
+import type { Persistence } from './Persistence';
+import type { RecordingState } from './RecordingState';
 import type { SavedFile } from './SavedFile';
 import type { SettingTarget } from './SettingTarget';
 import type { SetupLoaded } from './SetupLoaded';
+import type { SpectrumPatch } from './SpectrumPatch';
+import type { SpectrumState } from './SpectrumState';
 import type { StateSnapshot } from './StateSnapshot';
 import type { TriggerPatch } from './TriggerPatch';
 import type { UiStateEntry } from './UiStateEntry';
@@ -34,6 +39,13 @@ export const COMMANDS = [
   'set_interpolation',
   'export_frame',
   'save_screenshot',
+  'arm_single',
+  'start_autoset',
+  'set_math',
+  'set_persistence',
+  'set_spectrum',
+  'start_recording',
+  'stop_recording',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -56,6 +68,13 @@ export type CommandArgs = {
   set_interpolation: { mode: InterpolationMode };
   export_frame: { format: ExportFormat };
   save_screenshot: Uint8Array;
+  arm_single: Record<string, never>;
+  start_autoset: Record<string, never>;
+  set_math: { patch: MathPatch };
+  set_persistence: { value: Persistence };
+  set_spectrum: { patch: SpectrumPatch };
+  start_recording: Record<string, never>;
+  stop_recording: Record<string, never>;
 };
 
 export type CommandResult = {
@@ -77,9 +96,16 @@ export type CommandResult = {
   set_interpolation: null;
   export_frame: SavedFile | null;
   save_screenshot: SavedFile | null;
+  arm_single: null;
+  start_autoset: null;
+  set_math: null;
+  set_persistence: null;
+  set_spectrum: null;
+  start_recording: SavedFile | null;
+  stop_recording: null;
 };
 
-export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed'] as const;
+export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed', 'spectrum_changed', 'recording_changed'] as const;
 export type EventName = (typeof EVENTS)[number];
 
 export type EventPayload = {
@@ -89,7 +115,9 @@ export type EventPayload = {
   facts_changed: InstrumentFacts;
   display_changed: DisplayState;
   measurements_changed: MeasurementsState;
+  spectrum_changed: SpectrumState;
+  recording_changed: RecordingState;
 };
 
-export const STREAMS = ['frames'] as const;
+export const STREAMS = ['frames', 'roll', 'spectrum'] as const;
 export type StreamKind = (typeof STREAMS)[number];

@@ -7,6 +7,8 @@ import type {
   InstrumentFacts,
   InstrumentState,
   MeasurementsState,
+  RecordingState,
+  SpectrumState,
 } from '../../api';
 
 export interface InstrumentStores {
@@ -16,7 +18,9 @@ export interface InstrumentStores {
   facts: Readable<InstrumentFacts | undefined>;
   display: Readable<DisplayState | undefined>;
   measurements: Readable<MeasurementsState | undefined>;
-  /** Subscribes to the six slice events, then loads the snapshot; events and snapshot apply by revision. */
+  spectrum: Readable<SpectrumState | undefined>;
+  recording: Readable<RecordingState | undefined>;
+  /** Subscribes to the eight slice events, then loads the snapshot; events and snapshot apply by revision. */
   start(): Promise<void>;
   stop(): void;
 }
@@ -48,6 +52,36 @@ function createSlices() {
     facts: createSlice<InstrumentFacts>(),
     display: createSlice<DisplayState>(),
     measurements: createSlice<MeasurementsState>(),
+    spectrum: createSlice<SpectrumState>(),
+    recording: createSlice<RecordingState>(),
+  };
+}
+
+type Slices = ReturnType<typeof createSlices>;
+
+function follow(client: BackendClient, slices: Slices): (() => void)[] {
+  return [
+    client.subscribe('connection_changed', slices.connection.apply),
+    client.subscribe('instrument_changed', slices.instrument.apply),
+    client.subscribe('status_changed', slices.status.apply),
+    client.subscribe('facts_changed', slices.facts.apply),
+    client.subscribe('display_changed', slices.display.apply),
+    client.subscribe('measurements_changed', slices.measurements.apply),
+    client.subscribe('spectrum_changed', slices.spectrum.apply),
+    client.subscribe('recording_changed', slices.recording.apply),
+  ];
+}
+
+function readableOf(slices: Slices) {
+  return {
+    connection: slices.connection.store,
+    instrument: slices.instrument.store,
+    status: slices.status.store,
+    facts: slices.facts.store,
+    display: slices.display.store,
+    measurements: slices.measurements.store,
+    spectrum: slices.spectrum.store,
+    recording: slices.recording.store,
   };
 }
 
@@ -56,17 +90,8 @@ export function createInstrumentStores({ client }: { client: BackendClient }): I
   let unsubscribe: (() => void)[] = [];
   let starting: Promise<void> | undefined;
 
-  const follow = () => [
-    client.subscribe('connection_changed', slices.connection.apply),
-    client.subscribe('instrument_changed', slices.instrument.apply),
-    client.subscribe('status_changed', slices.status.apply),
-    client.subscribe('facts_changed', slices.facts.apply),
-    client.subscribe('display_changed', slices.display.apply),
-    client.subscribe('measurements_changed', slices.measurements.apply),
-  ];
-
   const load = async () => {
-    unsubscribe = follow();
+    unsubscribe = follow(client, slices);
     const snapshot = await client.send('get_snapshot', {});
     (Object.keys(slices) as (keyof typeof slices)[]).forEach((key) => slices[key].apply(snapshot[key] as never));
   };
@@ -78,12 +103,7 @@ export function createInstrumentStores({ client }: { client: BackendClient }): I
   };
 
   return {
-    connection: slices.connection.store,
-    instrument: slices.instrument.store,
-    status: slices.status.store,
-    facts: slices.facts.store,
-    display: slices.display.store,
-    measurements: slices.measurements.store,
+    ...readableOf(slices),
     start: () =>
       (starting ??= load().catch((failure: unknown) => {
         stop();

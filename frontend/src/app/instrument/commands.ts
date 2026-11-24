@@ -1,4 +1,13 @@
-import type { BackendClient, ChannelPatch, InterpolationMode, SettingTarget, TriggerPatch } from '../../api';
+import type {
+  BackendClient,
+  ChannelPatch,
+  InterpolationMode,
+  MathPatch,
+  Persistence,
+  SettingTarget,
+  SpectrumPatch,
+  TriggerPatch,
+} from '../../api';
 import type { ChannelNumber } from '../main-window/types';
 
 export interface InstrumentCommands {
@@ -13,6 +22,14 @@ export interface InstrumentCommands {
   useSimulator(enabled: boolean): void;
   retryConnection(): void;
   setInterpolation(mode: InterpolationMode): void;
+  armSingle(): void;
+  startAutoset(): void;
+  setMath(patch: MathPatch): void;
+  setPersistence(value: Persistence): void;
+  setSpectrum(patch: SpectrumPatch): void;
+  /** The backend runs the file picker; a cancelled picker is not an error. */
+  startRecording(): void;
+  stopRecording(): void;
 }
 
 interface Deps {
@@ -46,5 +63,12 @@ export function createInstrumentCommands({ client, notify }: Deps): InstrumentCo
     useSimulator: (enabled) => guard(() => send('use_simulator', { enabled })),
     retryConnection: () => guard(() => send('retry_connection', {})),
     setInterpolation: (mode) => guard(() => send('set_interpolation', { mode })),
+    armSingle: () => guard(() => send('arm_single', {})),
+    startAutoset: () => guard(() => send('start_autoset', {})),
+    setMath: (patch) => guard(() => send('set_math', { patch })),
+    setPersistence: (value) => guard(() => send('set_persistence', { value })),
+    setSpectrum: (patch) => guard(() => send('set_spectrum', { patch })),
+    startRecording: () => guard(() => send('start_recording', {})),
+    stopRecording: () => guard(() => send('stop_recording', {})),
   };
 }

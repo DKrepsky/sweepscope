@@ -63,4 +63,17 @@ describe('fake client', () => {
     expect(onMessage).not.toHaveBeenCalled();
     expect(client.openStreamCount('frames')).toBe(0);
   });
+
+  it('given a scripted stream, when a stream of that kind opens, then it receives the messages in order and other kinds receive none', () => {
+    const client = createFakeClient();
+    const first = new ArrayBuffer(1);
+    const second = new ArrayBuffer(2);
+    client.scriptStream('roll', [first, second]);
+    const roll = vi.fn();
+    const spectrum = vi.fn();
+    client.openStream('roll', roll);
+    client.openStream('spectrum', spectrum);
+    expect(roll.mock.calls).toEqual([[first], [second]]);
+    expect(spectrum).not.toHaveBeenCalled();
+  });
 });

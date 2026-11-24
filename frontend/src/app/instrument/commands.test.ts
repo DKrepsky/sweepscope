@@ -27,6 +27,19 @@ const cases: Case[] = [
   ['useSimulator', (c) => c.useSimulator(true), 'use_simulator', { enabled: true }],
   ['retryConnection', (c) => c.retryConnection(), 'retry_connection', {}],
   ['setInterpolation', (c) => c.setInterpolation('dots'), 'set_interpolation', { mode: 'dots' }],
+  ['armSingle', (c) => c.armSingle(), 'arm_single', {}],
+  ['startAutoset', (c) => c.startAutoset(), 'start_autoset', {}],
+  ['setMath', (c) => c.setMath({ enabled: true }), 'set_math', { patch: { enabled: true } }],
+  ['setPersistence', (c) => c.setPersistence('1s'), 'set_persistence', { value: '1s' }],
+  ['setSpectrum', (c) => c.setSpectrum({ active: true }), 'set_spectrum', { patch: { active: true } }],
+  ['startRecording', (c) => c.startRecording(), 'start_recording', {}],
+  ['stopRecording', (c) => c.stopRecording(), 'stop_recording', {}],
+  [
+    'step of the math scale',
+    (c) => c.step({ kind: 'mathScale' }, -1),
+    'step_setting',
+    { target: { kind: 'mathScale' }, direction: -1 },
+  ],
 ];
 
 describe('instrument commands', () => {
