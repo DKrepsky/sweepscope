@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { acquisitionStatus, instrumentState, measurementsState } from '../src/app/instrument/test-data';
 import type { Measurement } from '../src/api/generated/Measurement';
 import type { MeasurementId } from '../src/api/generated/MeasurementId';
-import { openMain as open } from './support/app';
+import { openGallery, openMain as open } from './support/app';
 import { sine, wireFrame } from './support/frames';
 import { emit, ipcLog, sendFrame, type StubOptions } from './support/tauri-stub';
 
@@ -598,5 +598,18 @@ test.describe('accessibility of the new screens', () => {
     await openMain(page);
     await emit(page, 'instrument_changed', rollState());
     expect((await axe(page)).violations).toEqual([]);
+  });
+});
+
+test.describe('#29 peak marker placement', () => {
+  test('given a peak marker at 30 % of the screen, when its glyph is measured, then its centre is on the peak line', async ({
+    page,
+  }) => {
+    await openGallery(page);
+    const stage = page.locator('.marker-stage');
+    const screen = (await stage.locator('.screen').boundingBox())!;
+    const glyph = (await stage.getByRole('slider', { name: 'Spectrum peak' }).locator('.shape').boundingBox())!;
+    const peakLineX = screen.x + 0.3 * screen.width;
+    expect(Math.abs(glyph.x + glyph.width / 2 - peakLineX)).toBeLessThanOrEqual(1);
   });
 });
