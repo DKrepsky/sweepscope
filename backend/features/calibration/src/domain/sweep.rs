@@ -3,7 +3,7 @@ use engineering_format::{format, Quantity};
 
 use super::rules::{
     GATE_MAX_LEVEL_CODES, GATE_MAX_PEAK_TO_PEAK_CODES, GATE_MAX_STD_DEV_CODES, GATE_VOLTS_PER_DIV, NOISE_FACTOR,
-    NOISE_FLOOR_CODES, OTHER_MAX_LEVEL_CODES, REFERENCE_STD_DEV_CODES,
+    NOISE_FLOOR_CODES, OTHER_MAX_LEVEL_CODES, OTHER_MIN_LEVEL_VOLTS, REFERENCE_STD_DEV_CODES,
 };
 use super::statistics::Reading;
 
@@ -25,7 +25,13 @@ pub struct Rejection {
     pub kind: RejectionKind,
     pub range_index: usize,
     pub line: String,
+    /// False when the reading clipped: its offset would be wrong by an unknown amount.
+    pub continuable: bool,
 }
+
+/// `accept_rejected` was called with no rejected reading to accept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NothingPending;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Step {
@@ -41,6 +47,10 @@ pub struct ZeroSweep {
     order: Vec<usize>,
     cursor: usize,
     offsets: Vec<f64>,
+    /// The rejected reading of the range at the cursor, kept for `accept_rejected`.
+    pending: Option<Reading>,
+    /// Set once a rejection was accepted: only clipped readings are refused from then on.
+    forced: bool,
 }
 
 impl ZeroSweep {
@@ -56,6 +66,8 @@ impl ZeroSweep {
             gate,
             order,
             cursor: 0,
+            pending: None,
+            forced: false,
         }
     }
 
@@ -71,11 +83,30 @@ impl ZeroSweep {
     pub fn next(&mut self, reading: Option<&Reading>) -> Step {
         if let (Some(reading), Some(&index)) = (reading, self.order.get(self.cursor)) {
             if let Some(rejection) = self.judge(index, reading) {
+                self.pending = Some(*reading);
                 return Step::NotShorted(rejection);
             }
-            self.offsets[index] = reading.codes_to_volts(reading.offset_codes(), self.ranges[index]);
-            self.cursor += 1;
+            self.store(index, reading);
         }
+        self.advance()
+    }
+
+    /// Stores the offset of the rejected reading, stops checking, and goes on with the next range.
+    pub fn accept_rejected(&mut self) -> Result<Step, NothingPending> {
+        let reading = self.pending.take().ok_or(NothingPending)?;
+        let &index = self.order.get(self.cursor).ok_or(NothingPending)?;
+        self.store(index, &reading);
+        self.forced = true;
+        Ok(self.advance())
+    }
+
+    fn store(&mut self, index: usize, reading: &Reading) {
+        self.offsets[index] = reading.codes_to_volts(reading.offset_codes(), self.ranges[index]);
+        self.cursor += 1;
+        self.pending = None;
+    }
+
+    fn advance(&self) -> Step {
         match self.order.get(self.cursor) {
             Some(&range_index) => Step::Measure(MeasurePlan { range_index }),
             None => Step::Done(self.offsets.clone()),
@@ -84,7 +115,9 @@ impl ZeroSweep {
 
     fn judge(&self, index: usize, reading: &Reading) -> Option<Rejection> {
         let range = self.ranges[index];
-        let found = if self.gate == Some(index) {
+        let found = if self.forced {
+            judge_clipped(reading, range)
+        } else if self.gate == Some(index) {
             judge_gate(reading, range)
         } else {
             judge_other(reading, range, index)
@@ -93,6 +126,7 @@ impl ZeroSweep {
             kind,
             range_index: index,
             line,
+            continuable: !reading.stats.clipped,
         })
     }
 }
@@ -111,11 +145,17 @@ fn distance_to_gate(range: f64) -> f64 {
 
 type Found = Option<(RejectionKind, String)>;
 
+fn judge_clipped(reading: &Reading, range: f64) -> Found {
+    reading.stats.clipped.then(|| {
+        let line = format!("Input clipped at {}.", range_text(range));
+        (RejectionKind::SignalPresent, line)
+    })
+}
+
 fn judge_gate(reading: &Reading, range: f64) -> Found {
     let stats = &reading.stats;
-    if stats.clipped {
-        let line = format!("Input clipped at {}.", range_text(range));
-        return Some((RejectionKind::SignalPresent, line));
+    if let Some(clipped) = judge_clipped(reading, range) {
+        return Some(clipped);
     }
     if stats.peak_to_peak > GATE_MAX_PEAK_TO_PEAK_CODES {
         let line = measured_line(
@@ -141,7 +181,8 @@ fn judge_other(reading: &Reading, range: f64, index: usize) -> Found {
         let line = noise_line(reading.stats.std_dev, limit, reading, range);
         return Some((RejectionKind::TooNoisy, line));
     }
-    level_check(reading, range, OTHER_MAX_LEVEL_CODES)
+    let limit_codes = OTHER_MAX_LEVEL_CODES.max(OTHER_MIN_LEVEL_VOLTS / range * reading.counts_per_div);
+    level_check(reading, range, limit_codes)
 }
 
 fn level_check(reading: &Reading, range: f64, limit_codes: f64) -> Found {

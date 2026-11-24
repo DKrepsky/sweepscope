@@ -4,8 +4,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use sweepscope_calibration::{
-    CalibrationDeps, CalibrationModule, CloseZeroCalibration, GetZeroCalibration, MeasureZeroChannel,
-    OpenZeroCalibration, StartZeroCalibration, ZeroCalibrationChanged, ZeroCalibrationState, ZeroStep,
+    CalibrationDeps, CalibrationModule, CloseZeroCalibration, ContinueZeroChannel, GetZeroCalibration,
+    MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration, ZeroCalibrationChanged, ZeroCalibrationState,
+    ZeroStep,
 };
 use sweepscope_kernel::contracts::{
     CalibrationStatus, Capabilities, CaptureProbe, ChannelData, ConnectionChanged, ConnectionSnapshot, ConnectionState,
@@ -239,6 +240,10 @@ impl Rig {
 
     pub fn measure(&self) -> Result<(), KernelError> {
         self.bus.request(MeasureZeroChannel)
+    }
+
+    pub fn continue_channel(&self) -> Result<(), KernelError> {
+        self.bus.request(ContinueZeroChannel)
     }
 
     pub fn close(&self) -> Result<(), KernelError> {

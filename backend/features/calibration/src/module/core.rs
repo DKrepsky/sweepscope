@@ -62,6 +62,12 @@ struct Active {
 }
 
 impl Active {
+    /// Keeps the sweep: a rejected reading may still be accepted.
+    fn pause_measuring(&mut self) {
+        self.probe = None;
+        self.channel_deadline = None;
+    }
+
     fn stop_measuring(&mut self) {
         self.sweep = None;
         self.probe = None;
@@ -147,6 +153,27 @@ impl Core {
         let mut sweep = ZeroSweep::new(ranges);
         let step = sweep.next(None);
         active.sweep = Some(sweep);
+        active.channel_deadline = Some(now + CHANNEL_TIMEOUT);
+        self.apply(step, channel);
+        self.refresh();
+        Ok(())
+    }
+
+    /// Accepts the rejected reading and measures the remaining ranges; nothing is measured twice.
+    pub fn continue_channel(&mut self) -> Result<(), KernelError> {
+        let now = self.env.clock.now();
+        let active = self.active()?;
+        if !active.machine.can_continue() {
+            return Err(wrong_step(()));
+        }
+        let step = active
+            .sweep
+            .as_mut()
+            .ok_or_else(|| wrong_step(()))?
+            .accept_rejected()
+            .map_err(wrong_step)?;
+        let channel = active.machine.channel();
+        active.machine.resume().map_err(wrong_step)?;
         active.channel_deadline = Some(now + CHANNEL_TIMEOUT);
         self.apply(step, channel);
         self.refresh();
@@ -262,8 +289,8 @@ impl Core {
             Step::Measure(plan) => self.request_probe(plan, channel),
             Step::NotShorted(rejection) => {
                 if let Some(active) = self.session.as_mut() {
-                    let _ = active.machine.reject(vec![rejection.line]);
-                    active.stop_measuring();
+                    let _ = active.machine.reject(vec![rejection.line], rejection.continuable);
+                    active.pause_measuring();
                 }
             }
             Step::Done(offsets) => self.accept_channel(offsets),
@@ -407,6 +434,6 @@ impl Core {
     }
 }
 
-fn wrong_step(_: crate::domain::session::WrongStep) -> KernelError {
+fn wrong_step<E>(_: E) -> KernelError {
     KernelError::recoverable(WRONG_STEP)
 }

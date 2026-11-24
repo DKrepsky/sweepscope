@@ -35,25 +35,29 @@ pub struct ZeroSession {
     /// Share of the ranges of the current channel that are measured, 0 to 1.
     pub progress: Option<f64>,
     pub not_shorted: Option<Vec<String>>,
+    /// True at `NotShorted` when `ContinueZeroChannel` may accept the rejected reading.
+    pub can_continue: bool,
+    /// Channels that were stored although the shorted-input check failed.
+    pub overridden: [bool; 4],
     pub failure: Option<String>,
     /// One row per range, ascending; set at Done only.
     pub table: Option<Vec<OffsetRow>>,
 }
 
+/// Zero error texts of one channel: one cell per range index, one string per probe factor (1x, 10x, 100x).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
-pub struct TooltipRow {
-    pub label: String,
-    pub value: String,
+pub struct ChannelTooltip {
+    pub cells: Vec<[String; 3]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct TooltipText {
-    pub rows: Vec<TooltipRow>,
-    pub notes: Vec<String>,
+    pub heading: String,
+    pub channels: [ChannelTooltip; 4],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -100,6 +104,8 @@ unit_request!(
     StartZeroCalibration,
     /// Measures the channel in turn; returns at once, progress arrives in the slice.
     MeasureZeroChannel,
+    /// At `NotShorted`: accepts the rejected reading and measures the remaining ranges without re-measuring.
+    ContinueZeroChannel,
     /// Cancels or closes; stores nothing unless the session is Done, releases the hold.
     CloseZeroCalibration
 );

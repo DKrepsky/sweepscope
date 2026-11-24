@@ -6,6 +6,8 @@ pub const GATE_MAX_PEAK_TO_PEAK_CODES: f64 = 6.0;
 pub const GATE_MAX_STD_DEV_CODES: f64 = 1.5;
 pub const GATE_MAX_LEVEL_CODES: f64 = 8.0;
 pub const OTHER_MAX_LEVEL_CODES: f64 = 12.0;
+/// Front-end offset budget at the input; at 2 mV/div it is looser than 12 codes (hardware run, addendum 2).
+pub const OTHER_MIN_LEVEL_VOLTS: f64 = 2.5e-3;
 pub const NOISE_FLOOR_CODES: f64 = 2.0;
 pub const NOISE_FACTOR: f64 = 3.0;
 pub const CLIPPED_LOW_CODE: u8 = 0;

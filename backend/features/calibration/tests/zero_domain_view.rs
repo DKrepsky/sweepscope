@@ -12,70 +12,170 @@ fn stored(volts: [Vec<f64>; 4]) -> StoredUnit {
     }
 }
 
-fn row_values(unit: &sweepscope_calibration::UnitCalibration) -> Vec<(String, String)> {
-    unit.tooltip
-        .rows
-        .iter()
-        .map(|row| (row.label.clone(), row.value.clone()))
-        .collect()
+const TYPICAL: [[&str; 3]; 12] = [
+    ["+0.66 mV at 2 mV/div", "+6.6 mV at 20 mV/div", "+66 mV at 200 mV/div"],
+    ["+1.04 mV at 5 mV/div", "+10.4 mV at 50 mV/div", "+104 mV at 500 mV/div"],
+    ["+0.83 mV at 10 mV/div", "+8.3 mV at 100 mV/div", "+83 mV at 1 V/div"],
+    ["+0.83 mV at 20 mV/div", "+8.3 mV at 200 mV/div", "+83 mV at 2 V/div"],
+    [
+        "up to 4.14 mV at 50 mV/div",
+        "up to 41.4 mV at 500 mV/div",
+        "up to 414 mV at 5 V/div",
+    ],
+    [
+        "up to 8.28 mV at 100 mV/div",
+        "up to 82.8 mV at 1 V/div",
+        "up to 828 mV at 10 V/div",
+    ],
+    [
+        "up to 16.6 mV at 200 mV/div",
+        "up to 166 mV at 2 V/div",
+        "up to 1.66 V at 20 V/div",
+    ],
+    [
+        "up to 41.4 mV at 500 mV/div",
+        "up to 414 mV at 5 V/div",
+        "up to 4.14 V at 50 V/div",
+    ],
+    [
+        "up to 82.8 mV at 1 V/div",
+        "up to 828 mV at 10 V/div",
+        "up to 8.28 V at 100 V/div",
+    ],
+    [
+        "up to 166 mV at 2 V/div",
+        "up to 1.66 V at 20 V/div",
+        "up to 16.6 V at 200 V/div",
+    ],
+    [
+        "up to 414 mV at 5 V/div",
+        "up to 4.14 V at 50 V/div",
+        "up to 41.4 V at 500 V/div",
+    ],
+    [
+        "up to 828 mV at 10 V/div",
+        "up to 8.28 V at 100 V/div",
+        "up to 82.8 V at 1 kV/div",
+    ],
+];
+
+fn cells(unit: &sweepscope_calibration::UnitCalibration, channel: usize) -> Vec<[String; 3]> {
+    unit.tooltip.channels[channel].cells.clone()
+}
+
+fn texts_of(rows: [[&str; 3]; 12]) -> Vec<[String; 3]> {
+    rows.iter().map(|row| row.map(str::to_owned)).collect()
 }
 
 #[test]
-fn given_no_stored_unit_when_the_tooltip_is_built_then_it_shows_the_typical_errors_golden() {
+fn given_no_stored_unit_when_the_tooltip_is_built_then_every_channel_shows_the_typical_error_of_all_ranges_and_probes_golden(
+) {
     let unit = unit_calibration(None, &RANGES);
 
     assert!(!unit.calibrated);
     assert_eq!(unit.stored_at_utc, None);
-    assert_eq!(
-        row_values(&unit),
-        [
-            ("2 mV/div", "+0.66 mV (8 counts)"),
-            ("5 mV/div", "+1.04 mV (5 counts)"),
-            ("10 mV/div", "+0.83 mV (2 counts)"),
-            ("20 mV/div", "+0.83 mV (1 count)"),
-            ("50 mV/div and above", "up to 2 counts between channels"),
-        ]
-        .map(|(a, b)| (a.to_owned(), b.to_owned()))
-    );
-    assert_eq!(
-        unit.tooltip.notes,
-        [
-            "Typical zero error of one measured unit:",
-            "Gain: about 2 % from 50 mV to 1 V/div (one unit measured), not verified outside that range.",
-            "At extreme vertical positions readings can still be off by 2 to 3 counts (about 0.1 division).",
-            "Resolution is one count, 1/24 of a division.",
-        ]
-    );
+    assert_eq!(unit.tooltip.heading, "Typical zero error of one measured unit:");
+    for channel in 0..4 {
+        assert_eq!(cells(&unit, channel), texts_of(TYPICAL), "channel {channel}");
+    }
 }
 
-#[test]
-fn given_a_stored_unit_when_the_tooltip_is_built_then_each_channel_shows_its_largest_offset_relative_to_the_range() {
+fn calibrated_unit() -> sweepscope_calibration::UnitCalibration {
     let mut ch1 = vec![0.0; 12];
     ch1[0] = 0.000_66;
     ch1[11] = 0.01;
     let mut ch2 = vec![0.0; 12];
     ch2[1] = -0.001_04;
     ch2[4] = 0.000_2;
-    let unit = unit_calibration(Some(&stored([ch1, ch2, vec![0.0; 12], vec![]])), &RANGES);
-
-    assert!(unit.calibrated);
-    assert_eq!(unit.stored_at_utc.as_deref(), Some("2026-11-24T10:00:00Z"));
-    let rows = row_values(&unit);
-    assert_eq!(rows[0], ("CH1".to_owned(), "+0.66 mV at 2 mV/div".to_owned()));
-    assert_eq!(rows[1], ("CH2".to_owned(), "\u{2212}1.04 mV at 5 mV/div".to_owned()));
-    assert_eq!(rows[2], ("CH3".to_owned(), "+0.00 mV at 2 mV/div".to_owned()));
-    assert_eq!(rows[3], ("CH4".to_owned(), "-".to_owned()));
+    unit_calibration(Some(&stored([ch1, ch2, vec![0.0; 12], vec![0.001]])), &RANGES)
 }
 
 #[test]
-fn given_a_stored_unit_when_the_notes_are_built_then_they_start_with_what_was_removed() {
-    let unit = unit_calibration(Some(&stored(Default::default())), &RANGES);
+fn given_a_stored_unit_when_the_tooltip_is_built_then_the_heading_says_what_was_removed_and_the_date_is_kept() {
+    let unit = calibrated_unit();
 
+    assert!(unit.calibrated);
+    assert_eq!(unit.stored_at_utc.as_deref(), Some("2026-11-24T10:00:00Z"));
     assert_eq!(
-        unit.tooltip.notes[0],
+        unit.tooltip.heading,
         "Zero error removed per channel and range, measured with the input shorted (about 12 000 samples averaged)."
     );
-    assert_eq!(unit.tooltip.notes.len(), 4);
+}
+
+#[test]
+fn given_a_stored_channel_when_the_tooltip_is_built_then_each_range_shows_its_offset_for_the_three_probes_golden() {
+    let unit = calibrated_unit();
+
+    let ch1 = cells(&unit, 0);
+
+    assert_eq!(ch1.len(), 12);
+    assert_eq!(
+        ch1[0],
+        [
+            "+0.66 mV at 2 mV/div",
+            "+6.60 mV at 20 mV/div",
+            "+66.0 mV at 200 mV/div"
+        ]
+    );
+    assert_eq!(
+        ch1[1],
+        [
+            "+0.00 mV at 5 mV/div",
+            "+0.00 mV at 50 mV/div",
+            "+0.00 mV at 500 mV/div"
+        ]
+    );
+    assert_eq!(
+        ch1[11],
+        ["+10.0 mV at 10 V/div", "+100 mV at 100 V/div", "+1000 mV at 1 kV/div"]
+    );
+}
+
+#[test]
+fn given_a_negative_stored_offset_when_the_tooltip_is_built_then_it_has_a_true_minus() {
+    let unit = calibrated_unit();
+
+    assert_eq!(
+        cells(&unit, 1)[1],
+        [
+            "\u{2212}1.04 mV at 5 mV/div",
+            "\u{2212}10.4 mV at 50 mV/div",
+            "\u{2212}104 mV at 500 mV/div"
+        ]
+    );
+}
+
+#[test]
+fn given_a_channel_without_stored_offsets_when_the_tooltip_is_built_then_every_cell_is_a_dash() {
+    let unit = unit_calibration(
+        Some(&stored([vec![0.0; 12], vec![0.0; 12], vec![0.0; 12], vec![0.001]])),
+        &RANGES,
+    );
+
+    let ch4 = cells(&unit, 3);
+
+    assert_eq!(ch4.len(), 12);
+    assert_eq!(
+        ch4[0],
+        ["+1.00 mV at 2 mV/div", "+10.0 mV at 20 mV/div", "+100 mV at 200 mV/div"]
+    );
+    assert!(ch4[1..].iter().all(|cell| cell.iter().all(|text| text == "-")));
+}
+
+#[test]
+fn given_a_slice_range_index_when_the_cell_is_read_then_it_matches_the_capability_range_at_that_index() {
+    let unit = unit_calibration(None, &RANGES);
+
+    for (index, cell) in cells(&unit, 0).iter().enumerate() {
+        let at_probe_one = cell[0].rsplit(" at ").next().unwrap();
+        let range = RANGES[index];
+        let expected = if range < 1.0 {
+            format!("{} mV/div", (range * 1e3).round())
+        } else {
+            format!("{} V/div", range.round())
+        };
+        assert_eq!(at_probe_one, expected, "range index {index}");
+    }
 }
 
 #[test]
