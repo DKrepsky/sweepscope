@@ -1,11 +1,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use sweepscope_kernel::contracts::{CaptureCompleted, CaptureOutcome};
-use sweepscope_kernel::Bus;
+use sweepscope_kernel::contracts::{CaptureCompleted, CaptureOutcome, RollPolled};
+use sweepscope_kernel::{Bus, Clock};
 
 use super::control::{CaptureKind, Work, WorkerControl};
-use super::timeout::capture_timeout;
+use super::roll::{RollCounter, POLL_INTERVAL};
+use super::timeout::{capture_timeout, sample_interval_s};
 use crate::{AcquisitionSetup, DeviceError, ScopeDevice};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,7 +19,12 @@ pub enum WorkerEnd {
 
 struct Applied {
     revision: u64,
+    setup: AcquisitionSetup,
     timeout: Duration,
+    sample_interval_s: f64,
+    streaming: bool,
+    /// The device was configured with this setup and has not been touched since.
+    fresh: bool,
 }
 
 /// The one thread that talks to an opened device. Serial access, no lock held across a device call.
@@ -26,6 +32,7 @@ pub struct Worker {
     pub device: Box<dyn ScopeDevice>,
     pub control: Arc<WorkerControl>,
     pub bus: Bus,
+    pub clock: Arc<dyn Clock>,
     pub report: Box<dyn Fn(WorkerEnd) + Send>,
 }
 
@@ -47,10 +54,15 @@ impl Worker {
                             }
                         }
                     }
-                    let (Some(kind), Some(applied)) = (capture, applied.as_ref()) else {
+                    let (Some(kind), Some(applied)) = (capture, applied.as_mut()) else {
                         continue;
                     };
-                    if let Err(error) = self.capture(kind, applied) {
+                    let result = if applied.streaming {
+                        self.roll(applied)
+                    } else {
+                        self.capture(kind, applied)
+                    };
+                    if let Err(error) = result {
                         if self.fail(error) {
                             return;
                         }
@@ -62,10 +74,43 @@ impl Worker {
 
     fn configure(&mut self, revision: u64, setup: &AcquisitionSetup) -> Result<Applied, DeviceError> {
         self.device.configure(setup)?;
+        let capabilities = self.device.capabilities();
+        let streaming = capabilities
+            .time_bases
+            .get(usize::from(setup.time_base_index))
+            .is_some_and(|step| step.streaming);
         Ok(Applied {
             revision,
-            timeout: capture_timeout(self.device.capabilities(), setup),
+            setup: setup.clone(),
+            timeout: capture_timeout(capabilities, setup),
+            sample_interval_s: sample_interval_s(capabilities, setup),
+            streaming,
+            fresh: true,
         })
+    }
+
+    /// Rolls until stop, a new setup or capturing off: stop, configure, start, then poll. Items of an ended roll are never published.
+    fn roll(&mut self, applied: &mut Applied) -> Result<(), DeviceError> {
+        if !std::mem::take(&mut applied.fresh) {
+            self.device.stop()?;
+            self.device.configure(&applied.setup)?;
+        }
+        self.device.start_roll()?;
+        let mut counter = RollCounter::new(self.clock.now(), applied.sample_interval_s);
+        while !self.control.roll_should_end_within(POLL_INTERVAL) {
+            let item = match self.device.poll_roll() {
+                Ok(frame) => counter.samples(self.clock.now(), frame),
+                Err(DeviceError::Overrun) => Some(counter.gap(self.clock.now())),
+                Err(error) => return Err(error),
+            };
+            if let Some(item) = item.filter(|_| self.control.is_capturing()) {
+                self.bus.publish(RollPolled {
+                    setup_revision: applied.revision,
+                    item,
+                });
+            }
+        }
+        self.device.stop()
     }
 
     fn capture(&mut self, kind: CaptureKind, applied: &Applied) -> Result<(), DeviceError> {

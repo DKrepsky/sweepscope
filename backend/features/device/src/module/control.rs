@@ -1,4 +1,5 @@
 use std::sync::{Condvar, Mutex, MutexGuard};
+use std::time::Duration;
 
 use crate::AcquisitionSetup;
 
@@ -86,6 +87,19 @@ impl WorkerControl {
         }
     }
 
+    /// Sleeps one roll poll interval. Returns true as soon as the roll must end: stop, a new setup or capturing off.
+    pub fn roll_should_end_within(&self, interval: Duration) -> bool {
+        let (intent, _) = self
+            .wake
+            .wait_timeout_while(self.lock(), interval, |intent| !Self::ends_roll(intent))
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        Self::ends_roll(&intent)
+    }
+
+    fn ends_roll(intent: &Intent) -> bool {
+        intent.stop || intent.pending.is_some() || !intent.capturing
+    }
+
     fn update(&self, change: impl FnOnce(&mut Intent)) {
         change(&mut self.lock());
         self.wake.notify_all();
@@ -123,6 +137,32 @@ mod tests {
                 kind: TriggerKind::Edge,
             },
         }
+    }
+
+    #[test]
+    fn given_a_new_setup_when_a_roll_waits_then_it_ends_at_once() {
+        let control = WorkerControl::new();
+        control.set_capturing(true);
+        control.apply_setup(1, setup(0));
+
+        assert!(control.roll_should_end_within(Duration::from_secs(60)));
+    }
+
+    #[test]
+    fn given_capturing_without_news_when_a_roll_waits_then_it_continues_after_the_interval() {
+        let control = WorkerControl::new();
+        control.set_capturing(true);
+
+        assert!(!control.roll_should_end_within(Duration::from_millis(1)));
+    }
+
+    #[test]
+    fn given_capturing_off_or_stop_when_a_roll_waits_then_it_ends() {
+        let control = WorkerControl::new();
+        assert!(control.roll_should_end_within(Duration::from_secs(60)));
+        control.set_capturing(true);
+        control.stop();
+        assert!(control.roll_should_end_within(Duration::from_secs(60)));
     }
 
     #[test]

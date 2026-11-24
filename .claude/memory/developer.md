@@ -316,3 +316,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Fresh worktrees have no `frontend/node_modules`: `cp -al /home/kr/workspace/sweepscope/frontend/node_modules frontend/node_modules` (a symlink breaks vitest `/@fs`); remove it before finishing (it is gitignored).
 - New design tokens go in three places: `frontend/src/design-system/tokens.css`, `docs/design-prototype/tokens.css` (a test compares them) and `node frontend/tools/gen-tokens.mjs` to regenerate `tokens.generated.ts`.
 - Heredocs that write many files in one Bash call can be refused in worktrees; use the Write tool.
+
+## Device roll loop (M3 B6)
+- Worker rolls when the applied setup's time base is `streaming`: `module/roll.rs` (`RollCounter`, `POLL_INTERVAL` 50 ms), `WorkerControl::roll_should_end_within` paces and wakes on stop, new setup or capturing off. `Worker` and `Manager` now take the injected `Clock` (DeviceDeps.clock).
+- Device module tests use real time (SystemClock); gap sizes are asserted as ranges. `module_support` Rig has `polled` and `hooks.calls` (configure/start_roll/stop order).
+- In this sandbox, commands mixing `cd`, heredocs and pipes can be refused as "too complex": use Write/Edit for files and plain separate commands.
