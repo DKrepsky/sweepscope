@@ -9,5 +9,6 @@ pub use module::{CalibrationDeps, CalibrationModule};
 
 pub use messages::{
     ChannelTooltip, CloseZeroCalibration, ContinueZeroChannel, GetZeroCalibration, MeasureZeroChannel, OffsetRow,
-    OpenZeroCalibration, StartZeroCalibration, TooltipText, UnitCalibration, ZeroCalibrationChanged, ZeroCalibrationState, ZeroSession, ZeroStep,
+    OpenZeroCalibration, StartZeroCalibration, TooltipText, UnitCalibration, ZeroCalibrationChanged,
+    ZeroCalibrationState, ZeroSession, ZeroStep,
 };

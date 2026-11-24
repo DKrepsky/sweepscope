@@ -418,3 +418,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Done-table cells come from session.rs (offset_cell); tooltip rows from view.rs offset_text. Shared engineering-format gives "0.00 V" (golden), so exact zero is special-cased locally.
 - CLI tests: Duration::ZERO replaces wall-clock timeouts. FrameFiles removes a folder it created if the run fails empty.
 - Heredoc appends and compound python/cargo chains get refused in the worktree: use Edit and separate calls.
+
+## Calibration hardware round (developer-2)
+- Long Bash heredocs (python or cat >>) can be refused in a worktree ("too complex to verify"): write scripts with the Write tool into the scratchpad and run them, or add new test files instead of appending.
+- Zero-sweep level limit is `max(12 codes, 2.5 mV)`; at 5 mV/div 2.5 mV is 12.07 codes so its limit line reads 2.50 mV too. Rejected reading is kept in `ZeroSweep.pending`; `Core::continue_channel` = accept_rejected + machine.resume + fresh channel deadline. `reject(lines, continuable)` clears the channel's `overridden` mark.
+- Typical tooltip cells trim trailing zeros (`+6.6 mV at 20 mV/div`), calibrated cells keep `offset_text` decimals (`+6.60 mV`).
+- A stale ts-rs file (removed type) is not deleted by the export: `git rm` it by hand.

@@ -89,6 +89,7 @@ impl SessionMachine {
         self.progress = None;
         self.not_shorted = Some(lines);
         self.continuable = continuable;
+        self.overridden[self.channel] = false;
         Ok(())
     }
 

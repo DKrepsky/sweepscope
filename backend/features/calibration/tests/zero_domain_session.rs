@@ -168,7 +168,7 @@ fn given_a_rejected_channel_when_viewed_then_it_keeps_the_channel_and_earlier_re
     accept_channels(&mut machine, 2);
     machine.measure().unwrap();
 
-    machine.reject(vec!["Noise 1 mV".to_owned()]).unwrap();
+    machine.reject(vec!["Noise 1 mV".to_owned()], true).unwrap();
 
     let view = machine.view();
     assert_eq!((view.step, view.channel), (ZeroStep::NotShorted, Some(3)));
@@ -180,7 +180,7 @@ fn given_a_rejected_channel_when_viewed_then_it_keeps_the_channel_and_earlier_re
 fn given_a_rejected_channel_when_calibrate_is_pressed_again_then_it_measures_the_same_channel_without_the_lines() {
     let mut machine = at_channel_one();
     machine.measure().unwrap();
-    machine.reject(vec!["x".to_owned()]).unwrap();
+    machine.reject(vec!["x".to_owned()], true).unwrap();
 
     let channel = machine.measure().unwrap();
 
@@ -218,5 +218,5 @@ fn given_a_session_not_measuring_when_a_result_arrives_then_it_is_refused() {
 
     assert_eq!(machine.accept(offsets(1.0)), Err(WrongStep(ZeroStep::Channel)));
     assert_eq!(machine.committed(), Err(WrongStep(ZeroStep::Channel)));
-    assert_eq!(machine.reject(vec![]), Err(WrongStep(ZeroStep::Channel)));
+    assert_eq!(machine.reject(vec![], true), Err(WrongStep(ZeroStep::Channel)));
 }
