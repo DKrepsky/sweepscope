@@ -70,8 +70,6 @@ export type Interpolation = 'sinc' | 'linear' | 'dots';
 
 export interface HorizontalModel {
   timePerDiv: ScaleQuantity;
-  /** Marker text when the selected time base step has not been measured on the hardware. */
-  unverified?: string;
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;
@@ -93,8 +91,6 @@ export interface ChannelModel {
   bandwidthLimit: boolean;
   probe: string;
   inverted: boolean;
-  /** Reason text when the range is outside the verified one. */
-  unverified?: string;
   /** Ground marker, 0 (bottom) to 1 (top) of the screen. */
   groundPosition: number;
   enableReason?: string;
@@ -112,8 +108,6 @@ export type PulseCondition = 'equal' | 'notEqual' | 'greater' | 'less';
 export interface PulseModel {
   condition: PulseCondition;
   width: Quantity;
-  /** False outside the verified region. */
-  verified: boolean;
   /** Set when the last typed width was rejected; the applied width stays. */
   error?: string;
 }
@@ -163,7 +157,7 @@ export interface CursorsModel {
 }
 
 export interface MeasurementCellModel {
-  state: 'valid' | 'unverified' | 'invalid' | 'stale';
+  state: 'valid' | 'invalid' | 'stale';
   text: string;
   unit?: string;
   footnote?: number;
@@ -178,7 +172,6 @@ export interface MeasurementsModel {
   rows: { id: string; label: string; cells: Record<string, MeasurementCellModel> }[];
   footnotes: { key: number; text: string }[];
   frozenLabel?: 'Frozen' | 'Offline';
-  accuracyNote: string;
   /** Why no values are shown (roll mode). */
   unavailableNote?: string;
   /** Every row the pin menu offers, with whether it is shown. */

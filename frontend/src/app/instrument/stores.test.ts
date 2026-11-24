@@ -146,15 +146,15 @@ describe('instrument stores', () => {
   it('given an applied measurements revision, when an event with a lower revision arrives, then it is ignored', async () => {
     const { client, stores } = setup(stateSnapshot({ measurements: measurementsState({ revision: 6 }) }));
     await stores.start();
-    client.emit('measurements_changed', measurementsState({ revision: 5, accuracyNote: 'old' }));
-    expect(get(stores.measurements)?.accuracyNote).toBe('Approximate');
+    client.emit('measurements_changed', measurementsState({ revision: 5 }));
+    expect(get(stores.measurements)?.revision).toBe(6);
   });
 
   it('given an applied measurements revision, when a newer event arrives, then the store follows it', async () => {
     const { client, stores } = setup();
     await stores.start();
-    client.emit('measurements_changed', measurementsState({ revision: 2, accuracyNote: 'new' }));
-    expect(get(stores.measurements)?.accuracyNote).toBe('new');
+    client.emit('measurements_changed', measurementsState({ revision: 2 }));
+    expect(get(stores.measurements)?.revision).toBe(2);
   });
 
   it('given start, when the snapshot is requested, then display and measurements events are already subscribed', async () => {

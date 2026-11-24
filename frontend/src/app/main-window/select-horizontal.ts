@@ -5,8 +5,6 @@ import type { HorizontalModel, Interpolation } from './types';
 const factText = (fact: InstrumentFacts['sampleRate'] | undefined): string =>
   fact ? `${fact.text} ${fact.unit}`.trim() : NOT_MEASURED;
 
-const UNVERIFIED_TIME_BASE = 'Unverified (see accuracy note).';
-
 export const rateNote = (facts: InstrumentFacts | undefined): string =>
   `Fs ${factText(facts?.sampleRate)} · Ts ${factText(facts?.sampleInterval)} · frame mode`;
 
@@ -44,7 +42,6 @@ export function selectHorizontal(
       ...toQuantity(timeBase.label),
       step: { faster: toAvailability(timeBase.faster), slower: toAvailability(timeBase.slower) },
     },
-    ...(!timeBase.verified && { unverified: UNVERIFIED_TIME_BASE }),
     triggerPosition: toQuantity(horizontal.triggerPosition),
     window: horizontal.windowText,
     interpolation,

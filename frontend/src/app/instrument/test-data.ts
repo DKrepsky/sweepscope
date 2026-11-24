@@ -15,7 +15,6 @@ const value = (text: string, unit: string) => ({ value: Number(text), text, unit
 const scale = (text: string, unit: string) => ({
   index: 0,
   label: value(text, unit),
-  verified: true,
   faster: enabled,
   slower: enabled,
 });
@@ -42,7 +41,6 @@ const channelState = (number: number) => ({
   probe: 1,
   probeText: '1x',
   invert: false,
-  unverified: null,
   enable: enabled,
 });
 
@@ -135,7 +133,6 @@ export const displayState = (patch: Partial<DisplayState> = {}): DisplayState =>
 export const measurementsState = (patch: Partial<MeasurementsState> = {}): MeasurementsState => ({
   revision: 1,
   channels: [],
-  accuracyNote: 'Approximate',
   warnings: [],
   ...patch,
 });
