@@ -62,6 +62,7 @@ const NAMES = [
   'saveScreenshot',
   'bannerAction',
   'copyText',
+  'clearPulseWidthError',
 ] as const satisfies readonly (keyof MainWindowActions)[];
 
 /** Every action is a spy, so a test names the one call it expects and can assert that nothing else fired. */

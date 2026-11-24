@@ -3,6 +3,7 @@
     ChannelModel,
     HorizontalModel,
     MainWindowActions,
+    MathModel,
     TriggerModel,
     ViewsModel,
   } from '../../app/main-window';
@@ -16,6 +17,7 @@
     horizontal: HorizontalModel;
     views: ViewsModel;
     trigger: TriggerModel;
+    math: MathModel;
     actions: MainWindowActions;
     /** W3: Vertical takes the first row, Horizontal and Trigger share the second. */
     wrapped: boolean;
@@ -27,7 +29,8 @@
     groupTabs: boolean;
   }
 
-  const { channels, horizontal, views, trigger, actions, wrapped, smallRows, channelTabs, groupTabs }: Props = $props();
+  const { channels, horizontal, views, trigger, math, actions, wrapped, smallRows, channelTabs, groupTabs }: Props =
+    $props();
 
   const groupOptions = [
     { id: 'vertical', label: 'Vertical' },
@@ -49,7 +52,7 @@
       />
     </div>
   {/if}
-  {#if shows('vertical')}<VerticalGroup {channels} {actions} tabs={channelTabs} />{/if}
+  {#if shows('vertical')}<VerticalGroup {channels} {math} {actions} tabs={channelTabs} />{/if}
   {#if shows('horizontal')}<HorizontalGroup {horizontal} {views} {actions} />{/if}
   {#if shows('trigger')}<TriggerGroup {trigger} {channels} {actions} />{/if}
 </div>

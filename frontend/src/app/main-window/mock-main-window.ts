@@ -175,6 +175,7 @@ const inertAnalysisActions = {
   setTriggerKind: nothing,
   setPulseCondition: nothing,
   commitPulseWidth: nothing,
+  clearPulseWidthError: nothing,
   setSpectrumWindow: nothing,
   setSpectrumScale: nothing,
   movePeakMarker: nothing,

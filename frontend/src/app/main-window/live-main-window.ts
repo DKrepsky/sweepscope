@@ -69,7 +69,7 @@ function selectModel(i: ModelInputs): MainWindowModel {
       i.display?.automatic ?? false,
     ),
     channels: selectChannels(connection, instrument, selected, i.measurements, i.view === 'xy' ? i.xyAxes : undefined),
-    trigger: selectTrigger(connection, instrument),
+    trigger: selectTrigger(connection, instrument, i.pulseWidthRejected),
     cursors: selectCursors(i.cursors, instrument, graph.state, selected),
     measurements: selectMeasurements(i.measurements, i.pinned, graph.state, {
       roll: instrument?.horizontal.roll ?? false,
@@ -94,6 +94,7 @@ interface Presentation {
   xyAxes: Readable<ModelInputs['xyAxes']>;
   peak: Readable<ModelInputs['peak']>;
   persistenceEpoch: Readable<number>;
+  pulseWidthRejected: Readable<boolean>;
   dismissedRecordingFailure: Readable<number>;
 }
 
@@ -104,7 +105,7 @@ type BackendInputs = Pick<
 type AnalysisInputs = Pick<ModelInputs, 'spectrum' | 'spectrumFrame' | 'recording' | 'roll'>;
 type PresentationInputs = Pick<
   ModelInputs,
-  'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch' | 'dismissedRecordingFailure'
+  'selected' | 'view' | 'xyAxes' | 'peak' | 'persistenceEpoch' | 'dismissedRecordingFailure' | 'pulseWidthRejected'
 >;
 
 function backendInputs({ stores, frames }: Deps): Readable<BackendInputs> {
@@ -132,13 +133,14 @@ function analysisInputs({ analysis }: Deps): Readable<AnalysisInputs> {
 
 function presentationInputs(p: Presentation): Readable<PresentationInputs> {
   return derived(
-    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch, p.dismissedRecordingFailure],
-    ([selected, view, xyAxes, peak, persistenceEpoch, dismissedRecordingFailure]) => ({
+    [p.selected, p.view, p.xyAxes, p.peak, p.persistenceEpoch, p.dismissedRecordingFailure, p.pulseWidthRejected],
+    ([selected, view, xyAxes, peak, persistenceEpoch, dismissedRecordingFailure, pulseWidthRejected]) => ({
       selected,
       view,
       xyAxes,
       peak,
       persistenceEpoch,
+      pulseWidthRejected,
       dismissedRecordingFailure,
     }),
   );
@@ -164,6 +166,7 @@ function presentation(analyseCommands: AnalyseCommands) {
     peak: createPeakMarkerStore(),
     persistenceEpoch: createPersistenceEpoch(),
     dismissedRecordingFailure: createFailureDismissal(),
+    pulseWidthRejected: writable(false),
   };
 }
 
@@ -180,6 +183,7 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
   const { stores, analysis, commands, analyseCommands, cursors, pinned, files, copyText, notify } = deps;
   const shown = presentation(analyseCommands);
   const { selected, view, xyAxes: xy, peak, persistenceEpoch, dismissedRecordingFailure: failureDismissal } = shown;
+  const { pulseWidthRejected } = shown;
   const model = deriveModel(deps, shown);
 
   const actions = createLiveActions({
@@ -204,6 +208,7 @@ export function createLiveMainWindow(deps: Deps): LiveMainWindow {
     xy,
     peak,
     persistenceEpoch,
+    pulseWidthRejected,
     enabledChannels: () => enabledChannels(get(stores.instrument)),
     binCount: () => get(analysis.spectrumFrame)?.bins ?? 0,
   });

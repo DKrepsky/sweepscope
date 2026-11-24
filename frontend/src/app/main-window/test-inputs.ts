@@ -25,6 +25,7 @@ export function modelInputs(patch: Partial<ModelInputs> = {}): ModelInputs {
     renderer: 'Canvas 2D',
     spectrum: spectrumState(),
     dismissedRecordingFailure: 0,
+    pulseWidthRejected: false,
     spectrumFrame: undefined,
     recording: undefined,
     roll: undefined,

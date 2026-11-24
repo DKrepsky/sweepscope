@@ -34,6 +34,7 @@ export interface ModelInputs {
   xyAxes: XyAxes;
   peak: PeakMarker;
   persistenceEpoch: number;
+  pulseWidthRejected: boolean;
   /** Id of the newest recording failure the user dismissed. */
   dismissedRecordingFailure: number;
 }

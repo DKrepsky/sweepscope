@@ -148,6 +148,7 @@
               horizontal={model.horizontal}
               views={model.views}
               trigger={model.trigger}
+              math={model.math}
               actions={windowActions}
               wrapped={compact}
               smallRows={collapse.smallRows}

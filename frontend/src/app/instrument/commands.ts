@@ -18,7 +18,8 @@ export interface InstrumentCommands {
   reset(target: SettingTarget): void;
   setTriggerPosition(fraction: number): void;
   setTriggerLevel(divisions: number): void;
-  setTrigger(patch: TriggerPatch): void;
+  /** `onRejected` replaces the error toast, for fields that show their own message. */
+  setTrigger(patch: TriggerPatch, onRejected?: () => void): void;
   useSimulator(enabled: boolean): void;
   retryConnection(): void;
   setInterpolation(mode: InterpolationMode): void;
@@ -47,8 +48,8 @@ function messageOf(failure: unknown): string {
 /** Commands are fire and forget: the new state arrives as an event, a failure becomes an error toast. */
 export function createInstrumentCommands({ client, notify }: Deps): InstrumentCommands {
   const send: BackendClient['send'] = (name, args) => client.send(name, args);
-  const guard = (start: () => Promise<unknown>) => {
-    start().catch((failure: unknown) => notify('error', messageOf(failure)));
+  const guard = (start: () => Promise<unknown>, onRejected?: () => void) => {
+    start().catch((failure: unknown) => (onRejected ? onRejected() : notify('error', messageOf(failure))));
   };
 
   return {
@@ -59,7 +60,7 @@ export function createInstrumentCommands({ client, notify }: Deps): InstrumentCo
     reset: (target) => guard(() => send('reset_setting', { target })),
     setTriggerPosition: (fraction) => guard(() => send('set_trigger_position', { fraction })),
     setTriggerLevel: (divisions) => guard(() => send('set_trigger_level', { divisions })),
-    setTrigger: (patch) => guard(() => send('set_trigger', { patch })),
+    setTrigger: (patch, onRejected) => guard(() => send('set_trigger', { patch }), onRejected),
     useSimulator: (enabled) => guard(() => send('use_simulator', { enabled })),
     retryConnection: () => guard(() => send('retry_connection', {})),
     setInterpolation: (mode) => guard(() => send('set_interpolation', { mode })),

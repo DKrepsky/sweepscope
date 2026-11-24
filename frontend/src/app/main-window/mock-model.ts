@@ -166,7 +166,7 @@ const mockMath = (): Analysis['math'] => ({
     operation: 'subtract',
     sourceA: 1,
     sourceB: 2,
-    scale: { value: '1', unit: 'V/div' },
+    scale: scale('1', 'V/div'),
     position: { value: '0.00', unit: 'div' },
     label: 'A−B',
     status: 'ok',
