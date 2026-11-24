@@ -243,22 +243,60 @@ fn given_a_read_only_folder_when_exporting_raw_then_permission_denied_and_no_fil
     }
 }
 
-#[test]
-fn given_a_sidecar_that_cannot_be_written_when_exporting_raw_then_the_data_file_is_removed() {
-    let folder = TempDir::new();
-    std::fs::create_dir(folder.path().join("cap.format.txt")).unwrap();
-    let rig = rig(vec![Some(folder.path().join("cap.bin"))]);
+fn export_raw_to(path: PathBuf) -> Result<(), sweepscope_kernel::KernelError> {
+    let rig = rig(vec![Some(path)]);
     rig.bus.publish(frame());
-
-    let error = rig
-        .bus
+    rig.bus
         .request(ExportFrame {
             format: ExportFormat::Raw,
         })
-        .unwrap_err();
+        .map(drop)
+}
+
+#[test]
+fn given_an_existing_raw_file_when_the_sidecar_cannot_be_written_then_the_old_raw_file_is_kept() {
+    let folder = TempDir::new();
+    std::fs::create_dir(folder.path().join("cap.format.txt")).unwrap();
+    std::fs::write(folder.path().join("cap.bin"), b"old data").unwrap();
+
+    let error = export_raw_to(folder.path().join("cap.bin")).unwrap_err();
 
     assert!(error.to_string().contains("the path is a folder"), "{error}");
+    assert_eq!(std::fs::read(folder.path().join("cap.bin")).unwrap(), b"old data");
+}
+
+#[test]
+fn given_no_raw_file_when_the_sidecar_cannot_be_written_then_no_data_file_appears() {
+    let folder = TempDir::new();
+    std::fs::create_dir(folder.path().join("cap.format.txt")).unwrap();
+
+    export_raw_to(folder.path().join("cap.bin")).unwrap_err();
+
     assert!(!folder.path().join("cap.bin").exists());
+}
+
+#[test]
+fn given_an_existing_sidecar_when_the_raw_file_cannot_be_written_then_the_old_sidecar_is_kept() {
+    let folder = TempDir::new();
+    std::fs::create_dir(folder.path().join("cap.bin")).unwrap();
+    std::fs::write(folder.path().join("cap.format.txt"), b"old layout").unwrap();
+
+    export_raw_to(folder.path().join("cap.bin")).unwrap_err();
+
+    assert_eq!(
+        std::fs::read(folder.path().join("cap.format.txt")).unwrap(),
+        b"old layout"
+    );
+}
+
+#[test]
+fn given_no_sidecar_when_the_raw_file_cannot_be_written_then_no_sidecar_appears() {
+    let folder = TempDir::new();
+    std::fs::create_dir(folder.path().join("cap.bin")).unwrap();
+
+    export_raw_to(folder.path().join("cap.bin")).unwrap_err();
+
+    assert!(!folder.path().join("cap.format.txt").exists());
 }
 
 #[test]

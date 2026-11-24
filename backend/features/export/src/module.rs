@@ -156,13 +156,22 @@ impl Exporter {
             return Ok(None);
         };
         let sidecar = path.with_extension("format.txt");
-        write_atomic(&path, bytes)?;
-        if let Err(error) = write_atomic(&sidecar, layout_text().as_bytes()) {
-            let _ = std::fs::remove_file(&path);
+        let previous = std::fs::read(&sidecar).ok();
+        write_atomic(&sidecar, layout_text().as_bytes())?;
+        // The raw file goes last: its write is atomic, so a failure leaves the old file in place and only the sidecar needs undoing.
+        if let Err(error) = write_atomic(&path, bytes) {
+            restore(&sidecar, previous);
             return Err(error);
         }
         Ok(Some(saved(&path)))
     }
+}
+
+fn restore(sidecar: &Path, previous: Option<Vec<u8>>) {
+    let _ = match previous {
+        Some(old) => write_atomic(sidecar, &old).map_err(drop),
+        None => std::fs::remove_file(sidecar).map_err(drop),
+    };
 }
 
 fn filter(label: &str, extension: &str) -> FileFilter {
