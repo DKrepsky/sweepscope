@@ -38,6 +38,7 @@
     "allow-open-zero-calibration",
     "allow-start-zero-calibration",
     "allow-measure-zero-calibration",
+    "allow-continue-zero-calibration",
     "allow-close-zero-calibration",
     "core:event:allow-listen",
     "core:event:allow-unlisten"

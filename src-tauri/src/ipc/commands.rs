@@ -3,7 +3,9 @@ use sweepscope_acquisition::{
     SetRunning, SetTrigger, SetTriggerLevel, SetTriggerPosition, SettingTarget, SetupLoaded, StartAutoset, StepSetting,
     TriggerPatch,
 };
-use sweepscope_calibration::{CloseZeroCalibration, MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration};
+use sweepscope_calibration::{
+    CloseZeroCalibration, ContinueZeroChannel, MeasureZeroChannel, OpenZeroCalibration, StartZeroCalibration,
+};
 use sweepscope_device::{RetryConnection, UseSimulator};
 use sweepscope_display::{InterpolationMode, Persistence, SetInterpolation, SetPersistence};
 use sweepscope_export::{ExportFormat, ExportFrame, SaveScreenshot};
@@ -56,6 +58,7 @@ pub const REGISTERED_COMMANDS: &[&str] = &[
     "open_zero_calibration",
     "start_zero_calibration",
     "measure_zero_calibration",
+    "continue_zero_calibration",
     "close_zero_calibration",
 ];
 
@@ -231,6 +234,11 @@ fn measure_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelErr
 }
 
 #[tauri::command]
+fn continue_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
+    backend.bus.request(ContinueZeroChannel)
+}
+
+#[tauri::command]
 fn close_zero_calibration(backend: State<'_, Backend>) -> Result<(), KernelError> {
     backend.bus.request(CloseZeroCalibration)
 }
@@ -313,6 +321,7 @@ pub fn install(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry
         open_zero_calibration,
         start_zero_calibration,
         measure_zero_calibration,
+        continue_zero_calibration,
         close_zero_calibration,
     ])
 }

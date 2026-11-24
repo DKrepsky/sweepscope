@@ -50,6 +50,7 @@ export const COMMANDS = [
   'open_zero_calibration',
   'start_zero_calibration',
   'measure_zero_calibration',
+  'continue_zero_calibration',
   'close_zero_calibration',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
@@ -83,6 +84,7 @@ export type CommandArgs = {
   open_zero_calibration: Record<string, never>;
   start_zero_calibration: Record<string, never>;
   measure_zero_calibration: Record<string, never>;
+  continue_zero_calibration: Record<string, never>;
   close_zero_calibration: Record<string, never>;
 };
 
@@ -115,6 +117,7 @@ export type CommandResult = {
   open_zero_calibration: null;
   start_zero_calibration: null;
   measure_zero_calibration: null;
+  continue_zero_calibration: null;
   close_zero_calibration: null;
 };
 
