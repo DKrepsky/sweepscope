@@ -424,3 +424,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Zero-sweep level limit is `max(12 codes, 2.5 mV)`; at 5 mV/div 2.5 mV is 12.07 codes so its limit line reads 2.50 mV too. Rejected reading is kept in `ZeroSweep.pending`; `Core::continue_channel` = accept_rejected + machine.resume + fresh channel deadline. `reject(lines, continuable)` clears the channel's `overridden` mark.
 - Typical tooltip cells trim trailing zeros (`+6.6 mV at 20 mV/div`), calibrated cells keep `offset_text` decimals (`+6.60 mV`).
 - A stale ts-rs file (removed type) is not deleted by the export: `git rm` it by hand.
+- M4 hw view: `Note` has kind `warning`; Continue is hidden (not disabled) when `canContinue` is false; tooltip lines are `CHn text` strings split in the tag. Playwright m4-polish + a11y on both browsers takes ~9 min (run in background, ports 5173/4173 fixed, check they are free).
