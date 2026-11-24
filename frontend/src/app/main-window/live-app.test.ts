@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import { createFakeClient } from '../../api';
-import { stateSnapshot } from '../instrument/test-data';
+import { instrumentState, stateSnapshot } from '../instrument/test-data';
 import type { FrameBudgetProbe } from '../waveform';
 import { buildFrame } from '../waveform/test-frame';
 import { createLiveApp } from './live-app';
@@ -16,9 +16,10 @@ function setup() {
     endFrame: () => order.push('end'),
   };
   const drawn = Promise.resolve();
+  const notify = vi.fn();
   const app = createLiveApp({
     client,
-    notify: vi.fn(),
+    notify,
     copyText: vi.fn(),
     composeScreenshot: () => Promise.resolve(new Uint8Array()),
     now: () => 0,
@@ -27,7 +28,7 @@ function setup() {
     probe,
   });
   const runAnimationFrame = () => animationFrames.splice(0).forEach((callback) => callback());
-  return { client, app, order, runAnimationFrame };
+  return { client, app, order, runAnimationFrame, notify };
 }
 
 describe('createLiveApp', () => {
@@ -76,5 +77,51 @@ describe('createLiveApp', () => {
     app.stop();
 
     expect(client.openStreamCount('frames')).toBe(0);
+  });
+
+  describe('setup notice', () => {
+    const noticeState = (revision: number, id: number) =>
+      instrumentState({ revision, setupNotice: { id, text: `notice ${id}` } });
+
+    it('given a setup notice with a new id, when it arrives, then one warning toast shows its text', async () => {
+      const { client, app, notify } = setup();
+      await app.start();
+
+      client.emit('instrument_changed', noticeState(2, 1));
+
+      expect(notify).toHaveBeenCalledExactlyOnceWith('warning', 'notice 1');
+    });
+
+    it('given a shown notice, when later state updates carry the same id, then it is not shown again', async () => {
+      const { client, app, notify } = setup();
+      await app.start();
+      client.emit('instrument_changed', noticeState(2, 1));
+
+      client.emit('instrument_changed', noticeState(3, 1));
+      client.emit('instrument_changed', instrumentState({ revision: 4 }));
+
+      expect(notify).toHaveBeenCalledTimes(1);
+    });
+
+    it('given a shown notice, when the app restarts and the snapshot carries the same id, then it is not shown again', async () => {
+      const { client, app, notify } = setup();
+      client.respond('get_snapshot', () => stateSnapshot({ instrument: noticeState(2, 1) }));
+      await app.start();
+      app.stop();
+
+      await app.start();
+
+      expect(notify).toHaveBeenCalledTimes(1);
+    });
+
+    it('given a shown notice, when a notice with another id arrives, then it is shown too', async () => {
+      const { client, app, notify } = setup();
+      await app.start();
+      client.emit('instrument_changed', noticeState(2, 1));
+
+      client.emit('instrument_changed', noticeState(3, 2));
+
+      expect(notify).toHaveBeenLastCalledWith('warning', 'notice 2');
+    });
   });
 });
