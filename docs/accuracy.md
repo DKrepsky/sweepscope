@@ -16,6 +16,10 @@ The scope is an 8-bit instrument. A reading has a resolution of one count, 1/24 
 | Item | Status |
 |---|---|
 | Four channels, independently enabled | Verified (three channels: data layout only) |
+| Analog bandwidth 250 MHz | Vendor specification, not measured |
+| Bandwidth limit | Verified (the relay switches) |
+| ADC, 8-bit HMCAD1511 | Hardware fact, not a measurement |
+| Hotplug, connect and disconnect, 2 s settle time | Verified (the scope re-enumerates about 1.2 s after plug-in) |
 | Sample rate 1 GS/s (1 channel), 500 MS/s (2), 250 MS/s (3 or 4) | Verified by rise-time measurements |
 | Twelve vertical ranges, relays, bandwidth limit, AC/DC coupling | Verified |
 | Edge trigger, pulse trigger | Verified (pulses of 500 us) |

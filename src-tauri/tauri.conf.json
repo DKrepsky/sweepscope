@@ -32,6 +32,8 @@
       "deb",
       "appimage"
     ],
+    "publisher": "SweepScope contributors <https://github.com/DKrepsky/sweepscope>",
+    "homepage": "https://github.com/DKrepsky/sweepscope",
     "category": "Utility",
     "shortDescription": "USB oscilloscope application",
     "longDescription": "SweepScope displays, measures and analyses signals from Hantek 6xx4-series USB oscilloscopes.",
@@ -52,8 +54,6 @@
     "linux": {
       "deb": {
         "depends": [
-          "libwebkit2gtk-4.1-0",
-          "libgtk-3-0",
           "libusb-1.0-0"
         ],
         "files": {
