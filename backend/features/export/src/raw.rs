@@ -15,7 +15,7 @@ pub struct RawChannel {
     pub probe: f64,
     pub zero_code: f64,
     pub inverted: bool,
-    pub range_verified: bool,
+    pub calibrated: bool,
     pub codes: Vec<u8>,
 }
 
@@ -39,7 +39,9 @@ struct HeaderChannel {
     probe: f64,
     zero_code: f64,
     inverted: bool,
-    range_verified: bool,
+    /// Files written before the zero calibration carry `range_verified` instead; it is ignored.
+    #[serde(default)]
+    calibrated: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,7 +76,7 @@ pub fn encode(capture: &Capture) -> Result<Vec<u8>, KernelError> {
                 probe: channel.probe,
                 zero_code: channel.zero_code,
                 inverted: channel.inverted,
-                range_verified: channel.range_verified,
+                calibrated: channel.calibrated,
             })
             .collect(),
     };
@@ -127,7 +129,7 @@ pub fn decode_raw(bytes: &[u8]) -> Result<RawCapture, KernelError> {
             probe: entry.probe,
             zero_code: entry.zero_code,
             inverted: entry.inverted,
-            range_verified: entry.range_verified,
+            calibrated: entry.calibrated,
             codes: codes.to_vec(),
         });
     }
