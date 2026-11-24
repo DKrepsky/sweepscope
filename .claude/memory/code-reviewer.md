@@ -25,3 +25,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Help commands shown in banners must work outside the repo root (relative paths).
 - Shell commands built from embedded text (printf '%s' '...'): check a test forbids a single quote in the embedded file.
 - Re-review: run `npm run check` (prettier) again; fix commits often break format:check.
+- ts-rs `export_to` resolves from `<crate>/bindings`: depth differs per crate (kernel needs 3 `..`, feature crates 4). Check `ls ../frontend` next to the repo and `.claude/worktrees/frontend` after cargo test; contract tests read the repo copy and pass vacuously.
+- File writers: check multi-file rollback does not delete pre-existing user data; staging files use create_new.
+- Hand-rendered TS (StateSnapshot.ts): ask for type-name checks, not only field names.
+- Cargo `[env]` config is found by cwd, not --manifest-path: test a crate from outside the repo and check for stray `<crate>/bindings` (untracked, not ignored).
+- Rollback code: `fs::read(..).ok()` conflates NotFound with other errors; check before restoring/deleting user files.
+- Popup placement with bind:this measurement: check stale position state on reopen.

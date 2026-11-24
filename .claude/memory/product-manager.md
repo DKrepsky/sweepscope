@@ -33,3 +33,13 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Tests that stub Tauri hide missing capabilities (BUG-1: event listen). Real-window QA is needed for IPC changes.
 - QA opened the real scope by accident: always set SWEEPSCOPE_NO_HARDWARE=1 and hide USB for automated app runs; tell the human when it happens.
 - Visual baselines are regenerated on CI after push; QA cannot do it before.
+- M1 closed (2026-11-23): human accepted after a basic hardware run (calibration signal seen), declined the 40-item hardware checklist. Keep future hardware checklists short (about 10 items, critical path only). Human removed visual snapshot tests as too costly: never propose screenshot-comparison tests again.
+
+## M2 lessons (2026-11)
+- M2 = #13 #14 #15 #18 #19 #20 as one milestone (PRD section 9). Human approves in bulk and dislikes questions I can answer from the PRD, issues or code: look first, ask only for decisions that change an AC or touch things outside the repo.
+- Check spec values against issue ACs before accepting a developer report: "1.000 kHz" needed four digits but the formatter had three; spec said all twelve pins by default but I accepted five. Re-read spec section 1.3 before ruling on a developer's question.
+- Verify claims yourself: the reviewer's ts-rs "depth" finding was wrong; the real cause was the export dir resolved per running crate (fixed by TS_RS_EXPORT_DIR in .cargo/config.toml). Run `cargo test --workspace` and check `git status` after any such fix.
+- Agent reports can be empty ("placeholder"): check the branch commit and re-run tests before merging.
+- Merges conflict only in .claude/memory/developer.md (keep both sides); commit spec edits before spawning worktrees or they will not see them.
+- Never let agents delete outside the repo; ask the human first (stray folder at ../frontend was deleted with approval).
+- Accuracy AC changes (#15 AC2: 0.01 % at >=500 us/div, 0.02 % faster) were decided by the human after a staff engineer analysis; run an assessment before asking.
