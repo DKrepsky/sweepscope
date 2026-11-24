@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-spectrum-stream"
+description = "Enables the close_spectrum_stream command without any pre-configured scope."
+commands.allow = ["close_spectrum_stream"]
+
+[[permission]]
+identifier = "deny-close-spectrum-stream"
+description = "Denies the close_spectrum_stream command without any pre-configured scope."
+commands.deny = ["close_spectrum_stream"]

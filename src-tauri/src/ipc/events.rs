@@ -9,6 +9,8 @@ use sweepscope_display::DisplayChanged;
 use sweepscope_kernel::contracts::ConnectionChanged;
 use sweepscope_kernel::{Bus, Event, KernelError, Subscription};
 use sweepscope_measurement::MeasurementsChanged;
+use sweepscope_recording::RecordingChanged;
+use sweepscope_spectrum::SpectrumChanged;
 
 pub const CONNECTION_CHANGED: &str = "connection_changed";
 pub const INSTRUMENT_CHANGED: &str = "instrument_changed";
@@ -16,6 +18,8 @@ pub const STATUS_CHANGED: &str = "status_changed";
 pub const FACTS_CHANGED: &str = "facts_changed";
 pub const DISPLAY_CHANGED: &str = "display_changed";
 pub const MEASUREMENTS_CHANGED: &str = "measurements_changed";
+pub const SPECTRUM_CHANGED: &str = "spectrum_changed";
+pub const RECORDING_CHANGED: &str = "recording_changed";
 
 const POLL: Duration = Duration::from_millis(50);
 
@@ -59,6 +63,12 @@ impl EventForwarders {
             serde_json::to_value(e.0)
         })?;
         forwarders.forward(bus, emitter, MEASUREMENTS_CHANGED, |e: MeasurementsChanged| {
+            serde_json::to_value(e.0)
+        })?;
+        forwarders.forward(bus, emitter, SPECTRUM_CHANGED, |e: SpectrumChanged| {
+            serde_json::to_value(e.0)
+        })?;
+        forwarders.forward(bus, emitter, RECORDING_CHANGED, |e: RecordingChanged| {
             serde_json::to_value(e.0)
         })?;
         Ok(forwarders)
@@ -250,5 +260,44 @@ mod tests {
         });
 
         assert!(recorder.names().is_empty());
+    }
+
+    #[test]
+    fn given_a_composed_app_when_the_spectrum_is_activated_then_spectrum_changed_reaches_the_emitter() {
+        let (backend, _control) = crate::integration_tests::simulated_backend();
+        let recorder = Arc::new(Recorder::default());
+        let emitter: Arc<dyn EventEmitter> = recorder.clone();
+        let _forwarders = EventForwarders::start(&backend.bus, &emitter).expect("start");
+
+        backend
+            .bus
+            .request(sweepscope_spectrum::SetSpectrum {
+                patch: sweepscope_spectrum::SpectrumPatch {
+                    active: Some(true),
+                    ..Default::default()
+                },
+            })
+            .expect("activate");
+
+        assert!(eventually(WAIT, || recorder.payload(SPECTRUM_CHANGED).is_some()));
+        assert_eq!(recorder.payload(SPECTRUM_CHANGED).expect("spectrum")["active"], true);
+    }
+
+    #[test]
+    fn given_a_recording_change_when_published_then_it_is_emitted_as_recording_changed() {
+        let (backend, _control) = crate::integration_tests::simulated_backend();
+        let recorder = Arc::new(Recorder::default());
+        let emitter: Arc<dyn EventEmitter> = recorder.clone();
+        let _forwarders = EventForwarders::start(&backend.bus, &emitter).expect("start");
+        let mut state = backend
+            .bus
+            .request(sweepscope_recording::GetRecording)
+            .expect("recording");
+        state.revision = 42;
+
+        backend.bus.publish(RecordingChanged(state));
+
+        assert!(eventually(WAIT, || recorder.payload(RECORDING_CHANGED).is_some()));
+        assert_eq!(recorder.payload(RECORDING_CHANGED).expect("recording")["revision"], 42);
     }
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use sweepscope_kernel::contracts::{Availability, FormattedValue};
-use sweepscope_kernel::{Event, Request};
+use sweepscope_kernel::{CommandDescriptor, Event, Request};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -90,3 +90,11 @@ pub struct SpectrumFrameReady {
     pub bytes: Arc<Vec<u8>>,
 }
 impl Event for SpectrumFrameReady {}
+
+/// Frontend-callable commands of this feature, consumed by the shell to generate `commands.ts`.
+pub const COMMANDS: &[CommandDescriptor] = &[CommandDescriptor {
+    name: "set_spectrum",
+    args: "{ patch: SpectrumPatch }",
+    result: "null",
+    types: &["SpectrumPatch"],
+}];

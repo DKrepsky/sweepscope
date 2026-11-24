@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-persistence"
+description = "Enables the set_persistence command without any pre-configured scope."
+commands.allow = ["set_persistence"]
+
+[[permission]]
+identifier = "deny-set-persistence"
+description = "Denies the set_persistence command without any pre-configured scope."
+commands.deny = ["set_persistence"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-arm-single"
+description = "Enables the arm_single command without any pre-configured scope."
+commands.allow = ["arm_single"]
+
+[[permission]]
+identifier = "deny-arm-single"
+description = "Denies the arm_single command without any pre-configured scope."
+commands.deny = ["arm_single"]

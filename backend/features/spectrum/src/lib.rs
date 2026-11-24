@@ -11,7 +11,7 @@ mod wire;
 
 pub use messages::{
     GetSpectrum, SetSpectrum, SpectrumChanged, SpectrumFrameReady, SpectrumPatch, SpectrumScale, SpectrumState,
-    SpectrumWindow, Tick,
+    SpectrumWindow, Tick, COMMANDS,
 };
 pub use module::{SpectrumDeps, SpectrumModule};
 pub use wire::{encode, stamp_sent, ChannelSpectrum, FrameHeader, MATH_SLOT};

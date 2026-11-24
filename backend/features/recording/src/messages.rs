@@ -1,6 +1,6 @@
 use serde::Serialize;
 use sweepscope_kernel::contracts::{FormattedValue, SavedFile};
-use sweepscope_kernel::{Event, Request};
+use sweepscope_kernel::{CommandDescriptor, Event, Request};
 use ts_rs::TS;
 
 /// Why the last recording stopped on its own; the UI shows each `id` once.
@@ -52,3 +52,19 @@ impl Request for GetRecording {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordingChanged(pub RecordingState);
 impl Event for RecordingChanged {}
+
+/// Frontend-callable commands of this feature, consumed by the shell to generate `commands.ts`.
+pub const COMMANDS: &[CommandDescriptor] = &[
+    CommandDescriptor {
+        name: "start_recording",
+        args: "{}",
+        result: "SavedFile | null",
+        types: &["SavedFile"],
+    },
+    CommandDescriptor {
+        name: "stop_recording",
+        args: "{}",
+        result: "null",
+        types: &[],
+    },
+];

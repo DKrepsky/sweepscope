@@ -20,6 +20,17 @@ const COMMANDS: &[&str] = &[
     "retry_connection",
     "open_frame_stream",
     "close_frame_stream",
+    "arm_single",
+    "start_autoset",
+    "set_math",
+    "set_persistence",
+    "set_spectrum",
+    "start_recording",
+    "stop_recording",
+    "open_roll_stream",
+    "close_roll_stream",
+    "open_spectrum_stream",
+    "close_spectrum_stream",
 ];
 
 fn main() {

@@ -34,15 +34,15 @@ export const COMMANDS = [
   'set_trigger',
   'save_setup',
   'load_setup',
-  'use_simulator',
-  'retry_connection',
-  'set_interpolation',
-  'export_frame',
-  'save_screenshot',
   'arm_single',
   'start_autoset',
   'set_math',
+  'use_simulator',
+  'retry_connection',
+  'set_interpolation',
   'set_persistence',
+  'export_frame',
+  'save_screenshot',
   'set_spectrum',
   'start_recording',
   'stop_recording',
@@ -63,15 +63,15 @@ export type CommandArgs = {
   set_trigger: { patch: TriggerPatch };
   save_setup: Record<string, never>;
   load_setup: Record<string, never>;
-  use_simulator: { enabled: boolean };
-  retry_connection: Record<string, never>;
-  set_interpolation: { mode: InterpolationMode };
-  export_frame: { format: ExportFormat };
-  save_screenshot: Uint8Array;
   arm_single: Record<string, never>;
   start_autoset: Record<string, never>;
   set_math: { patch: MathPatch };
+  use_simulator: { enabled: boolean };
+  retry_connection: Record<string, never>;
+  set_interpolation: { mode: InterpolationMode };
   set_persistence: { value: Persistence };
+  export_frame: { format: ExportFormat };
+  save_screenshot: Uint8Array;
   set_spectrum: { patch: SpectrumPatch };
   start_recording: Record<string, never>;
   stop_recording: Record<string, never>;
@@ -91,15 +91,15 @@ export type CommandResult = {
   set_trigger: null;
   save_setup: SavedFile | null;
   load_setup: SetupLoaded | null;
-  use_simulator: null;
-  retry_connection: null;
-  set_interpolation: null;
-  export_frame: SavedFile | null;
-  save_screenshot: SavedFile | null;
   arm_single: null;
   start_autoset: null;
   set_math: null;
+  use_simulator: null;
+  retry_connection: null;
+  set_interpolation: null;
   set_persistence: null;
+  export_frame: SavedFile | null;
+  save_screenshot: SavedFile | null;
   set_spectrum: null;
   start_recording: SavedFile | null;
   stop_recording: null;
