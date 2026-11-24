@@ -374,3 +374,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 ## M3 fix round 2 (developer-10)
 - Core keeps a `HeldFrame` (frame, setup revision, derived); `rederive_held` in `after_change` re-publishes `FrameCaptured` when stopped and the derived trace differs (same setup revision only).
 - Roll toolbar at 1024: trigger phase chip is dropped in roll (it was 170 px when "Waiting for trigger"); scrollWidth alone hides a squeezed spacer, also assert drawer button right edge <= Settings left.
+## WP10 calibration module (developer-2)
+- Feature crates cannot dev-depend on each other (check-architecture reads dev-deps): module tests use a fake acquisition (HoldInstrument/CaptureProbe handlers publishing ProbeCaptured inside the handler) in tests/zero_module_support; wait with the slice subscription, not sleeps. A real stack check (temp dev-deps acquisition+device, shorted simulator) worked; restore Cargo.toml and Cargo.lock afterwards.
+- Module lock is one Mutex<Core>; handlers return at once, probe answers advance the sweep on the thread; deadlines checked in tick with the injected clock (channel timeout before probe timeout). Wall time comes from an injected fn() -> f64 (Clock has no wall time); ISO formatter duplicated in module/stamp.rs because features cannot share export code.
