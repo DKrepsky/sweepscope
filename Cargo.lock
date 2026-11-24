@@ -3420,6 +3420,8 @@ dependencies = [
 name = "sweepscope-spectrum"
 version = "0.1.0"
 dependencies = [
+ "engineering-format",
+ "fft",
  "serde",
  "serde_json",
  "sweepscope-kernel",

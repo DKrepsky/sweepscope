@@ -1,7 +1,6 @@
 use std::path::Path;
 
-use sweepscope_kernel::Bus;
-use sweepscope_spectrum::{SpectrumDeps, SpectrumModule, SpectrumPatch, SpectrumScale, SpectrumState, SpectrumWindow};
+use sweepscope_spectrum::{SpectrumPatch, SpectrumScale, SpectrumState, SpectrumWindow};
 use ts_rs::{Config, TS};
 
 fn generated(name: &str) -> String {
@@ -42,9 +41,4 @@ fn given_a_json_patch_with_one_field_when_deserialized_then_the_others_are_none(
             ..SpectrumPatch::default()
         }
     );
-}
-
-#[test]
-fn given_the_inert_module_when_created_then_it_succeeds() {
-    assert!(SpectrumModule::new(SpectrumDeps { bus: Bus::new() }).is_ok());
 }
