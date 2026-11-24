@@ -152,7 +152,6 @@
     position: absolute;
     display: grid;
     padding: var(--ss-space-4);
-    margin: calc(-1 * var(--ss-space-4));
     cursor: ns-resize;
     touch-action: none;
     outline: none;
@@ -184,7 +183,6 @@
   }
 
   .marker.peak {
-    margin-inline: 0;
     cursor: ew-resize;
     transform: translate(-50%, -100%);
   }

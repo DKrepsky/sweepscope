@@ -606,3 +606,30 @@ test.describe('#29 peak marker placement', () => {
     expect(Math.abs(glyph.x + glyph.width / 2 - peakLineX)).toBeLessThanOrEqual(1);
   });
 });
+
+test.describe('#29 marker placement on its line', () => {
+  const cases = [
+    { name: 'CH1 ground', axis: 'y', position: 0.5 },
+    { name: 'Trigger level', axis: 'y', position: 0.6 },
+    { name: 'Trigger position', axis: 'x', position: 0.5 },
+    { name: 'CH1 X ground', axis: 'x', position: 0.45 },
+  ] as const;
+
+  for (const { name, axis, position } of cases) {
+    test(`given the ${name} marker at ${position * 100} %, when its glyph is measured, then its centre is on its line`, async ({
+      page,
+    }) => {
+      await openGallery(page);
+      const stage = page.locator('.marker-stage');
+      const screen = (await stage.locator('.screen').boundingBox())!;
+      const glyph = (await stage.getByRole('slider', { name, exact: true }).locator('.shape').boundingBox())!;
+      if (axis === 'y') {
+        const line = screen.y + (1 - position) * screen.height;
+        expect(Math.abs(glyph.y + glyph.height / 2 - line)).toBeLessThanOrEqual(1);
+      } else {
+        const line = screen.x + position * screen.width;
+        expect(Math.abs(glyph.x + glyph.width / 2 - line)).toBeLessThanOrEqual(1);
+      }
+    });
+  }
+});
