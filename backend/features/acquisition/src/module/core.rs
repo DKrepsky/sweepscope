@@ -10,11 +10,11 @@ use super::autoset;
 use super::derive::derive_trace;
 use super::effects::{Call, Effects, Output};
 use super::roll::RollSessions;
-use crate::domain::autoset_run::AutosetRun;
+use crate::domain::autoset_run::{AutosetRun, Finish, Next, FAILED_TEXT, NO_SIGNAL_TEXT};
 use crate::domain::setup_file::SetupFile;
 use crate::{
-    next_status, AcquisitionStatus, AutosetStatus, CaptureMeter, Change, ControlsAvailability, Defaults,
-    FormattedValue, Instrument, InstrumentFacts, InstrumentSnapshot, Phase, SetupReport, StatusEvent,
+    next_status, AcquisitionStatus, AutosetOutcomeKind, AutosetStatus, CaptureMeter, Change, ControlsAvailability,
+    Defaults, FormattedValue, Instrument, InstrumentFacts, InstrumentSnapshot, Phase, SetupReport, StatusEvent,
 };
 
 const FACTS_EVERY: Duration = Duration::from_millis(250);
@@ -199,11 +199,102 @@ impl Core {
         Ok(())
     }
 
-    pub fn start_autoset(&mut self, fx: &mut Effects) -> Result<(), KernelError> {
+    /// Ends an armed Single, then probes until the machine decides; the request returns at once.
+    pub fn start_autoset(&mut self, fx: &mut Effects, now: Instant) -> Result<(), KernelError> {
         self.require(|controls| &controls.autoset, "Auto-setup is not available")?;
-        autoset::start(&mut self.autoset, fx);
+        if self.instrument.single_armed() {
+            self.set_running(false, fx, now)?;
+        }
+        let start = self
+            .instrument
+            .autoset_start()
+            .ok_or_else(|| KernelError::recoverable(NO_SCOPE))?;
+        let was_running = self.instrument.running();
+        let next = self.autoset.begin(start, now, was_running);
+        if self.instrument.set_autoset_running(true) {
+            self.publish_instrument(fx);
+        }
         self.sync_autoset(fx);
+        if !was_running {
+            fx.calls.push(Call::Capturing(true));
+        }
+        self.advance_autoset(next, fx, now);
         Ok(())
+    }
+
+    fn advance_autoset(&mut self, next: Next, fx: &mut Effects, now: Instant) {
+        match next {
+            Next::Probe(plan) => {
+                self.setup_revision += 1;
+                let sent = autoset::send_probe(&self.instrument, &mut self.autoset, self.setup_revision, &plan, fx);
+                if !sent {
+                    self.finish_autoset(Finish::Failed, fx, now);
+                }
+            }
+            Next::Finish(finish) => self.finish_autoset(finish, fx, now),
+        }
+    }
+
+    /// Done and no signal make the plan the user's setup; a failure sends the untouched setup back to the device.
+    fn finish_autoset(&mut self, finish: Finish, fx: &mut Effects, now: Instant) {
+        let was_running = self.autoset.was_running();
+        self.instrument.set_autoset_running(false);
+        let applied = match finish {
+            Finish::Done(plan) => self.apply_autoset_plan(&plan, AutosetOutcomeKind::Done, fx, now),
+            Finish::NoSignal(plan) => self.apply_autoset_plan(&plan, AutosetOutcomeKind::NoSignal, fx, now),
+            Finish::Failed => false,
+        };
+        if !applied {
+            self.restore_after_autoset(was_running, fx, now);
+        }
+        self.sync_autoset(fx);
+    }
+
+    fn apply_autoset_plan(
+        &mut self,
+        plan: &crate::domain::autoset_run::Plan,
+        kind: AutosetOutcomeKind,
+        fx: &mut Effects,
+        now: Instant,
+    ) -> bool {
+        if self.instrument.autoset_apply(plan).is_err() {
+            return false;
+        }
+        let text = match kind {
+            AutosetOutcomeKind::NoSignal => NO_SIGNAL_TEXT.to_owned(),
+            _ => self.instrument.autoset_summary().unwrap_or_default(),
+        };
+        self.autoset.conclude(kind, text);
+        self.meter.clear();
+        self.advance_phase(StatusEvent::Run, fx);
+        let change = Change {
+            setup_changed: true,
+            state_changed: true,
+        };
+        self.after_change(change, fx, now);
+        true
+    }
+
+    fn restore_after_autoset(&mut self, was_running: bool, fx: &mut Effects, now: Instant) {
+        self.autoset
+            .conclude(AutosetOutcomeKind::Failed, FAILED_TEXT.to_owned());
+        self.send_setup(fx);
+        if !was_running {
+            fx.calls.push(Call::Capturing(false));
+        }
+        self.publish_instrument(fx);
+        self.refresh_facts(fx, now, true);
+    }
+
+    /// The scope is gone: nothing to send, the setup was never changed, the outcome says so.
+    fn abort_autoset(&mut self, fx: &mut Effects) {
+        if !self.autoset.active() {
+            return;
+        }
+        self.instrument.set_autoset_running(false);
+        self.autoset
+            .conclude(AutosetOutcomeKind::Failed, FAILED_TEXT.to_owned());
+        self.sync_autoset(fx);
     }
 
     fn require(
@@ -224,23 +315,18 @@ impl Core {
         ))
     }
 
-    /// Publishes the auto-setup status and the locks it puts on the controls when either changed.
+    /// Publishes the auto-setup status when it changed.
     fn sync_autoset(&mut self, fx: &mut Effects) {
         let status = self.autoset.status();
         if status == self.status.autoset {
             return;
         }
-        let running_changed = status.running != self.status.autoset.running;
         self.status = AcquisitionStatus {
             revision: self.status.revision + 1,
             phase: self.status.phase,
             autoset: status,
         };
         fx.outputs.push(Output::Status(self.status.clone()));
-        if running_changed {
-            self.instrument.set_autoset_running(self.status.autoset.running);
-            self.publish_instrument(fx);
-        }
     }
 
     pub fn connection(&mut self, change: ConnectionChanged, fx: &mut Effects, now: Instant) {
@@ -267,6 +353,12 @@ impl Core {
     }
 
     pub fn capture(&mut self, completed: CaptureCompleted, fx: &mut Effects, now: Instant) {
+        if self.autoset.active() {
+            if let Some(next) = autoset::consume(&mut self.autoset, completed, now) {
+                self.advance_autoset(next, fx, now);
+            }
+            return;
+        }
         if !self.instrument.running() || completed.setup_revision != self.setup_revision {
             return;
         }
@@ -277,6 +369,8 @@ impl Core {
                     self.advance_phase(event, fx);
                 }
                 self.meter.record(now);
+                self.autoset.note_frame(&frame);
+                self.sync_autoset(fx);
                 let context = self.instrument.frame_context(self.setup_revision);
                 let derived = derive_trace(&self.instrument, &frame);
                 fx.outputs.push(Output::Frame(FrameCaptured {
@@ -308,6 +402,9 @@ impl Core {
     }
 
     pub fn tick(&mut self, fx: &mut Effects, now: Instant) {
+        if let Some(next) = autoset::expire(&self.autoset, now) {
+            self.advance_autoset(next, fx, now);
+        }
         self.refresh_facts(fx, now, false);
         self.track_setup(fx, now);
     }
@@ -329,6 +426,7 @@ impl Core {
 
     /// `reason` is the text of an in-between state; `None` means the scope is gone.
     fn lose(&mut self, reason: Option<&str>, fx: &mut Effects) {
+        self.abort_autoset(fx);
         match reason {
             Some(reason) => self.instrument.set_unavailable(reason),
             None => self.instrument.on_lost(),

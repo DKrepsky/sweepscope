@@ -4,6 +4,7 @@ use std::time::Instant;
 use sweepscope_kernel::contracts::{AcquisitionSetup, Capabilities, FrameContext, RollContext};
 use sweepscope_kernel::KernelError;
 
+use super::autoset_run::{self, Plan, Start};
 use super::defaults::Defaults;
 use super::math;
 use super::meter::CaptureMeter;
@@ -174,8 +175,34 @@ impl Instrument {
     }
 
     /// Set by the auto-setup run; locks Run, Single, Force and Auto-setup with the reason.
-    pub fn set_autoset_running(&mut self, running: bool) {
-        self.autoset_running = running;
+    /// Returns whether the lock changed, so the caller publishes only then. Edits are refused while it is on.
+    pub fn set_autoset_running(&mut self, running: bool) -> bool {
+        std::mem::replace(&mut self.autoset_running, running) != running
+    }
+
+    pub fn autoset_start(&self) -> Option<Start> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::start(caps, model))
+    }
+
+    pub fn autoset_probe_setup(&self, plan: &Plan) -> Option<AcquisitionSetup> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::probe_setup(caps, model, plan))
+    }
+
+    /// The end of a run: the plan becomes the user's setup and the run intent is Run. The lock must be off.
+    pub fn autoset_apply(&mut self, plan: &Plan) -> Result<Change, KernelError> {
+        self.edit(&|caps, model| {
+            autoset_run::apply_plan(caps, model, plan);
+            model.running = true;
+            model.single = false;
+            Ok(())
+        })
+    }
+
+    pub fn autoset_summary(&self) -> Option<String> {
+        let (caps, model) = self.caps.as_ref().zip(self.model.as_ref())?;
+        Some(autoset_run::summary(caps, model))
     }
 
     pub fn ready(&self) -> bool {
@@ -370,6 +397,9 @@ impl Instrument {
     fn edit(&mut self, change: Edit) -> Result<Change, KernelError> {
         if let Some(reason) = &self.unavailable {
             return Err(KernelError::recoverable(reason.clone()));
+        }
+        if self.autoset_running {
+            return Err(KernelError::recoverable(view::AUTOSET_RUNNING));
         }
         let (Some(caps), Some(model)) = (&self.caps, &mut self.model) else {
             return Err(KernelError::recoverable(NO_SCOPE));

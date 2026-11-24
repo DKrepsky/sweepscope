@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 //! Rig for the acquisition module tests. A feature crate may not depend on `device`, so the device side is a fake
 //! that answers the three kernel requests and publishes the two events the real module publishes.
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -29,22 +29,32 @@ pub enum DeviceCall {
     Force,
 }
 
+/// Answers a setup with the frame the scope would capture; `None` leaves the capture pending.
+pub type Responder = Box<dyn Fn(&AcquisitionSetup) -> Option<Frame> + Send>;
+
 #[derive(Default)]
 pub struct FakeDevice {
     calls: Mutex<Vec<DeviceCall>>,
+    capturing: AtomicBool,
+    responder: Mutex<Option<Responder>>,
 }
 
 impl FakeDevice {
     fn attach(self: &Arc<Self>, bus: &Bus) {
-        let device = Arc::clone(self);
+        let (device, announcer) = (Arc::clone(self), bus.clone());
         bus.handle(move |request: ApplySetup| {
-            device.record(DeviceCall::Apply(request.setup_revision, Box::new(request.setup)));
+            device.record(DeviceCall::Apply(
+                request.setup_revision,
+                Box::new(request.setup.clone()),
+            ));
+            device.answer(&announcer, request.setup_revision, &request.setup);
             Ok(())
         })
         .unwrap();
         let device = Arc::clone(self);
         bus.handle(move |request: SetCapturing| {
             device.record(DeviceCall::Capturing(request.on));
+            device.capturing.store(request.on, Ordering::SeqCst);
             Ok(())
         })
         .unwrap();
@@ -54,6 +64,29 @@ impl FakeDevice {
             Ok(())
         })
         .unwrap();
+    }
+
+    /// A scope that captures only while capturing is on, one frame per applied setup.
+    pub fn respond_with(&self, responder: impl Fn(&AcquisitionSetup) -> Option<Frame> + Send + 'static) {
+        *self.responder.lock().unwrap() = Some(Box::new(responder));
+    }
+
+    fn answer(&self, bus: &Bus, setup_revision: u64, setup: &AcquisitionSetup) {
+        if !self.capturing.load(Ordering::SeqCst) {
+            return;
+        }
+        let frame = self
+            .responder
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|respond| respond(setup));
+        if let Some(frame) = frame {
+            bus.publish(CaptureCompleted {
+                setup_revision,
+                outcome: CaptureOutcome::Frame(Arc::new(frame)),
+            });
+        }
     }
 
     fn record(&self, call: DeviceCall) {

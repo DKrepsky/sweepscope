@@ -333,3 +333,9 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Module tests cannot flush the consumer thread for "nothing published" cases; use an ordered sentinel on the same subscription (stale poll then good poll) or an unplug as barrier.
 - Float traps: `50 * 1e-6 < 50e-6`; compare widths in rounded ns.
 - Tool calls with `cd` plus heredocs are refused in a worktree: write scripts to the scratchpad and run them with absolute paths.
+
+## Auto-setup adapter B9 (developer-4)
+- `acquisition` cannot use the device crate's `SimulatedDevice`; tests drive a synthetic input through `FakeDevice::respond_with` (answers each applied setup with a frame while capturing is on) in `tests/autoset_support`.
+- A local module named `autoset` shadows the lib crate of the same name inside `module/`; domain re-exports `Plan` and the lib is imported only in `domain/autoset_run.rs`.
+- `Capabilities` has no counts per division; adapter uses a nominal 23.0 (driver measured 21.1, 21.6, 24.15). engineering-format writes micro as `u` (`500 us/div`).
+- Setup edits are refused in `Instrument::edit` while the auto-setup lock is on; `autoset_apply` runs after the lock is released.
