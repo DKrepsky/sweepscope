@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
 
   export interface NoteProps {
-    kind: 'info' | 'good' | 'error';
+    kind: 'info' | 'good' | 'warning' | 'error';
     role?: 'status' | 'alert';
     /** The note takes the focus when a step opens and nothing else in the step can. */
     focusTarget?: boolean;
@@ -14,7 +14,7 @@
   import Icon from '../../../ui/icon/Icon.svelte';
 
   const { kind, role, focusTarget = false, children }: NoteProps = $props();
-  const icon = $derived(kind === 'good' ? 'ok' : kind === 'error' ? 'warning' : 'info');
+  const icon = $derived(kind === 'good' ? 'ok' : kind === 'error' || kind === 'warning' ? 'warning' : 'info');
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -39,6 +39,9 @@
   }
   .good {
     border-inline-start-color: var(--ss-color-status-ok);
+  }
+  .warning {
+    border-inline-start-color: var(--ss-color-status-warning);
   }
   .error {
     border-inline-start-color: var(--ss-color-status-error);

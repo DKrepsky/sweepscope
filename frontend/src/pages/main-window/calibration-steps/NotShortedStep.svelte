@@ -2,7 +2,7 @@
   import Note from './Note.svelte';
   import StepHeading from './StepHeading.svelte';
 
-  const { channel, measured }: { channel: number; measured: string[] } = $props();
+  const { channel, measured, canContinue }: { channel: number; measured: string[]; canContinue: boolean } = $props();
 </script>
 
 <StepHeading>Channel {channel}: short the input</StepHeading>
@@ -18,6 +18,9 @@
   <li>Join the probe tip to its ground clip on <b>CH{channel}</b>.</li>
   <li>Click <b>Try again</b>.</li>
 </ol>
+{#if canContinue}
+  <Note kind="warning">Continue keeps the measured offsets for CH{channel}, use it only if the input is shorted</Note>
+{/if}
 
 <style>
   ol {

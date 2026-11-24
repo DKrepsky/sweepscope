@@ -23,9 +23,9 @@ describe('tauri client contract', () => {
     expect(result).toEqual({ namespace: 'a', version: 1, json: '{}' });
   });
 
-  it('given a command the generated contract does not list yet, when sent, then the transport receives its own name', async () => {
+  it('given the continue calibration command, when sent, then the transport receives its Rust name', async () => {
     const transport = fakeTransport();
-    await createTauriClient(transport).send('continue_zero_calibration' as never, {} as never);
+    await createTauriClient(transport).send('continue_zero_calibration', {});
     expect(transport.invoke).toHaveBeenCalledExactlyOnceWith('continue_zero_calibration', {});
   });
 

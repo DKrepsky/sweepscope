@@ -29,10 +29,15 @@
   const heading = $derived(
     tag.state === 'calibrated' ? (tag.storedAt ? `Calibrated ${tag.storedAt}` : 'Calibrated') : 'No calibration',
   );
-  /** The backend's first note introduces the rows, the others follow them. */
-  const lead = $derived(tag.state === 'unavailable' ? undefined : tag.tooltip.notes[0]);
-  const rest = $derived(tag.state === 'unavailable' ? [] : tag.tooltip.notes.slice(1));
+  const lead = $derived(tag.state === 'unavailable' ? undefined : tag.tooltip.heading);
+  const lines = $derived(tag.state === 'unavailable' ? [] : tag.tooltip.lines.map(splitLine));
   const hint = $derived(tag.state === 'calibrated' ? 'Click to calibrate again.' : 'Click to calibrate.');
+
+  /** A line is `CHn text`; the name takes the channel colour. */
+  function splitLine(line: string) {
+    const [name = '', ...rest] = line.split(' ');
+    return { name, text: rest.join(' '), color: `var(--ss-color-ch${name.slice(2)})` };
+  }
 
   function cancelPending() {
     clearTimeout(timer);
@@ -92,16 +97,15 @@
       <div class="tip" role="tooltip" {id}>
         <b>{heading}</b>
         {#if lead}<span>{lead}</span>{/if}
-        {#if tag.tooltip.rows.length > 0}
-          <table>
-            <tbody>
-              {#each tag.tooltip.rows as row (row.label)}
-                <tr><td>{row.label}</td><td class="ss-num">{row.value}</td></tr>
-              {/each}
-            </tbody>
-          </table>
+        {#if lines.length > 0}
+          <ul>
+            {#each lines as line (line.name)}
+              <li style:--chc={line.color}><b class="ch">{line.name}</b> <span class="ss-num">{line.text}</span></li>
+            {/each}
+          </ul>
+        {:else}
+          <span class="empty">No channel enabled</span>
         {/if}
-        {#each rest as note (note)}<span>{note}</span>{/each}
         <span>{hint}</span>
       </div>
     {/if}
@@ -181,15 +185,21 @@
   .tip b {
     color: var(--ss-color-text-primary);
   }
-  table {
-    border-collapse: collapse;
-    inline-size: 100%;
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--ss-space-1);
   }
-  td {
-    padding: var(--ss-space-1) 0;
+  .tip .ch {
+    color: var(--chc);
+    font-family: var(--ss-font-mono);
   }
-  td + td {
-    text-align: end;
+  li span {
     color: var(--ss-color-text-primary);
+  }
+  .empty {
+    color: var(--ss-color-text-muted);
   }
 </style>

@@ -33,6 +33,7 @@ export const tauriCommandNames: Record<CommandName, string> = {
   open_zero_calibration: 'open_zero_calibration',
   start_zero_calibration: 'start_zero_calibration',
   measure_zero_calibration: 'measure_zero_calibration',
+  continue_zero_calibration: 'continue_zero_calibration',
   close_zero_calibration: 'close_zero_calibration',
 };
 
@@ -87,7 +88,7 @@ export function createTauriClient(
   };
 
   return {
-    send: (name, args) => transport.invoke(tauriCommandNames[name] ?? name, args) as Promise<never>,
+    send: (name, args) => transport.invoke(tauriCommandNames[name], args) as Promise<never>,
     sendBytes: <R>(command: string, bytes: Uint8Array) => transport.invoke(command, bytes) as Promise<R>,
     subscribe: (name, listener) =>
       unsubscribeWhenReady(

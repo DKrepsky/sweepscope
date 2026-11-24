@@ -16,6 +16,8 @@ const idle: Session = {
   doneChannels: [false, false, false, false],
   progress: null,
   notShorted: null,
+  canContinue: false,
+  overridden: [false, false, false, false],
   failure: null,
   table: null,
 };
@@ -40,13 +42,13 @@ function dialogModel(
 ): CalibrationDialogModel {
   const state = zeroCalibrationState({
     session: { ...idle, ...session },
-    unit: { ...unit, tooltip: { rows: [], notes: [] } },
+    unit: { ...unit, tooltip: { heading: '', channels: [{ cells: [] }, { cells: [] }, { cells: [] }, { cells: [] }] } },
   });
   return selectCalibrationDialog(state) as CalibrationDialogModel;
 }
 
 function setup(session: Partial<Session>, unit?: { calibrated: boolean; storedAtUtc: string | null }) {
-  const handlers = { onstart: vi.fn(), oncalibrate: vi.fn(), onclose: vi.fn() };
+  const handlers = { onstart: vi.fn(), oncalibrate: vi.fn(), oncontinue: vi.fn(), onclose: vi.fn() };
   const view = render(CalibrationDialog, { props: { dialog: dialogModel(session, unit), ...handlers } });
   return { ...view, ...handlers };
 }
@@ -251,6 +253,7 @@ describe('CalibrationDialog not shorted', () => {
     channel: 3,
     doneChannels: [true, true, false, false],
     notShorted: ['Measured level 412 mV from zero.'],
+    canContinue: true,
   };
 
   it('given a channel that is not shorted, when shown, then an alert names it, the numbers and the next action', () => {
@@ -281,6 +284,51 @@ describe('CalibrationDialog not shorted', () => {
   });
 });
 
+describe('CalibrationDialog continue', () => {
+  const notShorted: Partial<Session> = {
+    step: 'notShorted',
+    channel: 3,
+    doneChannels: [true, true, false, false],
+    notShorted: ['Measured level 412 mV from zero.'],
+    canContinue: true,
+  };
+
+  it('given a rejection that may continue, when the footer is read, then it is Cancel, Continue, Try again', () => {
+    setup(notShorted);
+
+    expect(screen.getAllByRole('button').map((button) => button.textContent?.trim())).toEqual([
+      'Cancel',
+      'Continue',
+      'Try again',
+    ]);
+  });
+
+  it('given a rejection that may continue, when shown, then a note says Continue keeps the offsets of that channel', () => {
+    setup(notShorted);
+
+    expect(
+      screen.getByText('Continue keeps the measured offsets for CH3, use it only if the input is shorted'),
+    ).toBeVisible();
+  });
+
+  it('given a rejection that may continue, when Continue is pressed, then oncontinue is called and oncalibrate is not', async () => {
+    const { oncontinue, oncalibrate } = setup(notShorted);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(oncontinue).toHaveBeenCalledOnce();
+    expect(oncalibrate).not.toHaveBeenCalled();
+  });
+
+  it('given a clipped reading that cannot continue, when shown, then there is no Continue and no note about it', () => {
+    setup({ ...notShorted, canContinue: false });
+
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByText(/Continue keeps/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
+});
+
 describe('CalibrationDialog done', () => {
   const done: Partial<Session> = { step: 'done', channel: null, doneChannels: [true, true, true, true], table };
 
@@ -293,6 +341,21 @@ describe('CalibrationDialog done', () => {
     );
     expect(screen.getAllByRole('button').map((button) => button.textContent?.trim())).toEqual(['Done']);
     expect(screen.getByText('Step 6 of 6')).toBeVisible();
+  });
+
+  it('given channels accepted with Continue, when Done is shown, then one quiet line names each of them', () => {
+    setup({ ...done, overridden: [false, true, false, true] });
+
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'CH2 accepted although the input did not look shorted',
+      'CH4 accepted although the input did not look shorted',
+    ]);
+  });
+
+  it('given no channel accepted with Continue, when Done is shown, then no such line is shown', () => {
+    setup(done);
+
+    expect(screen.queryByText(/accepted although/)).toBeNull();
   });
 
   it('given the done step, when Done is pressed, then onclose is called', async () => {

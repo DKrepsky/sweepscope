@@ -206,6 +206,7 @@
       dialog={model.calibration.dialog}
       onstart={windowActions.startCalibration}
       oncalibrate={windowActions.calibrateChannel}
+      oncontinue={windowActions.continueChannel}
       onclose={windowActions.closeCalibration}
     />
   {/if}

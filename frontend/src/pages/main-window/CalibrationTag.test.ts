@@ -5,11 +5,8 @@ import type { CalibrationTagModel } from '../../app/calibration';
 import CalibrationTag from './CalibrationTag.svelte';
 
 const tooltip = {
-  rows: [
-    { label: 'CH1', value: '−0.20 mV' },
-    { label: 'CH2', value: '0.30 mV' },
-  ],
-  notes: ['Zero error removed per channel and range.', 'Gain: about 2 %.'],
+  heading: 'Zero error removed per channel and range.',
+  lines: ['CH1 +0.66 mV at 2 mV/div', 'CH3 0 V at 1 V/div'],
 };
 
 const none: CalibrationTagModel = { state: 'none', tooltip };
@@ -74,7 +71,7 @@ describe('CalibrationTag', () => {
     expect(screen.getByRole('button')).toHaveAttribute('title', 'Stop recording first');
   });
 
-  it('given keyboard focus on the tag, when it arrives, then the tooltip shows rows and notes at once', async () => {
+  it('given keyboard focus on the tag, when it arrives, then the tooltip shows the heading and the lines at once', async () => {
     const { user } = setup(calibrated);
 
     await user.tab();
@@ -82,14 +79,13 @@ describe('CalibrationTag', () => {
     const tip = screen.getByRole('tooltip');
     expect(tip).toHaveTextContent('Calibrated 2026-11-24 14:05');
     expect(tip).toHaveTextContent('Zero error removed per channel and range.');
-    expect(tip).toHaveTextContent('CH1');
-    expect(tip).toHaveTextContent('−0.20 mV');
-    expect(tip).toHaveTextContent('Gain: about 2 %.');
+    expect(tip).toHaveTextContent('CH1 +0.66 mV at 2 mV/div');
+    expect(tip).toHaveTextContent('CH3 0 V at 1 V/div');
     expect(tip).toHaveTextContent('Click to calibrate again.');
     expect(screen.getByRole('button')).toHaveAttribute('aria-describedby', tip.id);
   });
 
-  it('given no calibration, when the tooltip shows, then it carries the standard values and the plain hint', async () => {
+  it('given no calibration, when the tooltip shows, then it has the plain hint', async () => {
     const { user } = setup(none);
 
     await user.tab();
@@ -128,5 +124,33 @@ describe('CalibrationTag', () => {
     await user.tab();
 
     expect(screen.getByRole('tooltip').querySelector('b')).toHaveTextContent(/^Calibrated$/);
+  });
+
+  it('given lines for CH1 and CH3, when the tooltip shows, then each channel name takes its channel colour', async () => {
+    const { user } = setup(calibrated);
+
+    await user.tab();
+
+    const names = screen.getByRole('tooltip').querySelectorAll<HTMLElement>('.ch');
+    expect([...names].map((name) => name.textContent)).toEqual(['CH1', 'CH3']);
+    expect([...names].map((name) => name.parentElement?.style.getPropertyValue('--chc'))).toEqual([
+      'var(--ss-color-ch1)',
+      'var(--ss-color-ch3)',
+    ]);
+  });
+
+  it('given no channel enabled, when the tooltip shows, then a muted line says so and the hint stays', async () => {
+    const { user } = setup({
+      state: 'calibrated',
+      tooltip: { heading: 'Zero error removed.', lines: [] },
+      storedAt: undefined,
+    });
+
+    await user.tab();
+
+    const tip = screen.getByRole('tooltip');
+    expect(tip).toHaveTextContent('No channel enabled');
+    expect(tip.querySelector('li')).toBeNull();
+    expect(tip).toHaveTextContent('Click to calibrate again.');
   });
 });
