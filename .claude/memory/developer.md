@@ -438,3 +438,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `cli/` (`sweepscope_cli`) is a Tauri-free library with no binary; the app binary runs it when `is_command(first)` (`cargo run -p sweepscope-app -- capture ...`). `--version` is the cli crate's `CARGO_PKG_VERSION` (workspace version).
 - A refused compound command runs nothing at all: check that edits applied before trusting later output.
 - App binary CLI-mode tests (`src-tauri/tests/cli_mode.rs`): pass recognised first words only; anything else opens a real window, so never run such a test against a binary that lacks the dispatch.
+- CLI output contract: `run` stdout holds only written files; warnings and errors go to `err`. Non-UTF-8: first argument picks the mode (`to_str`), CLI mode rejects other non-UTF-8 arguments with 2 before the AppImage folder return; `PWD`/`APPDIR` are read with `var_os`.

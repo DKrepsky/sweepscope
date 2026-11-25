@@ -8,6 +8,7 @@ mod ipc;
 #[cfg(test)]
 mod manifest;
 
+use std::ffi::{OsStr, OsString};
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -17,38 +18,49 @@ use ipc::streams::{FrameStreams, RollStreams, SpectrumStreams};
 use tauri::Manager;
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args_os()
-        .skip(1)
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect();
-    if args.first().is_some_and(|first| sweepscope_cli::is_command(first)) {
-        return run_cli(&args);
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let first = args.first().and_then(|first| first.to_str());
+    if first.is_some_and(sweepscope_cli::is_command) {
+        return run_cli(args);
     }
     run_window();
     ExitCode::SUCCESS
 }
 
 /// Must stay free of Tauri and `env_logger` so capturing works without a display (ADR 0022).
-fn run_cli(args: &[String]) -> ExitCode {
-    let env = |name: &str| std::env::var(name).ok();
-    if let Err(message) = return_to_caller_dir(&env) {
+fn run_cli(args: Vec<OsString>) -> ExitCode {
+    // No lossy conversion: it would silently read or write a differently named file.
+    let args: Vec<String> = match args.into_iter().map(OsString::into_string).collect() {
+        Ok(args) => args,
+        Err(argument) => return reject_argument(&argument),
+    };
+    if let Err(message) = return_to_caller_dir() {
         eprintln!("sweepscope: {message}");
         return ExitCode::FAILURE;
     }
     ExitCode::from(sweepscope_cli::run(
-        args,
-        &env,
+        &args,
+        &|name| std::env::var(name).ok(),
         &mut std::io::stdout(),
         &mut std::io::stderr(),
     ))
 }
 
+fn reject_argument(argument: &OsStr) -> ExitCode {
+    eprintln!(
+        "sweepscope: argument is not valid UTF-8: {}\n{}",
+        argument.to_string_lossy(),
+        sweepscope_cli::USAGE
+    );
+    ExitCode::from(sweepscope_cli::ExitStatus::Usage.code())
+}
+
 /// So that relative paths work from an AppImage; the window must keep the folder it was started in.
-fn return_to_caller_dir(env: &dyn Fn(&str) -> Option<String>) -> Result<(), String> {
+fn return_to_caller_dir() -> Result<(), String> {
     let (Ok(exe), Ok(cwd)) = (std::env::current_exe(), std::env::current_dir()) else {
         return Ok(());
     };
-    let Some(dir) = sweepscope_cli::appimage_caller_dir(env, &exe, &cwd) else {
+    let Some(dir) = sweepscope_cli::appimage_caller_dir(&|name| std::env::var_os(name), &exe, &cwd) else {
         return Ok(());
     };
     std::env::set_current_dir(&dir).map_err(|error| format!("cannot enter {}: {error}", dir.display()))
