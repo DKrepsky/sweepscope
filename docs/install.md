@@ -43,10 +43,10 @@ How to get the `sweepscope` command:
 | AppImage | `mkdir -p ~/.local/bin && install -m 755 SweepScope_<version>_amd64.AppImage ~/.local/bin/sweepscope` (`~/.local/bin` must be on your `PATH`), or run the `.AppImage` file itself. |
 | Source build | `npm install && npm --prefix frontend install && npm run build -- --no-bundle`, then `sudo install -m 755 target/release/sweepscope /usr/local/bin/sweepscope` (prerequisites in the [README](../README.md#prerequisites)). |
 
-With the AppImage, give absolute paths and always `--out`: it does not look up relative paths in your current folder.
+Relative paths work with all three, from the folder you run the command in:
 
 ```sh
-sweepscope capture --setup "$PWD/s.json" --count 3 --out "$PWD/cap"
+sweepscope capture --setup s.json --count 3 --out cap
 ```
 
 Without FUSE, start it as `sweepscope --appimage-extract-and-run ...` (AppImage only).
