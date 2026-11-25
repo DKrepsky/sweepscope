@@ -162,3 +162,12 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Playwright on spare ports: copy playwright.config.ts to `playwright.qa.config.ts` (ports 5273/4273, dev command with `--port 5273 --strictPort`) AND set `E2E_PREVIEW_PORT=4273` or csp.spec fails; delete the copy afterwards. Webkit Toast timing flakes under load (passes with one worker when the machine is quiet).
 - e2e stub: `tooltipFor(calibrated)` builds the backend's 12x3 tooltip cells; `zeroStub.leaveUnshorted(page, channels, clippedChannels)`; stub plays `continue_zero_calibration`. `^\bGain\b` regex: "again" matches /gain/i.
 - Tooltip bridge check: focus the tag button then read `[role=tooltip]`; set ranges with `step_setting {target:{kind:'range',channel},direction}` and probes with `set_channel {channel, patch:{probe}}`.
+
+## Single executable lessons (#38, #37)
+- CLI is the app binary: `sweepscope capture ...`. Without the Tauri CLI: `npm --prefix frontend run build && cargo build --release -p sweepscope-app --features tauri/custom-protocol` gives a working window and CLI (`target/release/sweepscope-app`).
+- VS Code can hold every inotify watch: `tauri build`, `build --no-bundle` and `bundle` all fail with "OS file watch limit reached". No sysctl, kill or preload shim: report the packages as not built; check a developer's bundle only with its commit stated.
+- Scripts in an older scratchpad pattern still work: Xvfb :77 + openbox, `unshare -rm` with tmpfs over USB. Window needs about 27 s to appear (portal timeouts). First screenshot after Run can be empty; wait 2 s.
+- AppImage FUSE start does not work inside `unshare -rm`: run the CLI outside with `--simulator` only; for the window use `--appimage-mount` outside and run `$MNT/AppRun` inside the namespace. Set TMPDIR for extract-and-run: it leaves 272 MB folders.
+- PWD/APPDIR negative tests: do not use `APPDIR=/tmp` when binary and cwd are under /tmp (that is a real match).
+- The user may be gaming on the real display (load 15): never touch :0; expect Playwright WebKit slowness and flakes.
+- `feedback.spec.ts:22` (info Toast, gallery) fails in WebKit under heavy machine load even with `--workers=1`; check `git diff` of `frontend/src` and rerun on a quiet machine before judging.

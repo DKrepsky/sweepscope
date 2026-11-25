@@ -83,7 +83,7 @@ Kind: E = automated e2e (Playwright, stub), R = real window (Xvfb, simulator), U
 | L-5 | Given an existing target file, then exit 1 and the file is untouched; given a bad option or no subcommand, exit 2 with usage; given an unreadable or invalid setup, exit 1 | S | design | no |
 | L-6 | Given an unwritable output folder, then exit 12 | S | impl 3 | no |
 | L-7 | Given stored offsets, then the CSV says `zero_offset_applied` true and the config folder is unmodified (hash before and after) | S | impl 4 | no |
-| L-8 | The CLI binary has no Tauri or WebKit link (`ldd`) and runs without a display | S | ADR 0022 | no |
+| L-8 | Superseded by the single executable section below (one binary, which links WebKitGTK; runs without a display) | S | ADR 0022 | no |
 
 ### #37 packages
 
@@ -110,6 +110,36 @@ Kind: E = automated e2e (Playwright, stub), R = real window (Xvfb, simulator), U
 ### Hardware (human, short list in [hardware-checklist.md](hardware-checklist.md))
 
 H-M4-1 real short and Done table under 40 s per channel; H-M4-2 open input beside the calibrator is rejected; H-M4-3 shorted input reads 0 V within one code at 2, 5, 10 mV/div; H-M4-4 offsets independent of time base, one channel, AC coupling, bandwidth limit; H-M4-5 replug and restart keep calibration; H-M4-6 CLI exit codes on the real scope; H-M4-7 `.deb` on a clean machine.
+
+## Single executable (#38, #37 packaging), addendum and work-plan section 10
+
+Tree under test: `feat/m4-polish` at `2a510e8`. Replaces L-8 (there is no `sweepscope-cli` binary any more; the CLI is the application binary and links WebKitGTK). No design states (CLI and packaging only). Every run: `SWEEPSCOPE_NO_HARDWARE=1`, USB directories hidden where the start mode allows it, isolated `HOME` and XDG folders, no `DISPLAY` or `WAYLAND_DISPLAY` for the CLI, Xvfb only for the window. No case needs the real scope; the device-side checks stay in H-M4-6.
+
+| ID | Given / when / then | Kind | Criterion |
+|---|---|---|---|
+| S-1 | Given no display, when the binary gets each of `capture`, `--help`, `-h`, `--version`, `-V`, then it runs the CLI and exits with its code | E, S | dispatch |
+| S-2 | Given a setup file and `--count N` (csv and raw), then N files and exit 0 | S | 38-1, 38-4 |
+| S-3 | Given no device (no `--simulator`) and `--device-wait`, then exit 10 | S | 38-2 |
+| S-4 | Given a Normal sweep that never triggers and `--timeout`, then exit 11 | S | 38-3 |
+| S-5 | Given mistakes after `capture` (unknown option, missing value, count 0, bad format, no `--setup`), then exit 2 with the usage | S | addendum |
+| S-6 | Existing target (1, file untouched), invalid or missing setup (1), unwritable folder (12), stored offsets applied and config folder unchanged | S | design |
+| S-7 | Given no argument, `captur`, `Capture`, `--Help`, `--headless`, `-v`, `s.json`, `--simulator capture`, under Xvfb, then the window opens and nothing is captured | R | dispatch |
+| S-8 | Window command line with no display: fails and ends, no hang, nothing written | S | limitation |
+| S-9 | Edges: non-UTF-8 argument, output to a closed pipe, `--help` after `capture`, Ctrl+C during a capture | S | robustness |
+| S-10 | Given a non-AppImage binary with inherited `APPDIR`, `PWD`, `OWD` from elsewhere, then they are ignored | S | 10.4 |
+| S-11 | The window starts and shows the live simulator view (Xvfb), capability errors absent | R, U | 37-2 |
+| P-7 | `npm run build -- --bundles deb,appimage` at this commit produces both | S | 37-1 |
+| P-8 | `.deb` extracted (not installed): `/usr/bin/sweepscope` is the only program, no `sweepscope-cli`; `.desktop` Exec has no arguments; udev rule, icons, Depends | S | 37-2, 37-3 |
+| P-9 | The extracted `.deb` binary runs `--version`, `--help`, `capture` without a display | S | 38, 37 |
+| AI-1 | AppImage, normal start, from another folder: relative `--setup`, relative `--out`, default out, relative `--config-dir` | S | 10.4 |
+| AI-2 | The same with `--appimage-extract-and-run` and with `APPIMAGE_EXTRACT_AND_RUN=1` | S | 10.4 |
+| AI-3 | AppImage exit codes 0, 2, 10, 11, 12; folder with spaces; started through `~/.local/bin/sweepscope` on `PATH`; stale or foreign `PWD`/`OWD` | S | 10.4, install.md |
+| AI-4 | AppImage window starts (Xvfb), both start modes | R | 37-2 |
+| D-1 | Commands and claims of `docs/cli.md` work as written (with `--simulator`) | S | docs |
+| D-2 | Commands of `docs/install.md` work as written, as far as possible without root | S | docs |
+| D-3 | Hardware checklist H-M4-6 works as written with the simulator (device-only parts noted) | S | docs |
+| X-7 | Full suites: `cargo test --workspace` (with `cli_mode`), vitest, `npm run check`, `npm run test:tools`, Playwright | S | regression |
+| X-8 | No CI step, script or doc that is still current names the removed binary; architecture rules cover the new dependency | S | 10.2 |
 
 ## Environment
 

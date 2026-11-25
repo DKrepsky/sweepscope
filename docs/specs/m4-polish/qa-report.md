@@ -4,7 +4,88 @@ Build or commit: first round `feat/m4-polish` at `5bdd38a`; retest round after t
 Date: 2026-11-24
 Test plan: [test-plan.md](test-plan.md). Hardware checklist for the human: [hardware-checklist.md](hardware-checklist.md).
 
+## Single executable round (#38, #37 packaging) at `2a510e8`
+
+Date: 2026-11-25. This section is the current state for #38 and #37 and replaces the `sweepscope-cli` results, the `ldd` statement and the package results further down. Test plan: section "Single executable".
+
+### Verdict: blocked (incomplete), not a pass
+
+- **#38: pass (software).** All four acceptance criteria hold through the application binary and the AppImage.
+- **#37: not signed off.** No `.deb` was built or inspected at this commit, and no package was built by QA. This blocks the release of #37 until a `.deb` and AppImage are built at the release commit and case P-8 is run.
+- Two minor bugs are open (BUG-33, BUG-34). The definition of done requires no open bugs.
+
+Why nothing could be bundled: `tauri build`, `tauri build --no-bundle` and `tauri bundle` all stop with `failed to watch .../src-tauri/Cargo.toml: OS file watch limit reached` (VS Code held 257231 of 257630 inotify watches; retried at the end of the round). No system setting was changed, no process stopped and no shim preloaded. Ways out for the human or PM: run the build while the editor is closed, or run the manual CI `bundle` job once the branch may be pushed.
+
+### What was tested
+
+- Application binary: `npm run build` of the frontend plus `cargo build --release -p sweepscope-app --features tauri/custom-protocol --locked`. It is not the output of `tauri build`.
+- AppImage: the developer's image from the worktree `agent-a8f94f6f57ab9fe34` (`9b27ad5`, same file content as `2a510e8`; sha256 `0a3eb2ea...31d6`). QA did not build it, and the developer's notes describe a preload shim for this watch error, so assume it was built that way. It embeds the same frontend asset names as the QA build and contains no shim library.
+- Always `SWEEPSCOPE_NO_HARDWARE=1`, isolated `HOME`. CLI without `DISPLAY` and `WAYLAND_DISPLAY`. Window only on Xvfb `:77` with USB directories hidden. AppImage runs in FUSE mode could not hide USB (FUSE does not mount in the namespace), so every capture there used `--simulator`. The real scope was not opened.
+
+### Suites
+
+| Suite | Result |
+|---|---|
+| `cargo test --workspace --locked` | 1277 passed, 0 failed, 3 ignored (includes 9 `cli_mode` tests); tree clean |
+| vitest | 1402 passed in 110 files |
+| `cargo fmt --check`, clippy `-D warnings`, `check:frontend`, `check:repo` (architecture, test names) | pass |
+| `npm run test:tools` | 48 passed |
+| Playwright chromium + webkit | 699 passed, 1 skipped, 2 failed (both webkit). The 33 ms frame budget probe passed on a single-worker rerun. **The info Toast timing test (`feedback.spec.ts:22`) did not pass**: it failed again in 3 more single-worker runs ("Setup saved" not found within 5 s). The machine was heavily loaded by other programs (load 7 to 15). `frontend/src` is unchanged since `19c450f`, where it passed alone. Hypothesis: the gallery loads so slowly in WebKit that the 4 s Toast is gone before the check. Rerun on a quiet machine |
+
+### Results
+
+| Case | Result | Notes |
+|---|---|---|
+| S-1 | Pass | `capture` alone gives 2; `--help`, `-h`, `--version` (`sweepscope 0.1.0`), `-V` give 0; no display |
+| S-2 | Pass | 3 CSV files; 2 raw files plus `capture.format.txt`; default folder; exit 0 |
+| S-3 | Pass | exit 10 after 3.0 s with `--device-wait 3`, USB hidden |
+| S-4 | Pass | exit 11 after 2 s with `--timeout 2`, no output folder left |
+| S-5 | Pass | unknown option, extra positional, missing value, count 0 and -1, format xml, timeout nan, no `--setup`: all 2 |
+| S-6 | Pass | existing target 1; invalid and missing setup 1; unwritable folder 12; stored offsets give `ch1_zero_offset_applied: true`; config folder checksums unchanged |
+| S-7 | Pass | window opens and nothing is captured for: no argument, empty argument, `captur ...`, `--simulator capture ...`, `Capture`, `--Help`, `--headless`, `-v`, `s.json` |
+| S-8 | Pass with note | no display: ends at once with exit 101 and a Rust panic message "Failed to initialize GTK"; nothing written. Documented limitation; the panic text is cosmetic and not new |
+| S-9 | Pass | non-UTF-8 value (1) and option (2) without panic; closed pipe and full disk on stdout exit 1 with a message; Ctrl+C ends the run by SIGINT |
+| S-10 | Pass | inherited `APPDIR`, `PWD`, `OWD` not matching the program are ignored |
+| S-11 | Pass | live window: Run, trigger'd 1 kHz sine, measurements, Save setup through the native dialog; status `Ready Simulator` |
+| P-7 | **Not run (blocked)** | watch limit, see above |
+| P-8 | **Not run (blocked)** | no `.deb` for this commit. Indirect only: the AppImage's AppDir has one program `usr/bin/sweepscope` and `SweepScope.desktop` with `Exec=sweepscope`; `tauri.conf.json`, `packaging/` and icons are unchanged since `15cf2bd`. This does not replace the check |
+| P-9 | **Not run (blocked)** | no `.deb` |
+| AI-1 | Pass | FUSE start, folder with spaces: relative `--setup`, `--out`, `./`, `../`, `--config-dir`, default folder; files in the caller's folder |
+| AI-2 | Pass | `--appimage-extract-and-run` and `APPIMAGE_EXTRACT_AND_RUN=1`: same results. BUG-34 found |
+| AI-3 | Pass | exits 0, 2, 11, 12 in all three start modes, 10 with extract-and-run (USB hidden); installed as `~/.local/bin/sweepscope`; symlink; relative path to the image; stale or unset `PWD`/`OWD`, inherited `APPDIR` |
+| AI-4 | Pass | window `SweepScope`, simulator Ready: mounted image (`--appimage-mount`, its `AppRun` started with USB hidden) and `--appimage-extract-and-run`. A window started directly through the FUSE runtime was not run (USB cannot be hidden there) |
+| D-1 | Pass with BUG-33, BUG-34 | options, exit codes, dispatch table, refusal to overwrite, read-only config, `cargo run -p sweepscope-app -- capture ...`, AppImage forms |
+| D-2 | Partly | AppImage install lines work. Not run: `sudo apt install`, `dpkg -L`, `sudo install`. `npm run build -- --no-bundle` fails on this machine (watch limit, environment) |
+| D-3 | Pass (simulator) | H-M4-6 with a setup saved from the app: 0 with 3 files and `ch1_zero_offset_applied: true` (stored offsets for `simulator`), raw with layout file, 10 after 3 s, 11 after 2 s, 12 read-only folder, 2 bad option, both AppImage runs 0 with 3 files in `cap` and `cap-extracted`, config unchanged. `--out /tmp/cap` was replaced by a scratch folder. Wording needs no change. USB permission (12) needs the real scope |
+| X-7 | Partly | see Suites (one webkit timing test not green) |
+| X-8 | Pass | no CI step, script or current doc builds or runs a `sweepscope-cli` binary (the crate keeps that name; older specs mention the old binary as history); architecture tests pass |
+
+### #38 criteria
+
+| Criterion | Verdict |
+|---|---|
+| Setup file and N: captures N frames and writes the files | Pass |
+| No device: distinct exit code | Pass (10) |
+| Never triggers: distinct exit code after the timeout | Pass (11) |
+| Success exits 0 | Pass |
+
+### Bugs
+
+| Bug | Severity | Status |
+|---|---|---|
+| BUG-33 setup-load warnings are printed on standard output, among the written files; `cli.md` says messages go to standard error. Reproduce: Normal sweep setup with `level_volts` 20, `capture --simulator --setup never.json --timeout 1 2>/dev/null` prints `warning: Trigger level is off the screen; limited to the screen edge`. Present since `c313bd8`, not caused by the single executable | Minor | Open |
+| BUG-34 `cli.md` says the `--appimage-extract-and-run` folder is removed afterwards; it is not. Every such run (exit 0, 1, 2, 11) leaves `appimage_extracted_<hash>` (272 MB) in `TMPDIR`, default `/tmp`; the same image reuses the same name. Runtime `type2-runtime` `fedfad5` | Minor (docs) | Open |
+
+### Not tested
+
+- `.deb` build, contents, install; own AppImage build; the build commands in the docs that use the Tauri CLI.
+- Real 6254BC (H-M4-6 on hardware), a machine without WebKitGTK or without FUSE, Wayland session, the launcher entry.
+
+Evidence (not committed): `.claude/tmp/38/` (`build*.log`, `bundle.log`, `cli.log`, `appimage-cli.log`, `win-*.png`, `gui-*.png`, suite logs). No new e2e code: the CLI cases are covered by `src-tauri/tests/cli_mode.rs`; the other checks were run by hand.
+
 ## Summary
+
+Earlier rounds (before the single executable). For #38 and #37 see the section above.
 
 Verdict: **pass** (software), after retest round 3 at `19c450f` (hardware feedback; BUG-32 minor open) and round 2 at `7ab8ff1` (section Retest round 2 below). No bug is open. BUG-31 and C-1 to C-5 and C-7 (partly) are fixed; C-6 (tag cut off at 150 % and 200 % text) and two small leftovers remain with the PM. Nothing blocks the release of the software. Hardware behaviour (shorted-input thresholds, offset independence, CLI on a real scope, `.deb` install) is not proven and needs the human's checklist before the calibration is called verified on the 6254BC.
 
