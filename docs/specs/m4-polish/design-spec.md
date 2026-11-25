@@ -41,7 +41,7 @@ The notes about gain, extreme vertical positions and resolution are removed. The
 | Row | `CH1 +0.66 mV at 2 mV/div`: three columns, channel name in its channel colour (mono, bold), offset right-aligned in mono, muted `at <range>` |
 | Offset | engineering notation (`formatQuantity`), explicit `+` for positive, U+2212 for negative, `0 V` for zero |
 | Calibrated | offset stored for that channel and range, rows only (no caption) |
-| No calibration | caption `Typical zero error:` above the rows; rows in the same form with the typical zero error for those ranges, shown as `+-` values (for example `+-2.0 mV at 2 mV/div`), uncorrected; from 50 mV/div the backend gives an upper bound instead of a typical value, in the form `up to 4.14 mV at 50 mV/div` (two counts), which is deliberately a different form |
+| No calibration | caption `Typical zero error:` above the rows; rows in the same form with the typical zero error for those ranges, shown as signed values (for example `+0.66 mV at 2 mV/div`), uncorrected; from 50 mV/div the backend gives an upper bound instead of a typical value, in the form `up to 4.14 mV at 50 mV/div` (two counts), which is deliberately a different form |
 | No channel enabled | muted line `No channel enabled` instead of rows |
 | Unchanged | lead heading (and date when calibrated), click hint |
 

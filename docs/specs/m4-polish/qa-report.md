@@ -59,7 +59,7 @@ Real window (Tauri debug app at HEAD built with `devUrl` 5373, Xvfb, isolated HO
 
 | Bug | Severity | Status |
 |---|---|---|
-| BUG-32 not calibrated tooltip uses `up to X at range` on ranges from index 4 up, one number form was asked for; caption is `Typical zero error of one measured unit:` where design 2.2 says `Typical zero error:` | Minor | Open, sent to `developer` (bus) |
+| BUG-32 not calibrated tooltip uses `up to X at range` on ranges from index 4 up, one number form was asked for; caption is `Typical zero error of one measured unit:` where design 2.2 says `Typical zero error:` | Minor | Fixed (caption `Typical zero error:`; `up to` rows kept deliberately as an upper bound) |
 
 Not tested: `Continue` and the 2.5 mV limit on the real 6254BC (hardware checklist H-M4-7), tooltip on real hardware at probe 10x (H-M4-11), 150 % text scale for the new steps (C-6 limit unchanged), the packages at this commit.
 
