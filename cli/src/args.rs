@@ -11,7 +11,11 @@ const DEFAULT_TIMEOUT_S: f64 = 10.0;
 const DEFAULT_DEVICE_WAIT_S: f64 = 8.0;
 
 pub const USAGE: &str = "\
-usage: sweepscope-cli capture --setup FILE [options]
+usage: sweepscope capture --setup FILE [options]
+       sweepscope --help | -h
+       sweepscope --version | -V
+
+sweepscope without arguments opens the window.
 
 options:
   --setup FILE        setup file to load (required)
@@ -22,7 +26,8 @@ options:
   --device-wait S     seconds to wait for the scope, default 8
   --simulator         use the built-in simulator instead of hardware
   --config-dir DIR    app config folder holding the stored zero offsets
-  --help              show this text
+  -h, --help          show this text
+  -V, --version       show the version
 
 exit codes: 0 done, 1 failure, 2 usage, 10 no device, 11 frame timeout, 12 permission denied";
 
@@ -42,10 +47,16 @@ pub struct CaptureOptions {
 pub enum Command {
     Capture(CaptureOptions),
     Help,
+    Version,
 }
 
 fn usage(message: impl Into<String>) -> CliError {
     CliError::new(ExitStatus::Usage, message)
+}
+
+/// Whether the application binary runs the CLI for this first argument; anything else opens the window.
+pub fn is_command(first: &str) -> bool {
+    matches!(first, "capture" | "--help" | "-h" | "--version" | "-V")
 }
 
 pub fn parse(args: &[String]) -> Result<Command, CliError> {
@@ -53,6 +64,7 @@ pub fn parse(args: &[String]) -> Result<Command, CliError> {
     match args.next().map(String::as_str) {
         None => Err(usage("missing subcommand, expected `capture`")),
         Some("--help" | "-h") => Ok(Command::Help),
+        Some("--version" | "-V") => Ok(Command::Version),
         Some("capture") => parse_capture(args.map(String::as_str)),
         Some(other) => Err(usage(format!("unknown subcommand {other}"))),
     }
@@ -216,5 +228,25 @@ mod tests {
     fn given_help_when_parsed_then_the_help_command_is_returned() {
         assert_eq!(parsed("--help"), Ok(Command::Help));
         assert_eq!(parsed("capture --help"), Ok(Command::Help));
+    }
+
+    #[test]
+    fn given_version_when_parsed_then_the_version_command_is_returned() {
+        assert_eq!(parsed("--version"), Ok(Command::Version));
+        assert_eq!(parsed("-V"), Ok(Command::Version));
+    }
+
+    #[test]
+    fn given_a_recognised_first_word_when_checked_then_it_is_a_command() {
+        for word in ["capture", "--help", "-h", "--version", "-V"] {
+            assert!(is_command(word), "{word}");
+        }
+    }
+
+    #[test]
+    fn given_any_other_first_word_when_checked_then_it_is_left_to_the_window() {
+        for word in ["captur", "--Help", "--headless", "-v", "s.json", ""] {
+            assert!(!is_command(word), "{word}");
+        }
     }
 }

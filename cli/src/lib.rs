@@ -1,4 +1,4 @@
-//! Headless capture: a second composition root without Tauri (ADR 0022).
+//! Headless capture: a second composition root without Tauri, run by the application binary (ADR 0022).
 #![forbid(unsafe_code)]
 
 mod args;
@@ -16,7 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sweepscope_device::{DeviceCatalog, HantekCatalog, SimulatedCatalog, SimulatorControl, SimulatorSource};
 use sweepscope_kernel::{Clock, Storage, SystemClock};
 
-pub use args::{parse, CaptureOptions, Command, USAGE};
+pub use args::{is_command, parse, CaptureOptions, Command, USAGE};
 pub use capture::capture;
 pub use composition::Environment;
 pub use config::{config_dir, ReadOnlyStorage, APP_FOLDER};
@@ -29,7 +29,7 @@ pub fn run(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn 
     match execute(args, env, out) {
         Ok(()) => ExitStatus::Success.code(),
         Err(error) => {
-            let _ = writeln!(err, "sweepscope-cli: {}", error.message);
+            let _ = writeln!(err, "sweepscope: {}", error.message);
             if error.status == ExitStatus::Usage {
                 let _ = writeln!(err, "{USAGE}");
             }
@@ -40,12 +40,17 @@ pub fn run(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn 
 
 fn execute(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn Write) -> Result<(), CliError> {
     match parse(args)? {
-        Command::Help => writeln!(out, "{USAGE}").map_err(|error| CliError::failure(error.to_string())),
+        Command::Help => print(out, USAGE),
+        Command::Version => print(out, concat!("sweepscope ", env!("CARGO_PKG_VERSION"))),
         Command::Capture(options) => {
             let environment = system_environment(&options, env)?;
             capture(&options, environment, out)
         }
     }
+}
+
+fn print(out: &mut dyn Write, text: &str) -> Result<(), CliError> {
+    writeln!(out, "{text}").map_err(|error| CliError::failure(error.to_string()))
 }
 
 fn system_environment(options: &CaptureOptions, env: &dyn Fn(&str) -> Option<String>) -> Result<Environment, CliError> {
