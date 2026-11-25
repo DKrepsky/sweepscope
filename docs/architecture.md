@@ -70,7 +70,7 @@ sweepscope/
 ├── tools/                        # repository checks, no dependencies
 │   ├── check-architecture.mjs    # crate rules from `cargo metadata` (+ tests, node --test)
 │   └── check-test-names.mjs      # given_when_then naming
-├── cli/                          # headless capture CLI, second composition root, no Tauri (ADR 0022)
+├── cli/                          # capture CLI library, second composition root, no Tauri, run by the app binary (ADR 0022)
 ├── src-tauri/                    # Tauri shell: composition root, window and IPC wiring only
 │   ├── tauri.conf.json  build.rs  capabilities/
 │   └── src/
@@ -509,7 +509,7 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | Feature crates do not depend on other feature crates | `tools/check-architecture.mjs` over `cargo metadata` |
 | Libs depend on no feature and not on the bus | Same script |
 | Only `device` depends on `hantek6xx4-lib`; only `src-tauri` depends on `tauri`; `tauri::` only in `src-tauri/src/ipc` and `main.rs` | Same script |
-| The `cli` crate (second composition root, ADR 0022) may depend on kernel, libs and feature crates but never on `tauri`; no crate depends on `cli` | Same script |
+| The `cli` library (second composition root, ADR 0022) may depend on kernel, libs and feature crates but never on `tauri`; only `src-tauri`, whose binary runs it, may depend on `cli` | Same script |
 | `ui` imports only `design-system`; `pages` do not import `api`; `app` imports no markup | ESLint `no-restricted-imports` per folder |
 | No raw colour, size or font literals in `ui/` and `pages/` | Stylelint core rules (CSS in `.svelte`) and an ESLint rule (TS) |
 | Generated files up to date (tokens, API types, command manifest) | Regenerate and `git diff --exit-code` |
@@ -565,7 +565,7 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | Math as derived trace in `acquisition`, XY in the frontend | Decided (ADR 0019) |
 | Auto-setup as `libs/autoset` driven by `acquisition` | Decided (ADR 0020) |
 | Zero calibration as its own feature `calibration`; four new kernel messages (thirteen in total, ADR 0010 list) | Decided (ADR 0021) |
-| Headless capture CLI as a second composition root in the top-level `cli/` crate | Decided (ADR 0022) |
+| Headless capture CLI as a second composition root in the top-level `cli/` library, run by the one `sweepscope` executable | Decided (ADR 0022) |
 | Verification markers removed from the product; facts stay in documentation and an internal hint | Decided (ADR 0023) |
 | Linux packaging with the Tauri bundler, udev rule in the .deb, identifier `io.github.dkrepsky.sweepscope` | Decided (ADR 0024) |
 | Items not yet defined | See section 10 |

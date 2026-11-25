@@ -19,6 +19,8 @@ const LOCATIONS = [
 ];
 
 const CLI_LOCATION = 'cli/';
+// Besides the cli itself, only the application binary may link it (ADR 0022 item 8).
+const CLI_CONSUMERS = [CLI_LOCATION, 'src-tauri/'];
 
 const LAYER = { lib: 0, kernel: 1, feature: 2, shell: 3 };
 
@@ -50,7 +52,10 @@ export const DEPENDENCY_RULES = [
   },
   {
     id: 'depends-on-cli',
-    broken: (from, to) => to.workspace && to.location.startsWith(CLI_LOCATION) && !from.location.startsWith(CLI_LOCATION),
+    broken: (from, to) =>
+      to.workspace &&
+      to.location.startsWith(CLI_LOCATION) &&
+      !CLI_CONSUMERS.some((prefix) => from.location.startsWith(prefix)),
   },
 ];
 
