@@ -15,6 +15,9 @@ Bundling is off and the identifier `dev.sweepscope.app` is a placeholder. The Ta
 5. `mainBinaryName` is `sweepscope` (stable binary name); the .deb package name is `sweep-scope`, derived by the bundler from the product name `SweepScope`.
 6. A manual or tag-only CI `bundle` job builds both packages and uploads artifacts; it publishes nothing.
 
+## Amendment 2026-11-25: one executable
+7. The installed `sweepscope` is both the window and the CLI (`sweepscope capture ...`, `--help`, `--version`; any other command line opens the window; ADR 0022 items 7 and 8). The .deb and AppImage carry this one binary, and no other CLI binary exists. CLI mode needs the WebKitGTK and GTK packages the .deb depends on, but no display. The AppImage passes arguments through and mounts a FUSE image at each start. The `.desktop` entry passes no arguments.
+
 ## Alternatives considered
 `cargo-deb` plus a hand-made AppImage (two tools, two sources of truth); installing the rule from the app with elevation (privileged action from the UI); keeping the placeholder (later data migration); Flatpak first (USB portal story).
 

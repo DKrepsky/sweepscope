@@ -139,3 +139,25 @@ developer-2 (9.1 to 9.3, backend) and developer-11 (9.5 app, against the fake cl
 
 ### 9.8 Risks
 At position 0 the zero code at 2 mV/div is about 31 to 39 with noise s.d. around 20 codes, so low samples clip and bias the mean by about 0.6 code (0.05 mV); acceptable, verify on hardware. If a unit shows more than 2.5 mV, change the constant only.
+
+## 10. Single executable (see [addendum-single-executable.md](addendum-single-executable.md); G3 approved 2026-11-25)
+
+Fixed interface (library `sweepscope_cli`, crate name unchanged):
+
+```rust
+pub fn is_command(first: &str) -> bool; // true for "capture", "--help", "-h", "--version", "-V" (exact match)
+pub fn run(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn Write, err: &mut dyn Write) -> u8; // unchanged
+```
+
+### 10.1 Packages (disjoint files)
+- **A (developer-1: `cli/**`, `Cargo.lock` if it changes)**: delete `src/main.rs` and the `[[bin]]` section; update the crate description (library used by the application binary). Add `is_command` in `args.rs` and export it. Usage text starts `usage: sweepscope capture --setup FILE [options]`, lists `--help`, `-h`, `--version`, `-V` and says that `sweepscope` without arguments opens the window; error prefix `sweepscope: `. `Command::Version`: `--version`/`-V` prints `sweepscope {CARGO_PKG_VERSION}` to stdout, exit 0. Tests: given each of the five words, when `is_command`, then true; given `captur`, `--Help`, `--headless`, `-v`, `s.json` or an empty string, then false (the window); given `--version`, then version on stdout and 0; given `capture --bogus`, then 2 with the usage; existing tests otherwise unchanged.
+- **B (developer-2: `src-tauri/Cargo.toml`, `src-tauri/src/main.rs`, `src-tauri/tests/cli_mode.rs`, `Cargo.lock`)**: add `sweepscope-cli = { path = "../cli" }` (and `serde_json`/kernel in dev-dependencies only if not already usable). `main() -> ExitCode`: read `std::env::args_os().skip(1)` with `to_string_lossy` (no panic on non-UTF-8); if the first passes `is_command`, return `ExitCode::from(sweepscope_cli::run(..))` before `env_logger::init`; else call `run_window()` (the current body). No mode logic of its own. Integration test with `env!("CARGO_BIN_EXE_sweepscope-app")`, `env_remove("DISPLAY")`, `env_remove("WAYLAND_DISPLAY")`, `sweepscope_kernel::testing::TempDir`, and a 20 s wait helper that kills the child and fails. Recognised commands only, never a command line that would open the window: (1) `capture --simulator --count 2 --setup <file> --config-dir <tmp> --out <tmp>` gives 0 and two files (setup JSON as in `cli/tests/capture.rs`); (2) `capture --setup <file> --device-wait 1 --config-dir <tmp> --out <tmp>` with `SWEEPSCOPE_NO_HARDWARE=1` gives 10; (3) `capture --bogus` gives 2 with `usage: sweepscope capture` on stderr; (4) `--help` and `--version` give 0 with text on stdout. Needs A for `is_command`.
+- **C (developer-3: `tools/**`, `docs/architecture.md`, `docs/cli.md`, `docs/install.md`, `docs/troubleshooting.md` only if it mentions the CLI, `docs/specs/m4-polish/hardware-checklist.md`)**: `depends-on-cli` is broken when `to` is in `cli/` and `from` is neither in `cli/` nor in `src-tauri/`. Tests: shell depends on cli passes (replaces the failing case near line 154), feature to cli fails, kernel to cli fails, cli to tauri still fails. `docs/architecture.md`: rule row, tree comment (CLI library, run by the app binary). `docs/cli.md`: `sweepscope capture ...`, the dispatch table, `--help`/`--version`, WebKitGTK needed but no display, a mistyped command opens the window, AppImage form and `--appimage-extract-and-run`; remove every `sweepscope-cli` command and the "runs without WebKitGTK" claim. `docs/install.md`: short command line section with the same. H-M4-6: `sweepscope capture --setup s.json --count 3 --out /tmp/cap` (all its sub-steps), plus the same with the AppImage from another working directory using relative paths, expected 0 and three files; QA owns later wording.
+
+### 10.2 Order and CI
+A and C in parallel; B in parallel against the fixed interface, builds once A lands. B's test runs in the `shell` CI job (`rust` excludes `sweepscope-app`). Check that no CI step, script or package file builds or names the removed binary. Package check: the generated `.desktop` Exec line passes no arguments.
+
+### 10.3 Risks
+- A test that passes an unrecognised argument would open a window on a developer machine: keep those cases in A's unit tests.
+- Do not call `env_logger::init` in CLI mode.
+- `cargo run -p sweepscope-app -- capture ...` is the development form; `tauri dev` argument passing is not supported.
