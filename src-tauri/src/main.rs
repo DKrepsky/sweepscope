@@ -31,12 +31,27 @@ fn main() -> ExitCode {
 /// Must stay free of Tauri and `env_logger` so capturing works without a display (ADR 0022).
 fn run_cli(args: &[String]) -> ExitCode {
     let env = |name: &str| std::env::var(name).ok();
+    if let Err(message) = return_to_caller_dir(&env) {
+        eprintln!("sweepscope: {message}");
+        return ExitCode::FAILURE;
+    }
     ExitCode::from(sweepscope_cli::run(
         args,
         &env,
         &mut std::io::stdout(),
         &mut std::io::stderr(),
     ))
+}
+
+/// So that relative paths work from an AppImage; the window must keep the folder it was started in.
+fn return_to_caller_dir(env: &dyn Fn(&str) -> Option<String>) -> Result<(), String> {
+    let (Ok(exe), Ok(cwd)) = (std::env::current_exe(), std::env::current_dir()) else {
+        return Ok(());
+    };
+    let Some(dir) = sweepscope_cli::appimage_caller_dir(env, &exe, &cwd) else {
+        return Ok(());
+    };
+    std::env::set_current_dir(&dir).map_err(|error| format!("cannot enter {}: {error}", dir.display()))
 }
 
 fn run_window() {

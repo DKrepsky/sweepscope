@@ -2,6 +2,7 @@
 //! anything else would open a window on the machine that runs the tests.
 use std::ffi::OsStr;
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -12,17 +13,26 @@ use sweepscope_kernel::testing::TempDir;
 const DEADLINE: Duration = Duration::from_secs(20);
 const POLL: Duration = Duration::from_millis(20);
 
-fn run_app<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_sweepscope-app"))
+fn app<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_sweepscope-app"));
+    command
         .args(args)
+        .env_remove("APPDIR")
         .env_remove("DISPLAY")
         .env_remove("WAYLAND_DISPLAY")
         .env("SWEEPSCOPE_NO_HARDWARE", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("the application binary starts");
+        .stderr(Stdio::piped());
+    command
+}
+
+fn run_app<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Output {
+    finish(&mut app(args))
+}
+
+fn finish(command: &mut Command) -> Output {
+    let mut child = command.spawn().expect("the application binary starts");
     let started = Instant::now();
     while child.try_wait().expect("child status").is_none() {
         if started.elapsed() > DEADLINE {
@@ -125,4 +135,94 @@ fn given_version_when_run_then_the_version_is_printed_and_the_exit_code_is_0() {
         stdout(&output).trim(),
         concat!("sweepscope ", env!("CARGO_PKG_VERSION"))
     );
+}
+
+/// The folder holding the binary stands in for the mounted image.
+fn build_folder() -> &'static Path {
+    Path::new(env!("CARGO_BIN_EXE_sweepscope-app")).parent().unwrap()
+}
+
+/// Stands in for `<image>/usr`; it has to be inside the build folder, so `TempDir` cannot be used.
+struct ImageFolder(PathBuf);
+
+impl ImageFolder {
+    fn new(name: &str) -> Self {
+        let path = build_folder().join(format!("cli-mode-{}-{name}", std::process::id()));
+        fs::create_dir_all(&path).unwrap();
+        Self(path)
+    }
+}
+
+impl Drop for ImageFolder {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn write_setup(folder: &Path) {
+    fs::write(folder.join("s.json"), setup_json().to_string()).unwrap();
+}
+
+/// Captures with relative paths, started in `cwd` the way an AppImage mounted at `app_dir` starts it.
+fn run_moved(app_dir: &Path, cwd: &Path, pwd: &Path, extra: &[&str]) -> Output {
+    let args = ["capture", "--setup", "s.json", "--simulator", "--config-dir", "cfg"];
+    finish(
+        app(args.iter().chain(extra))
+            .env("APPDIR", app_dir)
+            .env("PWD", pwd)
+            .current_dir(cwd),
+    )
+}
+
+#[test]
+fn given_an_appimage_start_when_captured_with_relative_paths_then_the_files_are_in_the_caller_folder() {
+    let image = ImageFolder::new("default-out");
+    let caller = TempDir::new();
+    write_setup(caller.path());
+
+    let output = run_moved(build_folder(), &image.0, caller.path(), &[]);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(caller.path().join("capture-0001.csv").is_file());
+}
+
+#[test]
+fn given_an_appimage_start_when_captured_with_a_relative_out_then_it_is_inside_the_caller_folder() {
+    let image = ImageFolder::new("relative-out");
+    let caller = TempDir::new();
+    write_setup(caller.path());
+
+    let output = run_moved(build_folder(), &image.0, caller.path(), &["--out", "out"]);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(caller.path().join("out/capture-0001.csv").is_file());
+}
+
+#[test]
+fn given_an_appdir_not_holding_the_program_when_captured_then_pwd_is_ignored() {
+    let image = ImageFolder::new("unrelated");
+    write_setup(&image.0);
+    let unrelated = TempDir::new();
+    let caller = TempDir::new();
+
+    let output = run_moved(unrelated.path(), &image.0, caller.path(), &[]);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(image.0.join("capture-0001.csv").is_file());
+    assert!(!caller.path().join("capture-0001.csv").exists());
+}
+
+#[test]
+fn given_a_caller_folder_that_cannot_be_entered_when_captured_then_it_fails_without_writing() {
+    let image = ImageFolder::new("gone");
+    write_setup(&image.0);
+    let caller = TempDir::new();
+    let gone = caller.path().join("gone");
+
+    let output = run_moved(build_folder(), &image.0, &gone, &[]);
+
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    let expected = format!("sweepscope: cannot enter {}: ", gone.display());
+    assert!(stderr(&output).starts_with(&expected), "{}", stderr(&output));
+    assert!(!image.0.join("capture-0001.csv").exists());
 }
