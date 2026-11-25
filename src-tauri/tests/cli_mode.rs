@@ -1,7 +1,8 @@
 //! The application binary in CLI mode, without a display. Only recognised first arguments are passed:
 //! anything else would open a window on the machine that runs the tests.
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::thread;
@@ -65,7 +66,7 @@ fn run_capture(dir: &TempDir, extra: &[&str]) -> Output {
         ("--config-dir", dir.path().join("config")),
         ("--out", dir.path().join("out")),
     ];
-    let mut args = vec![std::ffi::OsString::from("capture")];
+    let mut args = vec![OsString::from("capture")];
     for (name, path) in paths {
         args.push(name.into());
         args.push(path.into_os_string());
@@ -225,4 +226,49 @@ fn given_a_caller_folder_that_cannot_be_entered_when_captured_then_it_fails_with
     let expected = format!("sweepscope: cannot enter {}: ", gone.display());
     assert!(stderr(&output).starts_with(&expected), "{}", stderr(&output));
     assert!(!image.0.join("capture-0001.csv").exists());
+}
+
+/// `0xff` never occurs in UTF-8.
+fn non_utf8(name: &str) -> OsString {
+    OsString::from_vec([name.as_bytes(), &[0xff]].concat())
+}
+
+#[test]
+fn given_an_argument_that_is_not_utf8_when_captured_then_the_exit_code_is_2_and_nothing_is_created() {
+    let dir = TempDir::new();
+    write_setup(dir.path());
+    let args = [
+        "capture",
+        "--setup",
+        "s.json",
+        "--simulator",
+        "--config-dir",
+        "cfg",
+        "--out",
+    ];
+    let args = args.iter().map(OsString::from).chain([non_utf8("out")]);
+
+    let output = finish(app(args).current_dir(dir.path()));
+
+    assert_eq!(output.status.code(), Some(2), "{}", stderr(&output));
+    assert!(
+        stderr(&output).starts_with("sweepscope: argument is not valid UTF-8: out\u{fffd}\nusage: sweepscope capture"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+}
+
+#[test]
+fn given_a_caller_folder_with_a_name_that_is_not_utf8_when_captured_then_the_files_are_in_it() {
+    let image = ImageFolder::new("non-utf8");
+    let root = TempDir::new();
+    let caller = root.path().join(non_utf8("work"));
+    fs::create_dir(&caller).unwrap();
+    write_setup(&caller);
+
+    let output = run_moved(build_folder(), &image.0, &caller, &[]);
+
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(caller.join("capture-0001.csv").is_file());
 }

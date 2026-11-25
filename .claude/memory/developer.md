@@ -439,3 +439,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - A refused compound command runs nothing at all: check that edits applied before trusting later output.
 - App binary CLI-mode tests (`src-tauri/tests/cli_mode.rs`): pass recognised first words only; anything else opens a real window, so never run such a test against a binary that lacks the dispatch.
 - AppImage `--appimage-extract-and-run` (type2-runtime `fedfad5`) leaves `$TMPDIR/appimage_extracted_<hash>` (about 270 MB) behind, also without `NO_CLEANUP`; never claim it is removed (BUG-34). Measure runtime behaviour before documenting it, with a private TMPDIR.
+- CLI output contract: `run` stdout holds only written files; warnings and errors go to `err`. Non-UTF-8: first argument picks the mode (`to_str`), CLI mode rejects other non-UTF-8 arguments with 2 before the AppImage folder return; `PWD`/`APPDIR` are read with `var_os`.

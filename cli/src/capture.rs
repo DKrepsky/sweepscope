@@ -17,10 +17,16 @@ use crate::exit::{CliError, ExitStatus};
 use crate::output::FrameFiles;
 use crate::picker::SetupPath;
 
-pub fn capture(options: &CaptureOptions, environment: Environment, log: &mut dyn Write) -> Result<(), CliError> {
+/// `log` receives one line per written file and nothing else, so scripts can read it.
+pub fn capture(
+    options: &CaptureOptions,
+    environment: Environment,
+    log: &mut dyn Write,
+    warnings: &mut dyn Write,
+) -> Result<(), CliError> {
     let files = FrameFiles::new(options.out.clone(), options.format, options.count);
     files.prepare()?;
-    let result = run(options, environment, &files, log);
+    let result = run(options, environment, &files, log, warnings);
     if result.is_err() {
         files.remove_if_created_and_empty();
     }
@@ -32,6 +38,7 @@ fn run(
     environment: Environment,
     files: &FrameFiles,
     log: &mut dyn Write,
+    warnings: &mut dyn Write,
 ) -> Result<(), CliError> {
     let bus = Bus::new();
     let connections = bus.subscribe::<ConnectionChanged>();
@@ -42,7 +49,7 @@ fn run(
 
     let unit_id = wait_until_ready(&connections, &instruments, options.device_wait)?;
     publish_stored_offsets(&bus, storage.as_ref(), unit_id.as_deref(), options.device_wait)?;
-    load_setup(&bus, log)?;
+    load_setup(&bus, warnings)?;
     let frames = bus.subscribe::<FrameCaptured>();
     bus.request(SetRunning { running: true }).map_err(failure)?;
     let result = write_frames(&frames, files, options, unix_time_us, log);
@@ -110,11 +117,11 @@ fn publish_stored_offsets(
         .ok_or_else(|| CliError::failure("the stored zero offsets were not applied"))
 }
 
-fn load_setup(bus: &Bus, log: &mut dyn Write) -> Result<(), CliError> {
+fn load_setup(bus: &Bus, warnings: &mut dyn Write) -> Result<(), CliError> {
     let loaded = bus.request(LoadSetup).map_err(failure)?;
     let loaded = loaded.ok_or_else(|| CliError::failure("the setup file was not loaded"))?;
     for warning in loaded.warnings {
-        let _ = writeln!(log, "warning: {warning}");
+        let _ = writeln!(warnings, "warning: {warning}");
     }
     Ok(())
 }

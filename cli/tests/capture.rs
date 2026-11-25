@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use sweepscope_calibration::domain::offsets::{OffsetFile, StoredUnit};
-use sweepscope_cli::{capture, simulated_environment, CaptureOptions, CliError, ExitStatus, ReadOnlyStorage};
+use sweepscope_cli::{capture, run, simulated_environment, CaptureOptions, CliError, ExitStatus, ReadOnlyStorage};
 use sweepscope_device::{SignalKind, SignalSpec, SimulatorControl};
 use sweepscope_export::{decode_raw, ExportFormat};
 use sweepscope_kernel::testing::TempDir;
@@ -67,7 +67,7 @@ impl Rig {
         let storage: Arc<dyn Storage> = Arc::new(ReadOnlyStorage::new(self.config.path()));
         let environment = simulated_environment(storage, Arc::new(SystemClock), self.control.clone());
         let mut log = Vec::new();
-        capture(options, environment, &mut log).map(|()| String::from_utf8(log).unwrap())
+        capture(options, environment, &mut log, &mut Vec::new()).map(|()| String::from_utf8(log).unwrap())
     }
 
     fn files(&self) -> Vec<String> {
@@ -243,4 +243,30 @@ fn given_no_stored_offsets_when_captured_then_the_frame_is_not_calibrated_and_th
 
     assert_eq!(rig.raw_header("capture-0001.bin")["channels"][0]["calibrated"], false);
     assert!(snapshot(rig.config.path()).is_empty());
+}
+
+#[test]
+fn given_a_clamped_trigger_level_when_run_then_the_warning_is_on_stderr_and_stdout_lists_only_files() {
+    let rig = Rig::new("auto");
+    let mut setup = setup_json("auto");
+    setup["trigger"]["level_volts"] = json!(20.0);
+    fs::write(rig.setup(), setup.to_string()).unwrap();
+    let args: Vec<String> = [
+        ("--setup", rig.setup()),
+        ("--config-dir", rig.config.path().to_path_buf()),
+        ("--out", rig.out()),
+    ]
+    .iter()
+    .flat_map(|(name, path)| [(*name).to_owned(), path.to_str().unwrap().to_owned()])
+    .collect();
+    let args = [vec!["capture".to_owned(), "--simulator".to_owned()], args].concat();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+
+    let code = run(&args, &|_| None, &mut out, &mut err);
+
+    let (out, err) = (String::from_utf8(out).unwrap(), String::from_utf8(err).unwrap());
+    assert_eq!(code, 0, "{err}");
+    assert!(err.starts_with("warning: Trigger level"), "{err}");
+    assert!(out.lines().all(|line| line.starts_with("wrote ")), "{out}");
+    assert_eq!(out.lines().count(), 1, "{out}");
 }

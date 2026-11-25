@@ -28,7 +28,7 @@ const NO_HARDWARE_VARIABLE: &str = "SWEEPSCOPE_NO_HARDWARE";
 
 /// Runs the program for `args` (without the program name) and returns the process exit code.
 pub fn run(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn Write, err: &mut dyn Write) -> u8 {
-    match execute(args, env, out) {
+    match execute(args, env, out, err) {
         Ok(()) => ExitStatus::Success.code(),
         Err(error) => {
             let _ = writeln!(err, "sweepscope: {}", error.message);
@@ -40,13 +40,18 @@ pub fn run(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn 
     }
 }
 
-fn execute(args: &[String], env: &dyn Fn(&str) -> Option<String>, out: &mut dyn Write) -> Result<(), CliError> {
+fn execute(
+    args: &[String],
+    env: &dyn Fn(&str) -> Option<String>,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> Result<(), CliError> {
     match parse(args)? {
         Command::Help => print(out, USAGE),
         Command::Version => print(out, concat!("sweepscope ", env!("CARGO_PKG_VERSION"))),
         Command::Capture(options) => {
             let environment = system_environment(&options, env)?;
-            capture(&options, environment, out)
+            capture(&options, environment, out, err)
         }
     }
 }
