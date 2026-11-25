@@ -56,18 +56,18 @@ sweepscope --version
 If `sweepscope` is not found, add `~/.local/bin` to `PATH` or log in again. You can also run the file where it is, as
 `./SweepScope_<version>_amd64.AppImage capture ...`. An AppImage installs no udev rule; install it by hand.
 
-**Give the AppImage absolute paths**, for `--setup`, `--out` and `--config-dir`, and always give `--out`. The AppImage
-starts the program in a folder inside its own image, so a relative path is not looked up in your current folder:
+Relative paths work as for the installed program: `--setup`, `--out`, `--config-dir` and the default output folder refer
+to the folder you run the command in:
 
 ```sh
-sweepscope capture --setup "$PWD/s.json" --count 3 --out "$PWD/cap"
+sweepscope capture --setup s.json --count 3 --out cap
 ```
 
 Each start mounts the image with FUSE. On a machine without FUSE, put `--appimage-extract-and-run` first; the image is
-then unpacked to a temporary folder that is removed afterwards, so files written to a relative path are lost:
+then unpacked to a temporary folder that is removed afterwards. Relative paths work the same way:
 
 ```sh
-sweepscope --appimage-extract-and-run capture --setup "$PWD/s.json" --out "$PWD/cap"
+sweepscope --appimage-extract-and-run capture --setup s.json --out cap
 ```
 
 The AppImage keeps options starting with `--appimage-` for itself.
@@ -105,7 +105,7 @@ cargo run -p sweepscope-app -- capture --simulator --setup s.json --out cap
 |---|---|---|
 | `--setup FILE` | Setup file written by the application (menu File, Save setup). Required. | |
 | `--count N` | Number of frames to write. | 1 |
-| `--out DIR` | Output folder, created when missing. | current folder (AppImage: always give it) |
+| `--out DIR` | Output folder, created when missing. | current folder |
 | `--format csv\|raw` | CSV table or raw binary (`SSR1`, see [frame-raw-v1.md](formats/frame-raw-v1.md)). | csv |
 | `--timeout S` | Seconds to wait for each frame. | 10 |
 | `--device-wait S` | Seconds to wait for the scope to become ready. The scope needs about 2 s to settle after it is opened, which counts here. | 8 |
