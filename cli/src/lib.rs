@@ -1,6 +1,7 @@
 //! Headless capture: a second composition root without Tauri, run by the application binary (ADR 0022).
 #![forbid(unsafe_code)]
 
+mod appimage;
 mod args;
 mod capture;
 mod composition;
@@ -16,6 +17,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sweepscope_device::{DeviceCatalog, HantekCatalog, SimulatedCatalog, SimulatorControl, SimulatorSource};
 use sweepscope_kernel::{Clock, Storage, SystemClock};
 
+pub use appimage::appimage_caller_dir;
 pub use args::{is_command, parse, CaptureOptions, Command, USAGE};
 pub use capture::capture;
 pub use composition::Environment;
