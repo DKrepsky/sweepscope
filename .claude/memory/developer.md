@@ -389,6 +389,12 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - After `ConnectionChanged` says Ready, acquisition has not necessarily taken the device over: commands fail with "No scope connected". Wait for the first `InstrumentChanged` too. Stored offsets: publish `ZeroOffsetsChanged` yourself (the calibration module is a stub until WP10); acquisition drains offsets before captures.
 - `ReadOnlyStorage` swallows writes (acquisition writes last-setup.json, `OffsetFile::load` may write a .corrupt copy). The config-folder test reads `src-tauri/tauri.conf.json`: it fails until the identifier `io.github.dkrepsky.sweepscope` lands (WP7/WP11).
 - Tool sandbox refuses `cd && python3 - <<EOF` or `cat > file <<EOF` chains in a worktree; use Write/Edit, or a plain `python3 - <<EOF` alone.
+## Packaging and AppImage facts (developer-3, #38)
+- `npm run build -- --no-bundle` gives `target/release/sweepscope` (`mainBinaryName`); cargo alone gives `sweepscope-app`. The .deb installs `/usr/bin/sweepscope`.
+- The AppImage's `AppRun.wrapped` chdirs to `$APPDIR/usr`: the caller's folder is only in `$OWD`, and `--appimage-extract-and-run` sets no `OWD`. Never assume relative paths work in an AppImage.
+- To test AppImage launch behaviour without opening a window: copy the AppDir, replace `usr/bin/sweepscope` with a script, `mksquashfs` it and append to the first `--appimage-offset` bytes of a built AppImage.
+- AppImage bundles WebKitGTK and GTK, not libusb.
+
 ## WP15 lessons (frontend calibration app layer, developer-11)
 - Worktree bash tool refuses compound commands that `cd` plus heredocs; use the Write/Edit tools or python with absolute paths, and run `cd <worktree>/frontend && npx ...` as a separate simple call.
 - `max-lines-per-function` is 40 (blank lines count): extract class-based fakes (`api/fake-zero-calibration.ts`) and `selectX` helpers early.
