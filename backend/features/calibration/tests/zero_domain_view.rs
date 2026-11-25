@@ -74,7 +74,7 @@ fn given_no_stored_unit_when_the_tooltip_is_built_then_every_channel_shows_the_t
 
     assert!(!unit.calibrated);
     assert_eq!(unit.stored_at_utc, None);
-    assert_eq!(unit.tooltip.heading, "Typical zero error of one measured unit:");
+    assert_eq!(unit.tooltip.heading, "Typical zero error:");
     for channel in 0..4 {
         assert_eq!(cells(&unit, channel), texts_of(TYPICAL), "channel {channel}");
     }

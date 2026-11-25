@@ -31,13 +31,21 @@ const offsetLabel = (mv: number) => {
 /** Stored offsets of the stub unit, millivolts per channel (CH3 negative, CH4 exactly zero); ranges from 50 mV/div up are zero. */
 const STUB_MV = [0.66, 1.04, -0.83, 0];
 
+/** The backend's bound for ranges from 50 mV/div when not calibrated: two counts (range x 2 / 24.15), three digits. */
+const upperBoundLabel = (rangeMv: number, factor: number) => {
+  const mv = Number(((2 * rangeMv * factor) / 24.15).toPrecision(3));
+  return mv >= 1000 ? `${mv / 1000} V` : `${mv} mV`;
+};
+
 /** The backend's tooltip texts in miniature: 12 ranges by 3 probes for each channel. Typical values when not calibrated. */
 export function tooltipFor(calibrated: boolean): TooltipText {
   const cells = (mv: number): ChannelTooltip => ({
     cells: RANGE_MV.map((range, index) => {
-      const value = calibrated ? (index < 4 ? mv : 0) : [0.66, 1.04, 0.83, 0.83][Math.min(index, 3)]!;
+      const value = calibrated ? (index < 4 ? mv : 0) : [0.66, 1.04, 0.83, 0.83][index];
       const text = (factor: number) =>
-        `${offsetLabel(Number((value * factor).toFixed(4)))} at ${rangeLabel(range * factor)}`;
+        value === undefined
+          ? `up to ${upperBoundLabel(range, factor)} at ${rangeLabel(range * factor)}`
+          : `${offsetLabel(Number((value * factor).toFixed(4)))} at ${rangeLabel(range * factor)}`;
       return [text(1), text(10), text(100)];
     }),
   });
@@ -48,7 +56,7 @@ export function tooltipFor(calibrated: boolean): TooltipText {
     ChannelTooltip,
   ];
   return {
-    heading: calibrated ? 'Zero error removed per channel and range.' : 'Typical zero error of one measured unit:',
+    heading: calibrated ? 'Zero error removed per channel and range.' : 'Typical zero error:',
     channels: [one, two, three, four],
   };
 }

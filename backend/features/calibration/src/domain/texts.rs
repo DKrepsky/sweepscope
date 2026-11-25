@@ -6,7 +6,7 @@ pub const NEEDS_READY_SCOPE: &str = "Zero calibration needs a ready scope";
 pub const NO_SERIAL: &str = "This scope reports no serial number";
 pub const AUTO_SETUP_RUNNING: &str = "Auto-setup is running";
 
-pub const TYPICAL_HEADING: &str = "Typical zero error of one measured unit:";
+pub const TYPICAL_HEADING: &str = "Typical zero error:";
 pub const ZERO_REMOVED_HEADING: &str =
     "Zero error removed per channel and range, measured with the input shorted (about 12 000 samples averaged).";
 

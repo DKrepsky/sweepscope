@@ -122,7 +122,7 @@ test.describe('calibration status tag', () => {
     const tip = page.getByRole('tooltip');
     await expect(tip).toBeVisible({ timeout: 2000 });
     await expect(tip).toContainText('No calibration');
-    await expect(tip).toContainText('Typical zero error of one measured unit:');
+    await expect(tip).toContainText('Typical zero error:');
     await expect(tip.locator('li')).toHaveText([
       'CH1 +0.66 mV at 2 mV/div',
       'CH2 +0.66 mV at 2 mV/div',
@@ -201,7 +201,7 @@ test.describe('calibration tooltip rows', () => {
       ]),
     );
     const tip = await lines(page);
-    await expect(tip).toContainText('Typical zero error of one measured unit:');
+    await expect(tip).toContainText('Typical zero error:');
     await expect(tip.locator('li')).toHaveText(['CH1 +1.04 mV at 5 mV/div', 'CH2 +0.83 mV at 20 mV/div']);
   });
 
@@ -258,10 +258,11 @@ test.describe('calibration tooltip rows', () => {
     }
   });
 
-  test('given both states, when the rows are read, then each is one number form and the notes about gain, extreme positions and resolution are gone', async ({
+  test('given both states, when the rows are read, then each row has its form (an upper bound from 50 mV/div when not calibrated) and the notes about gain, extreme positions and resolution are gone', async ({
     page,
   }) => {
-    const form = /^CH\d (?:[+\u2212]\d+(?:\.\d+)? mV|0 V) at \d+ (?:mV|V)\/div$/;
+    const offset = /^CH\d (?:[+\u2212]\d+(?:\.\d+)? mV|0 V) at \d+ (?:mV|V)\/div$/;
+    const bound = /^CH\d up to \d+(?:\.\d+)? (?:mV|V) at \d+ (?:mV|V)\/div$/;
     for (const zero of [NOT_CALIBRATED, CALIBRATED]) {
       await openMain(page, { zero });
       await emit(
@@ -277,8 +278,11 @@ test.describe('calibration tooltip rows', () => {
       const tip = await lines(page);
       const rows = await tip.locator('li').allInnerTexts();
       expect(rows).toHaveLength(4);
-      for (const row of rows) expect(row.replace(/\s+/g, ' ')).toMatch(form);
-      await expect(tip).not.toContainText(/\bGain\b|extreme|Resolution|counts|up to/i);
+      for (const row of rows)
+        expect(row.replace(/\s+/g, ' ')).toMatch(
+          zero === NOT_CALIBRATED ? new RegExp(`${offset.source}|${bound.source}`) : offset,
+        );
+      await expect(tip).not.toContainText(/\bGain\b|extreme|Resolution|counts/i);
       await page.keyboard.press('Escape');
     }
   });
