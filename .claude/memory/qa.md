@@ -170,4 +170,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - AppImage FUSE start does not work inside `unshare -rm`: run the CLI outside with `--simulator` only; for the window use `--appimage-mount` outside and run `$MNT/AppRun` inside the namespace. Set TMPDIR for extract-and-run: it leaves 272 MB folders.
 - PWD/APPDIR negative tests: do not use `APPDIR=/tmp` when binary and cwd are under /tmp (that is a real match).
 - The user may be gaming on the real display (load 15): never touch :0; expect Playwright WebKit slowness and flakes.
-- `feedback.spec.ts:22` (info Toast, gallery) fails in WebKit under heavy machine load even with `--workers=1`; check `git diff` of `frontend/src` and rerun on a quiet machine before judging.
+- Real-time Toast tests: measure inside the page (MutationObserver) from appearance, not with a wait that starts after `goto`; the info Toast "flake" was exactly that (WebKit loads the gallery 0.6 s late). Measure before calling something a flake.
+- The harness safety check refuses `rm -rf` on variable targets (the whole command does not run). In scratch scripts use fresh `mktemp -d` folders and remove nothing, or remove by literal absolute path.
+- To test new code through the AppImage start script without bundling: copy an extracted AppDir, swap `usr/bin/sweepscope`, run `AppRun` (label it as not an AppImage run).

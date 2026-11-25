@@ -4,9 +4,37 @@ Build or commit: first round `feat/m4-polish` at `5bdd38a`; retest round after t
 Date: 2026-11-24
 Test plan: [test-plan.md](test-plan.md). Hardware checklist for the human: [hardware-checklist.md](hardware-checklist.md).
 
+## Retest of the single executable at `d215304`
+
+Date: 2026-11-25. Current state for #38 and #37; the round at `2a510e8` below gives the full results.
+
+### Verdict: blocked (incomplete), not a pass
+
+- **#38: pass (software).**
+- **#37: still not signed off.** The inotify limit is unchanged (owner of the task confirmed; no bundle attempted this time), so there is no `.deb` and no AppImage of this code. P-7, P-8 and P-9 are not run. This blocks the release of #37.
+- **No bug is open.** BUG-33 and BUG-34 are fixed and retested.
+
+Tested: release binary built with `cargo build --release -p sweepscope-app --features tauri/custom-protocol` at `d215304`; `SWEEPSCOPE_NO_HARDWARE=1`, USB directories hidden for the CLI and window checks; the real scope was not opened. For the AppImage start script, that binary was put into a copy of the AppDir extracted from the `9b27ad5` image and started through its `AppRun`. This is not an AppImage run.
+
+| Check | Result |
+|---|---|
+| `cargo test --workspace --locked` | 1281 passed, 0 failed, 3 ignored (11 `cli_mode`) |
+| fmt, clippy `-D warnings`, `check:repo`, `test:tools` (48) | pass |
+| BUG-33 | Fixed. Never-trigger: stdout empty, warning and error on stderr, exit 11. Successful run with a clamped level: stdout holds only the three `wrote` lines, warning on stderr, exit 0 |
+| Non-UTF-8 arguments (10.5) | Pass. As `--out`, `--setup`, `--config-dir`, `--count` value, as option name, after `--help` and `--version`: exit 2, `argument is not valid UTF-8` and usage on stderr, nothing on stdout, nothing created. As first argument: the window opens and writes nothing (Xvfb); without a display it fails with the GTK panic (exit 101) |
+| Non-UTF-8 `PWD` and `APPDIR` (10.5) | Pass. Caller folder and image folder with non-UTF-8 names: relative `--out` and default folder land in the caller's folder, exit 0, nothing in the image. The plain binary ignores non-UTF-8 values that do not match it |
+| Other exit codes | 0, 1, 2, 10, 12 and `--version` unchanged |
+| Window with no argument | opens (Xvfb), discovery off |
+| BUG-34 (`docs/cli.md`) | Fixed. Checked with the `9b27ad5` image: the folder stays (272 MB), a second run reuses the name, a different image gets its own folder, after deletion the next run unpacks again. The documented `rm` line was not run as written; the same two folders were removed by their literal paths. `install.md` makes no claim about the folder |
+| Info Toast e2e (`feedback.spec.ts`) | Fixed, test defect (see below). `feedback.spec.ts` 12 of 12 in chromium and webkit; the info Toast case 20 of 20 repeated |
+
+Info Toast: it stayed red alone in WebKit (load about 7). Measured: the Toast lives about 4.1 s in both browsers, but the test started its 3.4 s wait when the gallery had loaded, about 0.6 s after the Toast appeared in WebKit (0.2 s in chromium), so the second check fell on the moment of closing. This corrects the hypothesis in the earlier round (it was the second check, and the product was right). The test now times the Toast inside the page from appearance to removal and keeps the bounds 3.4 s and 4.8 s; with the lower bound raised to 4.3 s it fails with lifetimes of 4.09 s and 4.12 s. The two warning Toast cases are unchanged.
+
+Not run: the full Playwright suite (the product frontend is unchanged), vitest (same reason), `check:frontend` except eslint, prettier and `tsc` for the changed test, any package build.
+
 ## Single executable round (#38, #37 packaging) at `2a510e8`
 
-Date: 2026-11-25. This section is the current state for #38 and #37 and replaces the `sweepscope-cli` results, the `ldd` statement and the package results further down. Test plan: section "Single executable".
+Date: 2026-11-25. Verdict and bug status are updated by the retest above. This section replaces the `sweepscope-cli` results, the `ldd` statement and the package results further down. Test plan: section "Single executable".
 
 ### Verdict: blocked (incomplete), not a pass
 
@@ -73,8 +101,8 @@ Why nothing could be bundled: `tauri build`, `tauri build --no-bundle` and `taur
 
 | Bug | Severity | Status |
 |---|---|---|
-| BUG-33 setup-load warnings are printed on standard output, among the written files; `cli.md` says messages go to standard error. Reproduce: Normal sweep setup with `level_volts` 20, `capture --simulator --setup never.json --timeout 1 2>/dev/null` prints `warning: Trigger level is off the screen; limited to the screen edge`. Present since `c313bd8`, not caused by the single executable | Minor | Open |
-| BUG-34 `cli.md` says the `--appimage-extract-and-run` folder is removed afterwards; it is not. Every such run (exit 0, 1, 2, 11) leaves `appimage_extracted_<hash>` (272 MB) in `TMPDIR`, default `/tmp`; the same image reuses the same name. Runtime `type2-runtime` `fedfad5` | Minor (docs) | Open |
+| BUG-33 setup-load warnings are printed on standard output, among the written files; `cli.md` says messages go to standard error. Reproduce: Normal sweep setup with `level_volts` 20, `capture --simulator --setup never.json --timeout 1 2>/dev/null` prints `warning: Trigger level is off the screen; limited to the screen edge`. Present since `c313bd8`, not caused by the single executable | Minor | Fixed, retested at `d215304` |
+| BUG-34 `cli.md` says the `--appimage-extract-and-run` folder is removed afterwards; it is not. Every such run (exit 0, 1, 2, 11) leaves `appimage_extracted_<hash>` (272 MB) in `TMPDIR`, default `/tmp`; the same image reuses the same name. Runtime `type2-runtime` `fedfad5` | Minor (docs) | Fixed, retested at `d215304` |
 
 ### Not tested
 

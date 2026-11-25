@@ -140,6 +140,10 @@ Tree under test: `feat/m4-polish` at `2a510e8`. Replaces L-8 (there is no `sweep
 | D-3 | Hardware checklist H-M4-6 works as written with the simulator (device-only parts noted) | S | docs |
 | X-7 | Full suites: `cargo test --workspace` (with `cli_mode`), vitest, `npm run check`, `npm run test:tools`, Playwright | S | regression |
 | X-8 | No CI step, script or doc that is still current names the removed binary; architecture rules cover the new dependency | S | 10.2 |
+| S-12 | Given a clamped setup, then warnings are on stderr and stdout lists only written files (BUG-33) | S | 10.5 |
+| S-13 | Given a non-UTF-8 argument after a CLI word, then exit 2 with usage and nothing created; as first argument, the window | E, S, R | 10.5 |
+| AI-5 | Given non-UTF-8 `PWD` and `APPDIR`, then relative paths still resolve to the caller's folder | E, S | 10.5 |
+| D-4 | The extract-and-run folder behaves as `cli.md` describes (BUG-34) | S | 10.5 |
 
 ## Environment
 
