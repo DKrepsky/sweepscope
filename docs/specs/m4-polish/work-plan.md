@@ -161,3 +161,20 @@ A and C in parallel; B in parallel against the fixed interface, builds once A la
 - A test that passes an unrecognised argument would open a window on a developer machine: keep those cases in A's unit tests.
 - Do not call `env_logger::init` in CLI mode.
 - `cargo run -p sweepscope-app -- capture ...` is the development form; `tauri dev` argument passing is not supported.
+
+### 10.4 AppImage working directory (after the merge of A, B, C)
+Measured with the real runtime and our AppDir (stub binary): normal, `--appimage-extract-and-run`, `APPIMAGE_EXTRACT_AND_RUN=1` and a direct `AppDir/AppRun` all start the program with cwd `<AppDir>/usr` and `PWD` = caller's folder, also when the caller's `PWD` was stale or unset (normal mode). `OWD` is unset in both extract modes and is inherited if stale.
+
+Interface (library `sweepscope_cli`, new file `cli/src/appimage.rs`, no chdir inside the library):
+
+```rust
+/// The folder to return to, when an AppImage moved the program away from the caller's folder.
+pub fn appimage_caller_dir(env: &dyn Fn(&str) -> Option<String>, exe: &Path, cwd: &Path) -> Option<PathBuf>;
+```
+
+`Some(PWD)` only when `APPDIR` is non-empty and absolute, `exe` and `cwd` are both under it (compare canonicalised paths, whole components), and `PWD` is non-empty and absolute. Otherwise `None`. `src-tauri` `run_cli` calls it with `current_exe()` and `current_dir()`; on `Some(dir)` it calls `set_current_dir(dir)` before `run`; if that fails it prints `sweepscope: cannot enter DIR: error` and exits 1 without running. If `current_exe` or `current_dir` fails, skip. Read `PWD` with the same env closure. Never in `run_window`.
+
+- **developer-1** (`cli/src/appimage.rs`, `cli/src/lib.rs`): given exe and cwd under `APPDIR` and an absolute `PWD`, then `Some(PWD)`; given no `APPDIR`, an exe outside it (installed `.deb` with variables inherited from another AppImage), a cwd outside it, a sibling folder with the same name prefix, or a missing or relative `PWD`, then `None`.
+- **developer-2** (`src-tauri/src/main.rs`, `src-tauri/tests/cli_mode.rs`; after developer-1): integration, with `APPDIR` = the folder of the test binary, cwd = a fresh subfolder of it (remove afterwards), `PWD` = a temp caller folder holding `s.json`: given `capture --setup s.json --simulator --config-dir cfg`, then 0 and the files are in the caller folder; the same with `--out out` writes to `<caller>/out`. Given `APPDIR` set to an unrelated folder, then `PWD` is ignored. Existing tests must `env_remove("APPDIR")`. Then build the AppImage and run once, normal and `--appimage-extract-and-run`, from a temp folder with relative `--setup`, `--out` and the default out, `--simulator`; report the result.
+- **developer-3** (`docs/cli.md`, `docs/install.md`, `hardware-checklist.md`): remove the "use absolute paths" advice for the AppImage; relative paths work as for the installed program. H-M4-6 AppImage step: from another folder with relative paths, once normal and once with `--appimage-extract-and-run`.
+
