@@ -391,7 +391,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Tool sandbox refuses `cd && python3 - <<EOF` or `cat > file <<EOF` chains in a worktree; use Write/Edit, or a plain `python3 - <<EOF` alone.
 ## Packaging and AppImage facts (developer-3, #38)
 - `npm run build -- --no-bundle` gives `target/release/sweepscope` (`mainBinaryName`); cargo alone gives `sweepscope-app`. The .deb installs `/usr/bin/sweepscope`.
-- The AppImage starts the program in `$APPDIR/usr`; `$PWD` keeps the caller's folder in every start mode, `OWD` is missing in extract modes. CLI mode returns to `$PWD` (work plan 10.4, ADR 0024), so docs describe relative paths as working.
+- The AppImage's `AppRun.wrapped` chdirs to `$APPDIR/usr`: `$PWD` keeps the caller's folder in every start mode (`OWD` is unset in extract-and-run and can be stale). CLI mode returns there via `sweepscope_cli::appimage_caller_dir` (work plan 10.4, ADR 0024 item 7), so docs describe relative paths as working; the window path must not chdir.
 - To test AppImage launch behaviour without opening a window: copy the AppDir, replace `usr/bin/sweepscope` with a script, `mksquashfs` it and append to the first `--appimage-offset` bytes of a built AppImage.
 - AppImage bundles WebKitGTK and GTK, not libusb.
 
