@@ -28,6 +28,27 @@ fn given_help_when_run_then_the_usage_goes_to_stdout_and_the_exit_code_is_0() {
 }
 
 #[test]
+fn given_version_when_run_then_the_version_goes_to_stdout_and_the_exit_code_is_0() {
+    let (code, out, err) = run_with(&["--version"]);
+
+    assert_eq!(code, 0);
+    assert_eq!(out, format!("sweepscope {}\n", env!("CARGO_PKG_VERSION")));
+    assert!(err.is_empty(), "{err}");
+}
+
+#[test]
+fn given_an_unknown_capture_option_when_run_then_the_error_and_usage_name_the_application() {
+    let (code, _, err) = run_with(&["capture", "--bogus"]);
+
+    assert_eq!(code, 2);
+    assert!(err.starts_with("sweepscope: unknown option --bogus\n"), "{err}");
+    assert!(
+        err.contains("usage: sweepscope capture --setup FILE [options]"),
+        "{err}"
+    );
+}
+
+#[test]
 fn given_no_config_folder_available_when_run_then_the_exit_code_is_1() {
     let (code, _, err) = run_with(&["capture", "--setup", "s.json", "--simulator"]);
 
