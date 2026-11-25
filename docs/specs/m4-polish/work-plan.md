@@ -118,7 +118,7 @@ Already amended by the PM: goal 3, 5.2 volts row, VER-3, US-14, M4 roadmap row. 
 
 ### 9.3 Tooltip texts (`domain/texts.rs`, `domain/view.rs`, `messages.rs`)
 - Types (ts-rs): `TooltipText { heading: String, channels: [ChannelTooltip; 4] }`, `ChannelTooltip { cells: Vec<[String; 3]> }`; `TooltipRow` removed. Cell k, probe slot p (factors 1, 10, 100): `"{sign}{mV} at {range x factor}"` for calibrated, with the offset multiplied by the factor and formatted with the existing `offset_text`; `-` when the stored vector has no entry. Not calibrated: sensitive ranges (A.3 constants, volts multiplied by the factor) as `+0.66 mV at 2 mV/div`; ranges from 50 mV/div: `up to {2 counts in volts} at {range}` with `2 x range / 24.15`, formatted with `engineering-format`. Both need the capability ranges: `unit_calibration(stored, ranges)` already takes them; the typical table is now a function of `ranges`.
-- Heading: not calibrated `Typical zero error of one measured unit:`, calibrated `Zero error removed per channel and range, measured with the input shorted (about 12 000 samples averaged).` The three other notes and their constants are deleted. The stored date line stays (`stored_at_utc`).
+- Heading: not calibrated `Typical zero error:`, calibrated `Zero error removed per channel and range, measured with the input shorted (about 12 000 samples averaged).` The three other notes and their constants are deleted. The stored date line stays (`stored_at_utc`).
 - Golden test over all twelve ranges and three probes, both states.
 
 ### 9.4 Shell (developer-10, `src-tauri/src/**`, `permissions/**`, `capabilities/**`, generated `commands.ts`)
