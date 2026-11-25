@@ -63,12 +63,23 @@ to the folder you run the command in:
 sweepscope capture --setup s.json --count 3 --out cap
 ```
 
-Each start mounts the image with FUSE. On a machine without FUSE, put `--appimage-extract-and-run` first; the image is
-then unpacked to a temporary folder that is removed afterwards. Relative paths work the same way:
+Each start mounts the image with FUSE. On a machine without FUSE, put `--appimage-extract-and-run` first. Relative
+paths work the same way:
 
 ```sh
 sweepscope --appimage-extract-and-run capture --setup s.json --out cap
 ```
+
+This unpacks the image into `appimage_extracted_<hash>` (about 270 MB) in `$TMPDIR`, or in `/tmp` if `TMPDIR` is not
+set. The folder is **not** removed when the program ends. Later runs of the same image use the same folder name, and
+another image (for example a new version) gets a folder of its own. Delete the folders when no AppImage run is using
+them; the next run unpacks again:
+
+```sh
+rm -rf "${TMPDIR:-/tmp}"/appimage_extracted_*
+```
+
+That pattern also matches folders left by other AppImages.
 
 The AppImage keeps options starting with `--appimage-` for itself.
 

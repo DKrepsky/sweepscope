@@ -438,3 +438,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - `cli/` (`sweepscope_cli`) is a Tauri-free library with no binary; the app binary runs it when `is_command(first)` (`cargo run -p sweepscope-app -- capture ...`). `--version` is the cli crate's `CARGO_PKG_VERSION` (workspace version).
 - A refused compound command runs nothing at all: check that edits applied before trusting later output.
 - App binary CLI-mode tests (`src-tauri/tests/cli_mode.rs`): pass recognised first words only; anything else opens a real window, so never run such a test against a binary that lacks the dispatch.
+- AppImage `--appimage-extract-and-run` (type2-runtime `fedfad5`) leaves `$TMPDIR/appimage_extracted_<hash>` (about 270 MB) behind, also without `NO_CLEANUP`; never claim it is removed (BUG-34). Measure runtime behaviour before documenting it, with a private TMPDIR.
