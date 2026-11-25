@@ -394,6 +394,8 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - The AppImage's `AppRun.wrapped` chdirs to `$APPDIR/usr`: `$PWD` keeps the caller's folder in every start mode (`OWD` is unset in extract-and-run and can be stale). CLI mode returns there via `sweepscope_cli::appimage_caller_dir` (work plan 10.4, ADR 0024 item 7), so docs describe relative paths as working; the window path must not chdir.
 - To test AppImage launch behaviour without opening a window: copy the AppDir, replace `usr/bin/sweepscope` with a script, `mksquashfs` it and append to the first `--appimage-offset` bytes of a built AppImage.
 - AppImage bundles WebKitGTK and GTK, not libusb.
+- `tauri build`/`bundle` fail with "OS file watch limit reached" when an editor holds all inotify watches (per user). The watch only guards `Cargo.toml` during the run: do not kill the editor or change sysctl; preload a scratchpad shim for `inotify_add_watch` that returns a fake descriptor on `ENOSPC`, for that one command. Report it.
+- Testing the AppImage caller-folder return without an image: `APPDIR` = folder of `CARGO_BIN_EXE_*`, cwd = a subfolder of it (`src-tauri/tests/cli_mode.rs`).
 
 ## WP15 lessons (frontend calibration app layer, developer-11)
 - Worktree bash tool refuses compound commands that `cd` plus heredocs; use the Write/Edit tools or python with absolute paths, and run `cd <worktree>/frontend && npx ...` as a separate simple call.
