@@ -425,3 +425,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Typical tooltip cells trim trailing zeros (`+6.6 mV at 20 mV/div`), calibrated cells keep `offset_text` decimals (`+6.60 mV`).
 - A stale ts-rs file (removed type) is not deleted by the export: `git rm` it by hand.
 - M4 hw view: `Note` has kind `warning`; Continue is hidden (not disabled) when `canContinue` is false; tooltip lines are `CHn text` strings split in the tag. Playwright m4-polish + a11y on both browsers takes ~9 min (run in background, ports 5173/4173 fixed, check they are free).
+
+## CLI crate (#38)
+- `cli/` (`sweepscope_cli`) is a Tauri-free library with no binary; the app binary runs it when `is_command(first)` (`cargo run -p sweepscope-app -- capture ...`). `--version` is the cli crate's `CARGO_PKG_VERSION` (workspace version).
+- A refused compound command runs nothing at all: check that edits applied before trusting later output.
