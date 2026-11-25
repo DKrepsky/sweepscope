@@ -1,8 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { connectionSnapshot, recordingState } from '../src/app/instrument/test-data';
+import { connectionSnapshot, instrumentState, recordingState } from '../src/app/instrument/test-data';
 import { openGallery, openMain as open, type TextScale } from './support/app';
-import { emit, ipcLog, zeroStub, type StubOptions } from './support/tauri-stub';
+import { emit, ipcLog, tooltipFor, zeroStub, type StubOptions } from './support/tauri-stub';
+import type { InstrumentState } from '../src/api';
 
 /**
  * M4 Polish (#33, #34, #50) against the IPC stub, written by QA: calibration tag and tooltip, the dialog in every step,
@@ -10,28 +11,34 @@ import { emit, ipcLog, zeroStub, type StubOptions } from './support/tauri-stub';
  * Test plan: docs/specs/m4-polish/test-plan.md.
  */
 
-const CALIBRATED = {
-  unit: {
-    calibrated: true,
-    storedAtUtc: '2026-11-24T14:05:00Z',
-    tooltip: {
-      rows: [
-        { label: 'CH1', value: '+0.66 mV at 2 mV/div' },
-        { label: 'CH2', value: '+1.04 mV at 2 mV/div' },
-      ],
-      notes: ['Zero error removed per channel and range.', 'Resolution is one count, 1/24 of a division.'],
-    },
-  },
-};
-const NOT_CALIBRATED = {
-  unit: {
-    calibrated: false,
-    storedAtUtc: null,
-    tooltip: {
-      rows: [{ label: '2 mV/div', value: '+0.66 mV (8 counts)' }],
-      notes: ['Typical zero error of one measured unit:', 'Gain: about 2 % from 50 mV to 1 V/div.'],
-    },
-  },
+const unitOf = (calibrated: boolean) => ({
+  calibrated,
+  storedAtUtc: calibrated ? '2026-11-24T14:05:00Z' : null,
+  tooltip: tooltipFor(calibrated),
+});
+const CALIBRATED = { unit: unitOf(true) };
+const NOT_CALIBRATED = { unit: unitOf(false) };
+
+/** The instrument slice with the given channels enabled and each on a range index (0 = 2 mV/div) and probe. */
+const instrumentWith = (
+  revision: number,
+  channels: { enabled: boolean; range?: number; probe?: number }[],
+): InstrumentState => {
+  const base = instrumentState({ revision });
+  return {
+    ...base,
+    channels: base.channels.map((channel, index) => {
+      const set = channels[index] ?? { enabled: false };
+      const probe = set.probe ?? 1;
+      return {
+        ...channel,
+        enabled: set.enabled,
+        probe,
+        probeText: `${probe}x`,
+        range: { ...channel.range, index: set.range ?? 0 },
+      };
+    }),
+  };
 };
 
 const openMain = async (page: Page, options: StubOptions = {}, percent: TextScale = 100) => {
@@ -116,7 +123,11 @@ test.describe('calibration status tag', () => {
     await expect(tip).toBeVisible({ timeout: 2000 });
     await expect(tip).toContainText('No calibration');
     await expect(tip).toContainText('Typical zero error of one measured unit:');
-    await expect(tip).toContainText('+0.66 mV (8 counts)');
+    await expect(tip.locator('li')).toHaveText([
+      'CH1 +0.66 mV at 2 mV/div',
+      'CH2 +0.66 mV at 2 mV/div',
+      'CH3 +0.66 mV at 2 mV/div',
+    ]);
     await expect(tip).toContainText('Click to calibrate.');
     await expect(tip).not.toContainText('Click to calibrate again.');
   });
@@ -128,7 +139,11 @@ test.describe('calibration status tag', () => {
     await tag(page).focus();
     const tip = page.getByRole('tooltip');
     await expect(tip).toBeVisible();
-    await expect(tip).toContainText('+0.66 mV at 2 mV/div');
+    await expect(tip.locator('li')).toHaveText([
+      'CH1 +0.66 mV at 2 mV/div',
+      'CH2 +1.04 mV at 2 mV/div',
+      'CH3 \u22120.83 mV at 2 mV/div',
+    ]);
     await expect(tip).toContainText('Click to calibrate again.');
     await expect(tip).toContainText(/^Calibrated \d/);
     await page.keyboard.press('Escape');
@@ -148,6 +163,133 @@ test.describe('calibration status tag', () => {
     await page.keyboard.press('Space');
     await expect(dialog(page)).toBeVisible();
     expect(await calls(page, 'open_zero_calibration')).toHaveLength(2);
+  });
+});
+
+test.describe('calibration tooltip rows', () => {
+  const lines = async (page: Page) => {
+    await tag(page).focus();
+    const tip = page.getByRole('tooltip');
+    await expect(tip).toBeVisible();
+    return tip;
+  };
+
+  test('given channels 1 and 3 on mixed ranges and CH2 off, when the tooltip shows, then there is one row per enabled channel at its own range', async ({
+    page,
+  }) => {
+    await openMain(page, { zero: CALIBRATED });
+    await emit(
+      page,
+      'instrument_changed',
+      instrumentWith(2, [{ enabled: true, range: 2 }, { enabled: false }, { enabled: true, range: 5 }]),
+    );
+    const tip = await lines(page);
+    await expect(tip.locator('li')).toHaveText(['CH1 +0.66 mV at 10 mV/div', 'CH3 0 V at 100 mV/div']);
+    await expect(tip.locator('li').first().locator('b')).toHaveText('CH1');
+  });
+
+  test('given not calibrated and mixed ranges, when the tooltip shows, then the rows carry the typical zero error of each range', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await emit(
+      page,
+      'instrument_changed',
+      instrumentWith(2, [
+        { enabled: true, range: 1 },
+        { enabled: true, range: 3 },
+      ]),
+    );
+    const tip = await lines(page);
+    await expect(tip).toContainText('Typical zero error of one measured unit:');
+    await expect(tip.locator('li')).toHaveText(['CH1 +1.04 mV at 5 mV/div', 'CH2 +0.83 mV at 20 mV/div']);
+  });
+
+  test('given a 10x probe on CH1 and a 100x probe on CH2, when the tooltip shows, then the offset and the range are probe scaled', async ({
+    page,
+  }) => {
+    await openMain(page, { zero: CALIBRATED });
+    await emit(
+      page,
+      'instrument_changed',
+      instrumentWith(2, [
+        { enabled: true, range: 0, probe: 10 },
+        { enabled: true, range: 2, probe: 100 },
+        { enabled: true, range: 0, probe: 1 },
+      ]),
+    );
+    const tip = await lines(page);
+    await expect(tip.locator('li')).toHaveText([
+      'CH1 +6.6 mV at 20 mV/div',
+      'CH2 +104 mV at 1 V/div',
+      'CH3 \u22120.83 mV at 2 mV/div',
+    ]);
+  });
+
+  test('given the tooltip is open, when a range knob turns and a probe changes, then the rows follow without any backend request', async ({
+    page,
+  }) => {
+    await openMain(page, { zero: CALIBRATED });
+    const tip = await lines(page);
+    await expect(tip.locator('li').first()).toHaveText('CH1 +0.66 mV at 2 mV/div');
+    const before = (await ipcLog(page)).length;
+    await emit(page, 'instrument_changed', instrumentWith(2, [{ enabled: true, range: 1 }, { enabled: true }]));
+    await expect(tip.locator('li').first()).toHaveText('CH1 +0.66 mV at 5 mV/div');
+    await emit(
+      page,
+      'instrument_changed',
+      instrumentWith(3, [{ enabled: true, range: 1, probe: 10 }, { enabled: true }]),
+    );
+    await expect(tip.locator('li').first()).toHaveText('CH1 +6.6 mV at 50 mV/div');
+    await expect(tip.locator('li')).toHaveCount(2);
+    expect((await ipcLog(page)).length - before).toBeLessThanOrEqual(0);
+  });
+
+  test('given every channel is off, when the tooltip shows, then it says No channel enabled and has no rows, in both states', async ({
+    page,
+  }) => {
+    for (const zero of [NOT_CALIBRATED, CALIBRATED]) {
+      await openMain(page, { zero });
+      await emit(page, 'instrument_changed', instrumentWith(2, []));
+      const tip = await lines(page);
+      await expect(tip).toContainText('No channel enabled');
+      await expect(tip.locator('li')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('given both states, when the rows are read, then each is one number form and the notes about gain, extreme positions and resolution are gone', async ({
+    page,
+  }) => {
+    const form = /^CH\d (?:[+\u2212]\d+(?:\.\d+)? mV|0 V) at \d+ (?:mV|V)\/div$/;
+    for (const zero of [NOT_CALIBRATED, CALIBRATED]) {
+      await openMain(page, { zero });
+      await emit(
+        page,
+        'instrument_changed',
+        instrumentWith(2, [
+          { enabled: true, range: 0 },
+          { enabled: true, range: 5 },
+          { enabled: true, range: 4, probe: 10 },
+          { enabled: true, range: 11 },
+        ]),
+      );
+      const tip = await lines(page);
+      const rows = await tip.locator('li').allInnerTexts();
+      expect(rows).toHaveLength(4);
+      for (const row of rows) expect(row.replace(/\s+/g, ' ')).toMatch(form);
+      await expect(tip).not.toContainText(/\bGain\b|extreme|Resolution|counts|up to/i);
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('given the calibrated tooltip, when read, then the caption Typical zero error is absent and the stored date heads it', async ({
+    page,
+  }) => {
+    await openMain(page, { zero: CALIBRATED });
+    const tip = await lines(page);
+    await expect(tip).not.toContainText('Typical zero error');
+    await expect(tip).toContainText(/Calibrated \d/);
   });
 });
 
@@ -291,7 +433,7 @@ test.describe('calibration dialog', () => {
     await expect(alert).toContainText('The CH2 input does not look shorted. Nothing was stored for this channel.');
     await expect(alert).toContainText('Peak to peak 49.7 mV at 100 mV/div, limit 24.8 mV.');
     await expect(dialog(page)).toContainText('Check the connection between probe tip and ground clip, then try again.');
-    await expect(dialog(page).getByRole('button')).toHaveText(['Cancel', 'Try again']);
+    await expect(dialog(page).getByRole('button')).toHaveText(['Cancel', 'Continue', 'Try again']);
     await expect(dialog(page).getByRole('button', { name: /skip/i })).toHaveCount(0);
     await expect(dialog(page).getByLabel('Channel 1, done')).toBeVisible();
     await expect(dialog(page).getByLabel('Channel 2, current')).toBeVisible();
@@ -435,6 +577,226 @@ test.describe('calibration dialog', () => {
     await dialog(page).getByRole('button', { name: 'Cancel' }).click();
     await toDone(page);
     await scan();
+  });
+});
+
+const buttons = (page: Page) => dialog(page).getByRole('button');
+const calibrate = (page: Page) => dialog(page).getByRole('button', { name: 'Calibrate' }).click();
+async function toNotShorted(page: Page, channel: number, clipped: number[] = []): Promise<void> {
+  await zeroStub.leaveUnshorted(page, [channel], clipped);
+  await tag(page).click();
+  await dialog(page).getByRole('button', { name: 'Start' }).click();
+  for (let at = 1; at <= channel; at++) {
+    await expect(heading(page)).toHaveText(`Channel ${at}: short the input`);
+    await calibrate(page);
+  }
+  await expect(dialog(page).getByRole('alert')).toContainText(`The CH${channel} input does not look shorted`);
+}
+
+test.describe('Continue after a failed shorted check', () => {
+  test('given CH2 does not look shorted, when shown, then the buttons are Cancel, Continue, Try again with the warning note and Try again is primary', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await expect(buttons(page)).toHaveText(['Cancel', 'Continue', 'Try again']);
+    await expect(dialog(page)).toContainText(
+      'Continue keeps the measured offsets for CH2, use it only if the input is shorted',
+    );
+    await expect(dialog(page).getByRole('button', { name: /skip/i })).toHaveCount(0);
+    await expect(heading(page)).toBeFocused();
+    await expect(dialog(page).getByLabel('Channel 2, current')).toBeVisible();
+    const primary = (name: string) =>
+      dialog(page)
+        .getByRole('button', { name })
+        .evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(await primary('Try again')).not.toBe(await primary('Continue'));
+    expect(await primary('Continue')).toBe(await primary('Cancel'));
+  });
+
+  test('given CH2 failed, when Continue, then the rest are calibrated, Done lists only CH2 as accepted and the tag turns CALIBRATED', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await zeroStub.leaveUnshorted(page, []);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    expect(await calls(page, 'continue_zero_calibration')).toHaveLength(1);
+    await expect(heading(page)).toHaveText('Channel 3: short the input');
+    await expect(dialog(page).getByLabel('Channel 2, done')).toBeVisible();
+    await expect(dialog(page)).not.toContainText('Continue keeps');
+    await calibrate(page);
+    await expect(heading(page)).toHaveText('Channel 4: short the input');
+    await calibrate(page);
+    await expect(heading(page)).toContainText('Calibration completed');
+    const accepted = dialog(page).locator('ul', { hasText: 'accepted although' });
+    await expect(accepted.locator('li')).toHaveText(['CH2 accepted although the input did not look shorted']);
+    await expect(dialog(page).getByRole('table')).toBeVisible();
+    for (const channel of [1, 2, 3, 4]) await expect(dialog(page).getByLabel(`Channel ${channel}, done`)).toBeVisible();
+    await expect(buttons(page)).toHaveText(['Done']);
+    await dialog(page).getByRole('button', { name: 'Done' }).click();
+    await expect(tag(page)).toHaveAttribute('aria-label', 'Calibrated. Open calibration dialog');
+  });
+
+  test('given CH4 failed, when Continue, then Done follows at once, and with CH1 and CH4 accepted both are listed in order', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await zeroStub.leaveUnshorted(page, [1, 4]);
+    await tag(page).click();
+    await dialog(page).getByRole('button', { name: 'Start' }).click();
+    await calibrate(page);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await expect(heading(page)).toHaveText('Channel 2: short the input');
+    await calibrate(page);
+    await calibrate(page);
+    await calibrate(page);
+    await expect(dialog(page).getByRole('alert')).toContainText('The CH4 input does not look shorted');
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await expect(heading(page)).toContainText('Calibration completed');
+    await expect(dialog(page).locator('ul li')).toHaveText([
+      'CH1 accepted although the input did not look shorted',
+      'CH4 accepted although the input did not look shorted',
+    ]);
+  });
+
+  test('given all four channels pass, when Done shows, then no accepted line is shown', async ({ page }) => {
+    await openMain(page);
+    await toDone(page);
+    await expect(dialog(page)).not.toContainText('accepted although');
+  });
+
+  test('given CH2 failed, when Try again twice and then the input is shorted, then Continue was never sent and nothing is listed as accepted', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await dialog(page).getByRole('button', { name: 'Try again' }).click();
+    await expect(dialog(page).getByRole('alert')).toContainText('The CH2 input does not look shorted');
+    await expect(buttons(page)).toHaveText(['Cancel', 'Continue', 'Try again']);
+    await zeroStub.leaveUnshorted(page, []);
+    await dialog(page).getByRole('button', { name: 'Try again' }).click();
+    await expect(heading(page)).toHaveText('Channel 3: short the input');
+    await calibrate(page);
+    await calibrate(page);
+    await expect(heading(page)).toContainText('Calibration completed');
+    expect(await calls(page, 'continue_zero_calibration')).toHaveLength(0);
+    await expect(dialog(page)).not.toContainText('accepted although');
+  });
+
+  test('given a clipped gate reading (canContinue false), when the not shorted step shows, then there is no Continue and no warning, only Cancel and Try again', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 3, [3]);
+    await expect(buttons(page)).toHaveText(['Cancel', 'Try again']);
+    await expect(dialog(page)).not.toContainText('Continue keeps');
+    await expect(dialog(page).getByRole('button', { name: 'Continue' })).toHaveCount(0);
+  });
+
+  test('given the Continue step, when Escape, then it cancels: no continue, close requested, tag unchanged', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toHaveCount(0);
+    expect(await calls(page, 'continue_zero_calibration')).toHaveLength(0);
+    expect(await calls(page, 'close_zero_calibration')).toHaveLength(1);
+    await expect(tag(page)).toHaveAttribute('aria-label', 'No calibration. Open calibration dialog');
+    await expect(tag(page)).toBeFocused();
+  });
+
+  test('given the Continue step, when Cancel after a Continue on an earlier channel, then nothing is stored', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 1);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await expect(heading(page)).toHaveText('Channel 2: short the input');
+    await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog(page)).toHaveCount(0);
+    await expect(tag(page)).toHaveAttribute('aria-label', 'No calibration. Open calibration dialog');
+  });
+
+  test('given the not shorted step with Continue by keyboard, when Tab runs through the footer, then the order is Cancel, Continue, Try again', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await page.keyboard.press('Tab');
+    await expect(dialog(page).getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(dialog(page).getByRole('button', { name: 'Continue' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(dialog(page).getByRole('button', { name: 'Try again' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog(page).getByRole('alert')).toContainText('The CH2 input does not look shorted');
+  });
+
+  test('given every step, when the focus lands on the step heading, then no outline is drawn, while the buttons keep their ring', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const outline = () => page.evaluate(() => getComputedStyle(document.activeElement as Element).outlineStyle);
+    await tag(page).click();
+    await expect(heading(page)).toBeFocused();
+    expect(await outline()).toBe('none');
+    await dialog(page).getByRole('button', { name: 'Start' }).click();
+    await expect(heading(page)).toBeFocused();
+    expect(await outline()).toBe('none');
+    await zeroStub.leaveUnshorted(page, [1]);
+    await calibrate(page);
+    await expect(heading(page)).toBeFocused();
+    expect(await outline()).toBe('none');
+    await zeroStub.leaveUnshorted(page, []);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    for (let channel = 2; channel <= 4; channel++) await calibrate(page);
+    await expect(heading(page)).toContainText('Calibration completed');
+    await expect(heading(page)).toBeFocused();
+    expect(await outline()).toBe('none');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    const ring = await page.evaluate(() => {
+      const style = getComputedStyle(document.activeElement as Element);
+      return { tag: document.activeElement?.tagName, style: style.outlineStyle, width: style.outlineWidth };
+    });
+    expect(ring.style).not.toBe('none');
+  });
+
+  test('given the Continue and the accepted Done step, when scanned by axe, then there are no serious or critical violations', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const scan = async () => {
+      const result = await new AxeBuilder({ page }).include('dialog').analyze();
+      const bad = result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+      expect(bad.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    };
+    await toNotShorted(page, 2);
+    await scan();
+    await zeroStub.leaveUnshorted(page, []);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await calibrate(page);
+    await calibrate(page);
+    await expect(heading(page)).toContainText('Calibration completed');
+    await scan();
+  });
+
+  test('given the tooltip after Done with an accepted channel, when read, then it shows the stored offsets and no accepted note', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await toNotShorted(page, 2);
+    await zeroStub.leaveUnshorted(page, []);
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await calibrate(page);
+    await calibrate(page);
+    await dialog(page).getByRole('button', { name: 'Done' }).click();
+    await tag(page).focus();
+    const tip = page.getByRole('tooltip');
+    await expect(tip.locator('li').first()).toHaveText('CH1 +0.66 mV at 2 mV/div');
+    await expect(tip).not.toContainText(/accepted/i);
   });
 });
 

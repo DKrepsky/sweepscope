@@ -6,7 +6,7 @@ Test plan: [test-plan.md](test-plan.md). Hardware checklist for the human: [hard
 
 ## Summary
 
-Verdict: **pass** (software), after the retest round at `7ab8ff1` (section Retest round 2 below). No bug is open. BUG-31 and C-1 to C-5 and C-7 (partly) are fixed; C-6 (tag cut off at 150 % and 200 % text) and two small leftovers remain with the PM. Nothing blocks the release of the software. Hardware behaviour (shorted-input thresholds, offset independence, CLI on a real scope, `.deb` install) is not proven and needs the human's checklist before the calibration is called verified on the 6254BC.
+Verdict: **pass** (software), after retest round 3 at `19c450f` (hardware feedback; BUG-32 minor open) and round 2 at `7ab8ff1` (section Retest round 2 below). No bug is open. BUG-31 and C-1 to C-5 and C-7 (partly) are fixed; C-6 (tag cut off at 150 % and 200 % text) and two small leftovers remain with the PM. Nothing blocks the release of the software. Hardware behaviour (shorted-input thresholds, offset independence, CLI on a real scope, `.deb` install) is not proven and needs the human's checklist before the calibration is called verified on the 6254BC.
 
 What was exercised:
 
@@ -16,6 +16,52 @@ What was exercised:
 - Static: package contents of an existing `.deb`, the udev rule, the accuracy page against the capability table, repository greps for markers and stale docs.
 
 Wiring (BUG-1 class): no gap found. The four commands are in the main capability and manifest, `createCalibrationCommands` is called from `live-app.ts`, the shell composes `CalibrationModule`, the `zeroCalibration` snapshot member and the `zero_calibration_changed` event reach the real window, and the vite log showed no `not allowed` errors. The real session drove the tag, dialog, toolbar chip and acquisition pause, which a stub cannot prove.
+
+## Retest round 3: hardware feedback (`19c450f`, includes the review fix `08bb363`)
+
+Date: 2026-11-24. Tree: `feat/m4-polish` at `19c450f`, local, unpushed. QA changed only test code: `frontend/e2e/m4-polish.spec.ts`, `frontend/e2e/support/tauri-stub.ts`, `src-tauri/src/integration_tests.rs` (two new real-stack cases). Logs: `.claude/tmp/m4h/` (`cargo.log`, `vitest.log`, `check.log`, `tools.log`, `pw.log`, screenshots `open.png`, `done.png`, `done2.png`, `real-notshorted.png`).
+
+Verdict for this round: **pass with one minor open bug (BUG-32)**. Nothing blocks the software release. Real-scope behaviour of the new 2.5 mV limit and `Continue` is not proven (checklist H-M4-7, H-M4-11).
+
+Suites (each run alone, tree checked after):
+
+| Suite | Result |
+|---|---|
+| `cargo test --workspace` | 1253 passed, 0 failed, 3 ignored (includes 18 shell real-stack cases, 2 new) |
+| vitest | 1402 passed in 110 files |
+| `npm run check` (fmt, clippy, eslint, stylelint, prettier, svelte-check, e2e tsc, architecture, test names) | green |
+| `npm run test:tools` | green |
+| Playwright chromium + webkit, spare ports 5273/4273 | 692 passed, 1 skipped, 9 failed on the first run. 8 failures were `csp.spec.ts` because the preview port was not passed (`E2E_PREVIEW_PORT=4273` is required with a spare preview port); rerun of `csp.spec.ts` and `feedback.spec.ts`: all pass except the known webkit Toast timing test, which flaked under load (load average 6 to 10 from other processes) and passed on a single-worker rerun. `m4-polish.spec.ts`: 57 cases per browser, 114 of 114 passed |
+
+New e2e cases (`m4-polish.spec.ts`, stub now plays `continue_zero_calibration`, `canContinue`, `overridden` and the per-channel tooltip texts):
+- Continue: buttons `Cancel`, `Continue`, `Try again` with `Try again` primary and the warning note; Continue on CH2 then CH3, CH4 then Done with exactly one accepted line; Continue on CH1 and CH4 lists both in order; Continue on the last channel goes to Done; Try again twice sends no Continue and lists nothing; a clipped gate reading (`canContinue` false) shows no Continue and no warning; Esc and Cancel send no Continue and store nothing; tab order Cancel, Continue, Try again; tooltip after Done shows stored offsets and no accepted note.
+- Tooltip: one row per enabled channel at its own range (mixed ranges, CH2 off); typical values when not calibrated; 10x and 100x probe scaling; rows follow instrument updates with no backend request while the tooltip is open; `No channel enabled` in both states; one number form (regex) in both states; no Gain, extreme-position or Resolution text; no caption when calibrated.
+- Focus: the step heading has `outline-style: none` at the intro, channel, not-shorted and Done steps, and a button still shows a ring after Tab.
+- axe: dialog scans at the not-shorted step (with Continue) and at Done with an accepted line, no serious or critical violations.
+- Real stack (`cargo`): all four channels with 1.45 mV at 2 mV/div pass without Continue; a rejected CH4 plus Continue goes to Done with only CH4 overridden; developer cases cover 3 mV at 2 mV/div, 6 mV at 5 mV/div and a clipped gate refusing Continue.
+
+Real window (Tauri debug app at HEAD built with `devUrl` 5373, Xvfb, isolated HOME, `SWEEPSCOPE_NO_HARDWARE=1`, USB directories hidden, signal `shorted` and default; the real scope was not opened):
+- Wizard on the real backend: 4 channels at about 4 s each, Done table with 12 ranges, chips row, no accepted line; offsets near +0.62 to +0.77 mV at 2 mV/div.
+- Heading focus on open: active element is the `H3` `Why calibrate`, `outline-style none`, `box-shadow none`; at Done the focused note `DIV` also has no outline.
+- Tooltip with the real slice: calibrated, CH2 at 2 mV/div, CH3 at 500 mV/div shows `CH2 +0.71 mV at 2 mV/div`, `CH3 0 V at 500 mV/div`; CH2 on a 100x probe shows `+71.3 mV at 200 mV/div`; turning CH3's range while the tooltip is open updates the row (`+0.1 mV at 200 mV/div`). The backend refuses to disable the last channel (`At least one channel must stay on`), so `No channel enabled` cannot be reached in the real app (e2e covers the text).
+- Default signal (open sine) is clipped at the 100 mV/div gate: `canContinue` false, buttons `Cancel`, `Try again` (consistent with the rule). `continue_zero_calibration` is reachable through the real capability: outside a rejection it returns `That is not possible at this step of the zero calibration`, not a permission error.
+- Not reachable in the real window: the simulator zero error control has no environment hook, so `Continue` from a real non-clipped rejection and the 1.45 mV and 3 mV cases ran only in the shell real-stack tests.
+
+### Verdict per amended criterion
+
+| Issue | Criterion | Verdict | Evidence |
+|---|---|---|---|
+| #33 | AC5 amended: not shorted says so, stores nothing, offers `Try again` and `Continue` | Pass (software) | e2e Continue cases above; real stack cargo cases (6 mV at 5 mV/div, 3 mV at 2 mV/div, last channel, 1.45 mV x 4 passes without Continue, clipped gate refused); real window: gate clipped gives no Continue; Cancel and Esc store nothing. The accepted channel line on Done is shown and not persisted. Real hardware: H-M4-7 |
+| #34 | AC4 amended: hover shows per enabled channel the offset at the channel's current range, probe scaled, typical values when not calibrated, `0 V` for zero, one form, `No channel enabled` | Pass with BUG-32 | e2e mixed ranges, probe, live update, no channel; real slice at mixed ranges and 100x probe. Gain, At extreme and Resolution notes are gone. BUG-32: not calibrated, ranges from 50 mV/div up read `up to 82.8 mV at 1 V/div`, a different form from the calibrated rows and the signed typical rows |
+| #33 | Focus ring on the heading when the dialog opens (feedback 1) | Pass | e2e and real window (`outline-style none`); the buttons and the status tag keep their ring |
+
+### Bugs (round 3)
+
+| Bug | Severity | Status |
+|---|---|---|
+| BUG-32 not calibrated tooltip uses `up to X at range` on ranges from index 4 up, one number form was asked for; caption is `Typical zero error of one measured unit:` where design 2.2 says `Typical zero error:` | Minor | Open, sent to `developer` (bus) |
+
+Not tested: `Continue` and the 2.5 mV limit on the real 6254BC (hardware checklist H-M4-7), tooltip on real hardware at probe 10x (H-M4-11), 150 % text scale for the new steps (C-6 limit unchanged), the packages at this commit.
 
 ## Retest round 2 (`7ab8ff1`, after the fix round)
 

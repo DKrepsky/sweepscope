@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import type { ZeroCalibrationState } from '../../src/api';
+import type { TooltipText, ZeroCalibrationState } from '../../src/api';
+import type { ChannelTooltip } from '../../src/api/generated/ChannelTooltip';
 import { instrumentState, stateSnapshot } from '../../src/app/instrument/test-data';
 
 export interface IpcCall {
@@ -18,6 +19,39 @@ const readySnapshot = (zero: Partial<ZeroCalibrationState>) => {
   });
   return { ...snapshot, zeroCalibration: { ...snapshot.zeroCalibration, ...zero } };
 };
+
+const RANGE_MV = [2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+const rangeLabel = (mv: number) => (mv >= 1000 ? `${mv / 1000} V/div` : `${mv} mV/div`);
+/** Offset text in the backend's form: signed millivolts, U+2212 for minus, `0 V` for zero. */
+const offsetLabel = (mv: number) => {
+  if (mv === 0) return '0 V';
+  const digits = Math.abs(mv) < 10 ? 2 : Math.abs(mv) < 100 ? 1 : 0;
+  return `${mv < 0 ? '\u2212' : '+'}${Number(Math.abs(mv).toFixed(digits))} mV`;
+};
+/** Stored offsets of the stub unit, millivolts per channel (CH3 negative, CH4 exactly zero); ranges from 50 mV/div up are zero. */
+const STUB_MV = [0.66, 1.04, -0.83, 0];
+
+/** The backend's tooltip texts in miniature: 12 ranges by 3 probes for each channel. Typical values when not calibrated. */
+export function tooltipFor(calibrated: boolean): TooltipText {
+  const cells = (mv: number): ChannelTooltip => ({
+    cells: RANGE_MV.map((range, index) => {
+      const value = calibrated ? (index < 4 ? mv : 0) : [0.66, 1.04, 0.83, 0.83][Math.min(index, 3)]!;
+      const text = (factor: number) =>
+        `${offsetLabel(Number((value * factor).toFixed(4)))} at ${rangeLabel(range * factor)}`;
+      return [text(1), text(10), text(100)];
+    }),
+  });
+  const [one, two, three, four] = STUB_MV.map(cells) as [
+    ChannelTooltip,
+    ChannelTooltip,
+    ChannelTooltip,
+    ChannelTooltip,
+  ];
+  return {
+    heading: calibrated ? 'Zero error removed per channel and range.' : 'Typical zero error of one measured unit:',
+    channels: [one, two, three, four],
+  };
+}
 
 export interface StubOptions {
   /** Per command: the value it returns, or an error message it rejects with (the M2 file commands and `set_interpolation`). */
@@ -59,7 +93,7 @@ export async function stubTauri(
   options: StubOptions = {},
 ): Promise<void> {
   await page.addInitScript(
-    ([initial, snapshot, scripted, acknowledged]) => {
+    ([initial, snapshot, scripted, acknowledged, tooltips]) => {
       const KEY = '__ss_settings';
       const ACKNOWLEDGED = new Set(acknowledged);
       const commands = scripted as Record<string, { result?: unknown; error?: string }>;
@@ -94,6 +128,7 @@ export async function stubTauri(
         '5 V',
         '10 V',
       ];
+      const stubTooltip = (calibrated: boolean) => (calibrated ? tooltips.calibrated : tooltips.typical);
       const quantity = (text: string, unit: string) => ({ value: Number(text) / 1000, text, unit });
       const table = RANGES.map((range) => {
         const [number = '', unit = ''] = range.split(' ');
@@ -104,12 +139,15 @@ export async function stubTauri(
       });
       let zero = (snapshot as { zeroCalibration: Record<string, unknown> }).zeroCalibration;
       const unshorted = new Set<number>();
+      const clipped = new Set<number>();
       const idle = {
         step: 'intro',
         channel: null,
         doneChannels: [false, false, false, false],
         progress: null,
         notShorted: null,
+        canContinue: false,
+        overridden: [false, false, false, false],
         failure: null,
         table: null,
       };
@@ -119,8 +157,22 @@ export async function stubTauri(
         (w.__emit as (e: string, p: unknown) => void)('zero_calibration_changed', zero);
       };
       const show = (next: Record<string, unknown>) => {
-        const held = (zero.session as { doneChannels: boolean[] } | null)?.doneChannels ?? idle.doneChannels;
-        setZero({ session: { ...idle, doneChannels: held, ...next } });
+        const held = zero.session as { doneChannels: boolean[]; overridden: boolean[] } | null;
+        setZero({
+          session: {
+            ...idle,
+            doneChannels: held?.doneChannels ?? idle.doneChannels,
+            overridden: held?.overridden ?? idle.overridden,
+            ...next,
+          },
+        });
+      };
+      const next = (held: { channel: number; doneChannels?: boolean[] }) => {
+        const session = zero.session as { doneChannels: boolean[] };
+        const doneChannels = session.doneChannels.map((done, index) => done || index === held.channel - 1);
+        if (held.channel < 4) return show({ step: 'channel', channel: held.channel + 1, doneChannels });
+        setZero({ unit: { calibrated: true, storedAtUtc: '2026-11-24T14:05:00Z', tooltip: stubTooltip(true) } });
+        show({ step: 'done', doneChannels, table });
       };
       const zeroCommands: Record<string, () => void> = {
         open_zero_calibration: () => {
@@ -135,27 +187,28 @@ export async function stubTauri(
               step: 'notShorted',
               channel: held.channel,
               notShorted: ['Peak to peak 49.7 mV at 100 mV/div, limit 24.8 mV.'],
+              canContinue: !clipped.has(held.channel),
             });
           }
-          const doneChannels = held.doneChannels.map((done, index) => done || index === held.channel - 1);
-          if (held.channel < 4) return show({ step: 'channel', channel: held.channel + 1, doneChannels });
-          const unit = {
-            calibrated: true,
-            storedAtUtc: '2026-11-24T14:05:00Z',
-            tooltip: {
-              rows: [{ label: 'CH1', value: '+0.66 mV at 2 mV/div' }],
-              notes: ['Zero error removed per channel and range.'],
-            },
-          };
-          setZero({ unit });
-          show({ step: 'done', doneChannels, table });
+          next(held);
+        },
+        // Accepts the rejected reading: the channel is stored as overridden and the sweep carries on without checks.
+        continue_zero_calibration: () => {
+          const held = zero.session as { step: string; channel: number; canContinue: boolean; overridden: boolean[] };
+          if (held?.step !== 'notShorted' || !held.canContinue)
+            throw new Error('That is not possible at this step of the zero calibration');
+          const overridden = held.overridden.map((was, index) => was || index === held.channel - 1);
+          show({ overridden });
+          next(held);
         },
         close_zero_calibration: () => setZero({ session: null }),
       };
       w.__zero = {
-        leaveUnshorted: (channels: number[]) => {
+        leaveUnshorted: (channels: number[], clippedChannels: number[]) => {
           unshorted.clear();
+          clipped.clear();
           channels.forEach((channel) => unshorted.add(channel));
+          clippedChannels.forEach((channel) => clipped.add(channel));
         },
         loseDevice: () => {
           setZero({ availability: { enabled: false, reason: 'No device' } });
@@ -198,7 +251,13 @@ export async function stubTauri(
         },
       };
     },
-    [initialSettings, readySnapshot(options.zero ?? {}), options.commands ?? {}, ACKNOWLEDGED_COMMANDS] as const,
+    [
+      initialSettings,
+      readySnapshot(options.zero ?? {}),
+      options.commands ?? {},
+      ACKNOWLEDGED_COMMANDS,
+      { calibrated: tooltipFor(true), typical: tooltipFor(false) },
+    ] as const,
   );
 }
 
@@ -218,10 +277,15 @@ export const ipcLog = (page: Page): Promise<IpcCall[]> =>
 
 /** Drives the stub's zero calibration session: inputs that fail the shorted check, a lost device, a measuring step. */
 export const zeroStub = {
-  leaveUnshorted: (page: Page, channels: number[]): Promise<void> =>
+  /** Channels whose input fails the check; those in `clipped` also refuse Continue (the reading clipped). */
+  leaveUnshorted: (page: Page, channels: number[], clipped: number[] = []): Promise<void> =>
     page.evaluate(
-      (list) => (window as unknown as { __zero: { leaveUnshorted(c: number[]): void } }).__zero.leaveUnshorted(list),
-      channels,
+      ([list, clip]) =>
+        (window as unknown as { __zero: { leaveUnshorted(c: number[], k: number[]): void } }).__zero.leaveUnshorted(
+          list as number[],
+          clip as number[],
+        ),
+      [channels, clipped] as const,
     ),
   loseDevice: (page: Page): Promise<void> =>
     page.evaluate(() => (window as unknown as { __zero: { loseDevice(): void } }).__zero.loseDevice()),

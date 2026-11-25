@@ -480,3 +480,38 @@ fn given_every_range_of_channel_one_when_the_probe_is_1x_or_10x_then_the_instrum
     .expect("probe");
     walk_every_range(bus, 1);
 }
+
+#[test]
+fn given_every_channel_with_the_largest_real_zero_error_at_two_millivolts_when_measured_then_all_pass_without_continue()
+{
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    for channel in 0..CHANNELS {
+        rig.control
+            .set_zero_error_volts(channel, TWO_MILLIVOLT_RANGE_INDEX, 1.45e-3);
+    }
+
+    measure_channels(bus, 4);
+    wait_for_step(bus, ZeroStep::Done);
+
+    let session = zero_state(bus).session.expect("session");
+    assert_eq!(session.overridden, [false; 4]);
+    assert!(stored_offsets(&rig.storage).is_some());
+}
+
+#[test]
+fn given_a_rejected_last_channel_when_continue_is_sent_then_done_follows_with_only_that_channel_accepted() {
+    let rig = shorted_rig();
+    let bus = &rig.backend.bus;
+    rig.control.set_zero_error_volts(3, FIVE_MILLIVOLT_RANGE_INDEX, 6.0e-3);
+    measure_channels(bus, 4);
+    wait_for_step(bus, ZeroStep::NotShorted);
+    assert_eq!(zero_state(bus).session.expect("session").channel, Some(4));
+
+    bus.request(ContinueZeroChannel).expect("continue");
+    wait_for_step(bus, ZeroStep::Done);
+
+    let session = zero_state(bus).session.expect("session");
+    assert_eq!(session.overridden, [false, false, false, true]);
+    assert!(zero_state(bus).unit.expect("unit").calibrated);
+}
