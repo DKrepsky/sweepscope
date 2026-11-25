@@ -8,6 +8,7 @@ mod ipc;
 #[cfg(test)]
 mod manifest;
 
+use std::process::ExitCode;
 use std::sync::Arc;
 
 use ipc::events::{EventEmitter, EventForwarders};
@@ -15,7 +16,30 @@ use ipc::picker::DialogPicker;
 use ipc::streams::{FrameStreams, RollStreams, SpectrumStreams};
 use tauri::Manager;
 
-fn main() {
+fn main() -> ExitCode {
+    let args: Vec<String> = std::env::args_os()
+        .skip(1)
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    if args.first().is_some_and(|first| sweepscope_cli::is_command(first)) {
+        return run_cli(&args);
+    }
+    run_window();
+    ExitCode::SUCCESS
+}
+
+/// Must stay free of Tauri and `env_logger` so capturing works without a display (ADR 0022).
+fn run_cli(args: &[String]) -> ExitCode {
+    let env = |name: &str| std::env::var(name).ok();
+    ExitCode::from(sweepscope_cli::run(
+        args,
+        &env,
+        &mut std::io::stdout(),
+        &mut std::io::stderr(),
+    ))
+}
+
+fn run_window() {
     env_logger::init();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())

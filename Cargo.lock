@@ -3341,6 +3341,7 @@ dependencies = [
  "serde_json",
  "sweepscope-acquisition",
  "sweepscope-calibration",
+ "sweepscope-cli",
  "sweepscope-device",
  "sweepscope-display",
  "sweepscope-export",
