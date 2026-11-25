@@ -11,7 +11,7 @@ Date: 2026-11-25. Current state for #38 and #37; the round at `2a510e8` below gi
 ### Verdict: blocked (incomplete), not a pass
 
 - **#38: pass (software).**
-- **#37: still not signed off.** The inotify limit is unchanged (owner of the task confirmed; no bundle attempted this time), so there is no `.deb` and no AppImage of this code. P-7, P-8 and P-9 are not run. This blocks the release of #37.
+- **#37: still not signed off.** The inotify limit was reported unchanged by the coordinator, so no bundle was attempted this time, so there is no `.deb` and no AppImage of this code. P-7, P-8 and P-9 are not run. This blocks the release of #37.
 - **No bug is open.** BUG-33 and BUG-34 are fixed and retested.
 
 Tested: release binary built with `cargo build --release -p sweepscope-app --features tauri/custom-protocol` at `d215304`; `SWEEPSCOPE_NO_HARDWARE=1`, USB directories hidden for the CLI and window checks; the real scope was not opened. For the AppImage start script, that binary was put into a copy of the AppDir extracted from the `9b27ad5` image and started through its `AppRun`. This is not an AppImage run.
