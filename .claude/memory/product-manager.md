@@ -61,3 +61,6 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Merge conflicts again only in .claude/memory/developer.md (keep both sides) and tauri-stub.ts (QA edits); commit QA artefacts before merging developer branches. Worktree agents commit with `git add -A` can sweep QA's untracked files.
 - Usage limit stopped four agents at once; SendMessage resume worked.
 - Reviewer found a real race QA missed (first frame uncalibrated); tests that pass "usually" need a deterministic same-wake-up test.
+- Every new executable or command needs a "how do I get and run it" check before G4: the human tried `sweepscope-cli` and got "command not found". Human prefers one install with one executable (`sweepscope capture ...`), no extra flags.
+- A permission-check refusal inside a subagent: do not retry or reroute; tell the human plainly what was refused. With their explicit authorization, run it openly as separate plain commands (worked for actionlint and the workspace tests).
+- Package builds fail with "OS file watch limit reached" when VS Code holds the inotify watches: ask the human to raise `fs.inotify.max_user_watches` (done once, lost on reboot); no preload shims.
