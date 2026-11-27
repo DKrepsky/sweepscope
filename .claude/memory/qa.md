@@ -165,7 +165,7 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 
 ## Single executable lessons (#38, #37)
 - CLI is the app binary: `sweepscope capture ...`. Without the Tauri CLI: `npm --prefix frontend run build && cargo build --release -p sweepscope-app --features tauri/custom-protocol` gives a working window and CLI (`target/release/sweepscope-app`).
-- VS Code can hold every inotify watch: `tauri build`, `build --no-bundle` and `bundle` all fail with "OS file watch limit reached". No sysctl, kill or preload shim: report the packages as not built; check a developer's bundle only with its commit stated.
+- (Fixed 2026-11-27: the human raised `fs.inotify.max_user_watches` to 524288.) VS Code can hold every inotify watch: `tauri build`, `build --no-bundle` and `bundle` all fail with "OS file watch limit reached". No sysctl, kill or preload shim: report the packages as not built; check a developer's bundle only with its commit stated.
 - Scripts in an older scratchpad pattern still work: Xvfb :77 + openbox, `unshare -rm` with tmpfs over USB. Window needs about 27 s to appear (portal timeouts). First screenshot after Run can be empty; wait 2 s.
 - AppImage FUSE start does not work inside `unshare -rm`: run the CLI outside with `--simulator` only; for the window use `--appimage-mount` outside and run `$MNT/AppRun` inside the namespace. Set TMPDIR for extract-and-run: it leaves 272 MB folders.
 - PWD/APPDIR negative tests: do not use `APPDIR=/tmp` when binary and cwd are under /tmp (that is a real match).
@@ -173,3 +173,4 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - Real-time Toast tests: measure inside the page (MutationObserver) from appearance, not with a wait that starts after `goto`; the info Toast "flake" was exactly that (WebKit loads the gallery 0.6 s late). Measure before calling something a flake.
 - The harness safety check refuses `rm -rf` on variable targets (the whole command does not run). In scratch scripts use fresh `mktemp -d` folders and remove nothing, or remove by literal absolute path.
 - To test new code through the AppImage start script without bundling: copy an extracted AppDir, swap `usr/bin/sweepscope`, run `AppRun` (label it as not an AppImage run).
+- Package checks: `npm run build -- --bundles deb,appimage` (about 5 min), `dpkg-deb -x/-e` into a fresh dir, `apt-get install -s file.deb` for a dependency dry run. `gallery.spec.ts:122` (StatusChip, webkit) takes 20 s of a 30 s timeout and can time out in a full run.

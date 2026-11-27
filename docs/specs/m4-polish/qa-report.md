@@ -4,6 +4,54 @@ Build or commit: first round `feat/m4-polish` at `5bdd38a`; retest round after t
 Date: 2026-11-24
 Test plan: [test-plan.md](test-plan.md). Hardware checklist for the human: [hardware-checklist.md](hardware-checklist.md).
 
+## Packages at `44e1fc0` (#37, #38): current verdict
+
+Date: 2026-11-27. This section replaces the verdicts and the "not built" statements of the two sections below.
+
+### Verdict: pass (software); installing the `.deb` remains for the human
+
+- **#38: pass.** **#37: pass for everything that can be checked without installing** (H-M4-9 is still open).
+- No bug is open.
+
+The human raised `fs.inotify.max_user_watches` to 524288 (read back by QA). `npm run build -- --bundles deb,appimage` then ran as it is, with no shim or preload. `npm run build -- --no-bundle`, the source build of `install.md`, also works.
+
+| Package (in `target/release/bundle/`, not committed) | Size in bytes | sha256 |
+|---|---|---|
+| `deb/SweepScope_0.1.0_amd64.deb` | 4829876 | `37e3ec736c07411323a7bc22115b72f3dd539faab30a60bc8b7742cd0a8f0ed7` |
+| `appimage/SweepScope_0.1.0_amd64.AppImage` | 85850616 | `0c6f1819e4182a1fd8460c7819e23a354e99a5206325ffeb56656834e1929dcf` |
+
+Everything ran with `SWEEPSCOPE_NO_HARDWARE=1`, isolated `HOME`, fresh scratch folders, packages extracted and nothing installed. Windows ran on Xvfb with USB directories hidden. FUSE-mode AppImage captures cannot hide USB and all used `--simulator`. The real scope was not opened.
+
+| Case | Result | Notes |
+|---|---|---|
+| P-7 | Pass | both packages built |
+| P-8 | Pass | `.deb` has one program, `/usr/bin/sweepscope`, no `sweepscope-cli`; `SweepScope.desktop` has `Exec=sweepscope` (no arguments), `StartupWMClass=sweepscope`; udev rule identical to `packaging/udev`, passes `udevadm verify`; `postinst` and `postrm` identical to `packaging/deb`; icons 16 to 512 identical to `src-tauri/icons`; `Depends: libusb-1.0-0, libwebkit2gtk-4.1-0, libgtk-3-0`; needs glibc 2.39, as documented. The AppImage's AppDir has the same program name and `Exec` line and no shim library |
+| P-8, dependencies | Pass on this machine | `apt-get install -s` (dry run) accepts the package and resolves it. This machine already has the libraries, so a clean machine is still untested. Other linked libraries (GLib, cairo, gdk-pixbuf, libsoup, JavaScriptCore, D-Bus) are left to the dependencies of the declared three |
+| P-9 | Pass | extracted `/usr/bin/sweepscope`, no display, USB hidden: five words; N=3 and raw (0); existing target (1); usage and non-UTF-8 argument (2); no device (10); never triggers (11, warning on stderr, stdout empty); read-only target (12); stored offsets applied; config folder unchanged |
+| AI-1, AI-2, AI-3, AI-5 | Pass | this AppImage, normal FUSE start, `--appimage-extract-and-run` and `APPIMAGE_EXTRACT_AND_RUN=1`: relative `--setup`, `--out`, `--config-dir`, default folder, non-UTF-8 caller folder, exits 0, 2, 11, 12 (10 with extract-and-run, USB hidden); installed as `~/.local/bin/sweepscope`; stale `PWD`/`OWD` and inherited `APPDIR`. The extract folder stays in `TMPDIR`, as `cli.md` now says |
+| AI-4, S-11 | Pass | window from the `.deb` binary (started as `sweepscope`, like the desktop entry), from the mounted AppImage (its `AppRun`) and with extract-and-run: live trace after Run, `Ready Simulator`, `WM_CLASS` `sweepscope`, window icon set, config folder `io.github.dkrepsky.sweepscope`, no capability error or panic in the log |
+
+### #37 criteria
+
+| Criterion | Verdict |
+|---|---|
+| Release build produces an AppImage and a .deb | Pass |
+| `.deb` installs the udev rule and the app starts | Partly: rule, scripts and program verified by extraction and the extracted program starts; the install itself was not run (H-M4-9) |
+| WebKitGTK dependency declared and resolved | Pass (declared; dry run). Clean machine: H-M4-9 |
+| Final identifier and icon | Pass |
+
+### Suites
+
+- `cargo test --workspace` (1281 passed) and the tools checks were run at `d215304`; product code is unchanged since.
+- vitest: 1402 passed in 110 files.
+- Playwright: 699 passed, 1 skipped, 2 failed, both webkit: the 33 ms frame budget probe and the StatusChip colour test (`gallery.spec.ts:122`, 30 s test timeout). Both passed 3 of 3 alone with one worker. The StatusChip case takes about 20 s alone in webkit, so it has little margin under parallel load; watch it. The info Toast case fixed in the last round is green.
+
+### Not tested
+
+`apt install` and removal (so the maintainer scripts were not executed), a clean machine or VM, a machine without FUSE, the launcher entry in a desktop menu, Wayland, and the real 6254BC (H-M4-6, H-M4-9).
+
+Logs and screenshots (not committed): `.claude/tmp/38/pkg/`.
+
 ## Retest of the single executable at `d215304`
 
 Date: 2026-11-25. Current state for #38 and #37; the round at `2a510e8` below gives the full results.
