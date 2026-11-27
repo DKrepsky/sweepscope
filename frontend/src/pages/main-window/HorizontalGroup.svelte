@@ -104,9 +104,6 @@
       valueText="{horizontal.timePerDiv.value} {horizontal.timePerDiv.unit}"
       ariaLabel="Time per division"
     />
-    {#if horizontal.unverified}
-      <Badge kind="warning" tooltip={horizontal.unverified}>Unverified</Badge>
-    {/if}
   </div>
   {#if views.tab === 'yt'}
     <div class="line">

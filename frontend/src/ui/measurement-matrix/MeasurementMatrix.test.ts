@@ -35,15 +35,6 @@ describe('MeasurementMatrix', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('No edge found');
   });
 
-  it('AC-M1: given an unverified cell, when rendered, then the value is followed by ? and the cell has the unverified class', () => {
-    const cells = { ch1: { state: 'unverified', text: '1.20', unit: 'V' } as MeasurementCell };
-    render(MeasurementMatrix, { columns: [first], rows: rowWith(cells), footnotes: [] });
-
-    const cell = screen.getByRole('cell');
-    expect(cell).toHaveTextContent('1.20 ? V');
-    expect(cell).toHaveClass('unverified');
-  });
-
   it('AC-M1: given a column for a disabled channel is not passed, when rendered, then no header or cell exists for it', () => {
     render(MeasurementMatrix, { columns: [first], rows: rowWith({ ch1: valid, ch2: valid }), footnotes: [] });
 

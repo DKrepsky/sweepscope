@@ -14,6 +14,8 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 sweepscope-acquisition = { path = "../backend/features/acquisition" }
+sweepscope-calibration = { path = "../backend/features/calibration" }
+sweepscope-cli = { path = "../cli" }
 sweepscope-device = { path = "../backend/features/device" }
 sweepscope-display = { path = "../backend/features/display" }
 sweepscope-export = { path = "../backend/features/export" }

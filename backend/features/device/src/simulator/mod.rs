@@ -4,6 +4,7 @@
 //! - The trigger sits exactly at the requested position; the real scope is off by about 6 samples.
 //! - Dead time between frames (readback 15 ms, re-arm 5 ms) is an unverified assumption (`timing`).
 //! - Signals are waveforms with a set frequency, amplitude and offset plus small seeded noise; coupling and bandwidth limit have no effect.
+//! - Every signal gets a per-channel, per-range zero error (defaults from protocol A.3); `Shorted` has no waveform and shows Gaussian noise per range instead.
 //! - Edge and pulse triggers exist, evaluated on the clean waveform of the source channel; a pulse is
 //!   aligned to its leading edge and a missing pulse behaves like a missing edge (`Normal` times out).
 //! - Frames are exactly 4096 samples per channel, and the device never reports a calibration fault.

@@ -35,7 +35,6 @@ const spec = (overrides: Partial<ScreenshotSpec> = {}): ScreenshotSpec => ({
     rows: [{ label: 'Frequency', cells: [{ text: '1.00 kHz' }] }],
   },
   footnotes: ['[1] Not measurable'],
-  accuracyNote: 'Volts accurate to 2 counts',
   ...overrides,
 });
 
@@ -48,7 +47,6 @@ describe('drawScreenshot', () => {
     expect(texts).toEqual(
       expect.arrayContaining(['SweepScope', 'CH1  500 mV/div', 'CH1', 'Frequency', '1.00 kHz', '[1] Not measurable']),
     );
-    expect(texts).toContain('Volts accurate to 2 counts');
   });
 
   it('given two channels when drawn then each has a trace in its own colour', () => {
@@ -75,7 +73,7 @@ describe('drawScreenshot', () => {
 
     drawScreenshot(ctx, spec(), 2);
 
-    const layout = screenshotLayout({ header: spec().header, tableRows: 1, noteLines: 2 });
+    const layout = screenshotLayout({ header: spec().header, tableRows: 1, noteLines: 1 });
     expect(transforms).toContainEqual([2, 0, 0, 2, layout.graph.x * 2, layout.graph.y * 2]);
     expect(transforms.every(([, , , , e = 0, f = 0]) => Number.isInteger(e) && Number.isInteger(f))).toBe(true);
   });
@@ -99,32 +97,32 @@ describe('drawScreenshot', () => {
 });
 
 const LONG_NOTE =
-  'Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). ' +
-  'Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit only.';
+  'Measurements are not available in roll mode, so every value in this table is shown as a dash until the time base ' +
+  'is fast enough to measure again.';
 
-describe('screenshot accuracy note', () => {
-  it('given a long accuracy note when wrapped then every line fits the picture width', () => {
-    const { accuracy } = screenshotNotes([], LONG_NOTE);
+describe('screenshot footnotes', () => {
+  it('given a long footnote when wrapped then every line fits the picture width', () => {
+    const lines = screenshotNotes([LONG_NOTE]);
 
-    expect(accuracy.length).toBeGreaterThan(1);
-    expect(accuracy.join(' ')).toBe(LONG_NOTE);
-    for (const line of accuracy) expect(line.length * 11 * 0.5).toBeLessThanOrEqual(GRAPH_SIZE.width);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe(LONG_NOTE);
+    for (const line of lines) expect(line.length * 11 * 0.5).toBeLessThanOrEqual(GRAPH_SIZE.width);
   });
 
-  it('given a long accuracy note when drawn then no note line is left out and the picture is tall enough', () => {
+  it('given a long footnote when drawn then no line is left out and the picture is tall enough', () => {
     const { ctx, texts } = textRecordingContext();
-    const long = spec({ accuracyNote: LONG_NOTE });
+    const long = spec({ footnotes: [LONG_NOTE] });
 
     drawScreenshot(ctx, long, 1);
 
-    const { accuracy } = screenshotNotes(long.footnotes, LONG_NOTE);
-    for (const line of accuracy) expect(texts).toContain(line);
-    const layout = screenshotLayout({ header: long.header, tableRows: 1, noteLines: 1 + accuracy.length });
+    const lines = screenshotNotes(long.footnotes);
+    for (const line of lines) expect(texts).toContain(line);
+    const layout = screenshotLayout({ header: long.header, tableRows: 1, noteLines: lines.length });
     expect(specSize(long).height).toBe(layout.size.height);
   });
 
-  it('given a short accuracy note when wrapped then it stays on one line', () => {
-    expect(screenshotNotes([], 'Volts accurate to 2 counts').accuracy).toEqual(['Volts accurate to 2 counts']);
+  it('given a short footnote when wrapped then it stays on one line', () => {
+    expect(screenshotNotes(['[1] Not measurable'])).toEqual(['[1] Not measurable']);
   });
 });
 

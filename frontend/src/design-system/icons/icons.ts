@@ -40,6 +40,7 @@ export const icons = {
   'pulse-positive': grid(line('M2 12h3.5V4h5v8H14')),
   'pulse-negative': grid(line('M2 4h3.5v8h5V4H14')),
   peak: grid(solid('M3 5h10L8 12z'), line('M8 2v1.5')),
+  ok: grid(line('M3 8.5l3.2 3L13 4.5')),
   close: grid(line('M4 4l8 8M12 4l-8 8')),
   disconnected: grid(line('M7 5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11l-1 1a2.5 2.5 0 0 1-3.5-3.5l1-1M3 13L13 3')),
 } as const satisfies Record<string, IconDefinition>;

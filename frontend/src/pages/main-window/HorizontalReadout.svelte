@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { HorizontalModel, PersistenceModel, RecordingModel, RollModel, ViewsModel } from '../../app/main-window';
-  import Badge from '../../ui/badge/Badge.svelte';
   import Readout from '../../ui/readout/Readout.svelte';
   import StatusChip from '../../ui/status-chip/StatusChip.svelte';
 
@@ -59,9 +58,6 @@
     <Readout value={horizontal.timePerDiv.value} unit={horizontal.timePerDiv.unit}>
       {#snippet label()}{layout === 'roll' ? 'Roll' : 'Horizontal'}{/snippet}
     </Readout>
-    {#if horizontal.unverified}
-      <Badge kind="warning" tooltip={horizontal.unverified}>Unverified</Badge>
-    {/if}
     <span class="sep">|</span>
     {#if layout === 'yt'}
       <Readout value={horizontal.triggerPosition.value} unit={horizontal.triggerPosition.unit}>

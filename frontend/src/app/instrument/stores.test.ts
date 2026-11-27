@@ -12,6 +12,7 @@ import {
   recordingState,
   spectrumState,
   stateSnapshot,
+  zeroCalibrationState,
 } from './test-data';
 
 function setup(snapshot = stateSnapshot()) {
@@ -146,15 +147,15 @@ describe('instrument stores', () => {
   it('given an applied measurements revision, when an event with a lower revision arrives, then it is ignored', async () => {
     const { client, stores } = setup(stateSnapshot({ measurements: measurementsState({ revision: 6 }) }));
     await stores.start();
-    client.emit('measurements_changed', measurementsState({ revision: 5, accuracyNote: 'old' }));
-    expect(get(stores.measurements)?.accuracyNote).toBe('Approximate');
+    client.emit('measurements_changed', measurementsState({ revision: 5 }));
+    expect(get(stores.measurements)?.revision).toBe(6);
   });
 
   it('given an applied measurements revision, when a newer event arrives, then the store follows it', async () => {
     const { client, stores } = setup();
     await stores.start();
-    client.emit('measurements_changed', measurementsState({ revision: 2, accuracyNote: 'new' }));
-    expect(get(stores.measurements)?.accuracyNote).toBe('new');
+    client.emit('measurements_changed', measurementsState({ revision: 2 }));
+    expect(get(stores.measurements)?.revision).toBe(2);
   });
 
   it('given start, when the snapshot is requested, then display and measurements events are already subscribed', async () => {
@@ -195,5 +196,37 @@ describe('instrument stores', () => {
     await stores.start();
     client.emit('recording_changed', recordingState({ revision: 2, active: true, fileName: 'a.ssroll' }));
     expect(get(stores.recording)?.fileName).toBe('a.ssroll');
+  });
+});
+
+describe('instrument stores: zero calibration', () => {
+  it('given a snapshot, when started, then the zero calibration slice holds the snapshot member', async () => {
+    const snapshot = stateSnapshot({ zeroCalibration: zeroCalibrationState({ revision: 3 }) });
+    const { stores } = setup(snapshot);
+
+    await stores.start();
+
+    expect(get(stores.zeroCalibration)).toEqual(snapshot.zeroCalibration);
+  });
+
+  it('given an applied revision, when an older zero calibration event arrives, then it is ignored', async () => {
+    const { client, stores } = setup(stateSnapshot({ zeroCalibration: zeroCalibrationState({ revision: 5 }) }));
+    await stores.start();
+
+    client.emit(
+      'zero_calibration_changed',
+      zeroCalibrationState({ revision: 4, availability: { enabled: false, reason: 'x' } }),
+    );
+
+    expect(get(stores.zeroCalibration)?.availability.enabled).toBe(true);
+  });
+
+  it('given the fake session, when the user opens it, then the store follows the published events', async () => {
+    const { client, stores } = setup();
+    await stores.start();
+
+    await client.send('open_zero_calibration', {});
+
+    expect(get(stores.zeroCalibration)?.session?.step).toBe('intro');
   });
 });

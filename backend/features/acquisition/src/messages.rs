@@ -10,7 +10,6 @@ use ts_rs::TS;
 pub struct ScaleChoice {
     pub index: u8,
     pub label: FormattedValue,
-    pub verified: bool,
     pub faster: Availability,
     pub slower: Availability,
 }
@@ -32,8 +31,6 @@ pub struct ChannelState {
     pub probe: f64,
     pub probe_text: String,
     pub invert: bool,
-    /// Reason text when the range is outside 50 mV to 1 V per division.
-    pub unverified: Option<String>,
     pub enable: Availability,
 }
 
@@ -85,8 +82,6 @@ pub enum TriggerKindName {
 pub struct PulseState {
     pub condition: PulseCondition,
     pub width: FormattedValue,
-    /// False outside 50 us to 5 ms, the widths checked on hardware.
-    pub verified: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -322,6 +317,11 @@ pub enum SettingTarget {
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstrumentChanged(pub InstrumentState);
 impl Event for InstrumentChanged {}
+
+/// Published after every `ZeroOffsetsChanged` the module has handled, so a publisher can wait for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ZeroOffsetsApplied;
+impl Event for ZeroOffsetsApplied {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StatusChanged(pub AcquisitionStatus);

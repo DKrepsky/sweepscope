@@ -20,21 +20,13 @@ fn probe(factor: f64) -> ChannelPatch {
     }
 }
 
-fn step_range_to(instrument: &mut Instrument, steps: i8) {
-    for _ in 0..steps.abs() {
-        instrument.step(CH1, steps.signum()).unwrap();
-    }
-}
-
 #[test]
-fn given_the_default_range_when_the_state_is_read_then_the_label_reads_1_volt_per_div_and_is_verified() {
+fn given_the_default_range_when_the_state_is_read_then_the_label_reads_1_volt_per_div() {
     let s = state(&ready_instrument());
 
     let range = &s.channels[0].range;
 
     assert_eq!((range.label.text.as_str(), range.label.unit.as_str()), ("1", "V/div"));
-    assert!(range.verified);
-    assert!(s.channels[0].unverified.is_none());
 }
 
 #[test]
@@ -85,41 +77,6 @@ fn given_invert_when_toggled_then_the_state_and_frame_context_change_but_not_the
     assert_eq!(instrument.setup().unwrap(), &before);
     assert_eq!(instrument.frame_context(7).invert, [false, true, false, false]);
     assert!(state(&instrument).channels[1].invert);
-}
-
-#[test]
-fn given_a_range_below_50_mv_when_the_state_is_read_then_the_unverified_text_says_below() {
-    let mut instrument = ready_instrument();
-    step_range_to(&mut instrument, -5);
-
-    let channel = &state(&instrument).channels[0];
-
-    assert!(!channel.range.verified);
-    assert_eq!(
-        channel.unverified.as_deref(),
-        Some("Unverified range: below 50 mV per div. Accuracy up to about 5 % of a division.")
-    );
-}
-
-#[test]
-fn given_a_range_above_1_v_when_the_state_is_read_then_the_unverified_text_says_above() {
-    let mut instrument = ready_instrument();
-    step_range_to(&mut instrument, 1);
-
-    let channel = &state(&instrument).channels[0];
-
-    assert!(!channel.range.verified);
-    assert!(channel.unverified.as_deref().unwrap().contains("above 1 V"));
-}
-
-#[test]
-fn given_an_unverified_time_base_when_the_state_is_read_then_the_choice_is_not_verified() {
-    let mut instrument = ready_instrument();
-    for _ in 0..40 {
-        instrument.step(SettingTarget::TimeBase, -1).unwrap();
-    }
-
-    assert!(!state(&instrument).horizontal.time_base.verified);
 }
 
 #[test]
@@ -291,7 +248,7 @@ fn given_the_default_setup_when_the_frame_context_is_read_then_it_carries_the_wi
 }
 
 #[test]
-fn given_a_probe_and_an_unverified_range_when_the_frame_context_is_read_then_it_carries_both_and_the_time_base() {
+fn given_a_probe_when_the_frame_context_is_read_then_it_carries_the_probe_the_time_base_and_no_calibration() {
     let mut instrument = ready_instrument();
     instrument.set_channel(2, probe(10.0)).unwrap();
     instrument.step(CH1, 1).unwrap();
@@ -302,7 +259,7 @@ fn given_a_probe_and_an_unverified_range_when_the_frame_context_is_read_then_it_
     let context = instrument.frame_context(1);
 
     assert_eq!(context.probe, [1.0, 10.0, 1.0, 1.0]);
-    assert_eq!(context.range_verified, [false, true, true, true]);
+    assert_eq!(context.calibrated, [false; 4]);
     assert_close(context.seconds_per_div, 200e-6);
 }
 
@@ -310,7 +267,7 @@ fn given_a_probe_and_an_unverified_range_when_the_frame_context_is_read_then_it_
 fn given_no_device_ever_ready_when_the_frame_context_is_read_then_the_new_fields_are_neutral() {
     let context = Instrument::new(Defaults::default()).frame_context(1);
 
-    assert_eq!((context.probe, context.range_verified), ([1.0; 4], [true; 4]));
+    assert_eq!((context.probe, context.calibrated), ([1.0; 4], [false; 4]));
     assert_eq!(context.seconds_per_div, 0.0);
 }
 

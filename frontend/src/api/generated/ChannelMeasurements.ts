@@ -11,10 +11,6 @@ channel: number,
  */
 clipped: boolean, 
 /**
- * Reason text when the range is outside the verified 50 mV to 1 V per division.
- */
-unverified: string | null, 
-/**
  * Always twelve, in the order of `MeasurementId`.
  */
 measurements: Array<Measurement>, };

@@ -162,17 +162,6 @@ describe('MainWindow behaviour', () => {
     expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus();
   });
 
-  it('given the Accuracy popover open, when Escape is pressed, then it closes and focus returns to its button', async () => {
-    const user = userEvent.setup();
-    renderShell(tiers.w1);
-    await user.click(screen.getByRole('button', { name: /^Accuracy/ }));
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('dialog', { name: 'Accuracy note' })).toBeNull();
-    expect(screen.getByRole('button', { name: /^Accuracy/ })).toHaveFocus();
-  });
-
   it('given an error notification, when rendered, then it is announced as an alert', () => {
     renderShell(tiers.w1, {
       notifications: writable<Notification[]>([{ id: 1, kind: 'error', text: 'Could not save text size' }]),
@@ -215,11 +204,11 @@ describe('MainWindow behaviour', () => {
     expect(container.querySelector('[data-trigger-summary]')).toHaveTextContent(/^Trigger CH\d/);
   });
 
-  it('given tier h3, when rendered, then only connection and sample rate remain in the status bar', () => {
+  it('given tier h3, when rendered, then only connection, sample rate and the calibration tag remain in the status bar', () => {
     const { container } = renderShell({ ...tiers.h3, width: 'w3' });
 
     const items = [...container.querySelectorAll('[data-item]')].map((item) => item.getAttribute('data-item'));
-    expect(items).toEqual(['connection', 'sample-rate']);
+    expect(items).toEqual(['connection', 'sample-rate', 'calibration']);
   });
 
   it('given the mock model, when rendered, then no placeholder note sits next to the numbers', () => {
@@ -229,27 +218,22 @@ describe('MainWindow behaviour', () => {
   });
 });
 
-describe('MainWindow unverified time base', () => {
-  it('given a verified time base, when rendered, then the Horizontal group has no unverified badge', () => {
+describe('MainWindow verification markers', () => {
+  it('given the shell, when rendered, then no Unverified badge is on screen', () => {
     renderShell(tiers.w1);
 
-    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
-    expect(within(group).queryByText('Unverified')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unverified')).not.toBeInTheDocument();
   });
 
-  it('given an unverified time base, when rendered, then the Horizontal group and the readout show the badge', () => {
-    const model = createMockMainWindow();
-    const unverified = {
-      ...get(model),
-      horizontal: { ...get(model).horizontal, unverified: 'Unverified (see accuracy note).' },
-    };
+  it('given the component sources, when scanned, then none reads a verified or unverified field', () => {
+    const sources = import.meta.glob('../../**/*.svelte', { query: '?raw', import: 'default', eager: true });
 
-    renderShell(tiers.w1, { model: writable(unverified) });
+    const readers = Object.entries(sources)
+      .filter(([, text]) => /\.(un)?verified\b/i.test(text as string))
+      .map(([path]) => path);
 
-    const group = document.querySelector<HTMLElement>('[data-region="horizontal"]')!;
-    const readout = document.querySelector<HTMLElement>('[data-region="readout"]')!;
-    expect(within(group).getByText('Unverified')).toBeInTheDocument();
-    expect(within(readout).getByText('Unverified')).toBeInTheDocument();
+    expect(Object.keys(sources).length).toBeGreaterThan(50);
+    expect(readers).toEqual([]);
   });
 });
 

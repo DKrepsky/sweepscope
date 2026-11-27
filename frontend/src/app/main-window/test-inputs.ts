@@ -6,6 +6,7 @@ import {
   instrumentState,
   measurementsState,
   spectrumState,
+  zeroCalibrationState,
 } from '../instrument/test-data';
 import type { ModelInputs } from './select-common';
 
@@ -18,6 +19,7 @@ export function modelInputs(patch: Partial<ModelInputs> = {}): ModelInputs {
     facts: instrumentFacts(),
     display: displayState(),
     measurements: measurementsState(),
+    zeroCalibration: zeroCalibrationState(),
     frame: undefined,
     selected: 1,
     cursors: {},

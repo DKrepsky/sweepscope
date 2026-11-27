@@ -486,15 +486,17 @@ describe('banners', () => {
 });
 
 describe('status bar', () => {
-  it('given a simulated connection, when rendered, then the connection item says Simulator', () => {
+  it('given a simulated connection, when rendered, then the detail leads with Simulator and no chip is drawn', () => {
     setup((model) => ({
       ...model,
-      status: { ...model.status, connection: { ...model.status.connection, simulated: true } },
+      status: { ...model.status, connection: { ...model.status.connection, detail: 'Simulator · Hantek 6254BC' } },
     }));
-    expect(document.querySelector('[data-item="connection"]')).toHaveTextContent('Simulator');
+    const item = document.querySelector('[data-item="connection"]');
+    expect(item).toHaveTextContent('Simulator · Hantek 6254BC');
+    expect(item?.querySelector('.chip')).toBeNull();
   });
 
-  it('given a connection in error, when rendered, then the connection chip is an error chip', () => {
+  it('given a connection in error, when rendered, then the item shows the Error word with a warning icon', () => {
     setup((model) => ({
       ...model,
       status: {
@@ -502,7 +504,36 @@ describe('status bar', () => {
         connection: { ...model.status.connection, state: 'Error', detail: 'Permission denied' },
       },
     }));
-    expect(document.querySelector('[data-item="connection"]')).toHaveTextContent('Error');
-    expect(document.querySelector('[data-item="connection"] .chip.error')).not.toBeNull();
+    const item = document.querySelector('[data-item="connection"]');
+    expect(item).toHaveTextContent('Error');
+    expect(item?.querySelector('.connection.error svg')).not.toBeNull();
+    expect(item?.querySelector('.dot')).toBeNull();
+  });
+
+  it('given the status bar, when rendered, then it has no Accuracy item', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: /^Accuracy/ })).toBeNull();
+  });
+
+  it('given the calibration tag, when clicked, then openCalibration is the only action called', async () => {
+    const { actions, user } = setup();
+    await user.click(screen.getByRole('button', { name: 'No calibration. Open calibration dialog' }));
+    expect(onlyCall(actions)).toEqual(['openCalibration']);
+  });
+
+  it('given the model has no device, when rendered, then the tag is disabled with the reason', () => {
+    setup((model) => ({
+      ...model,
+      calibration: { ...model.calibration, tag: { state: 'unavailable', reason: 'No device' } },
+    }));
+    expect(screen.getByRole('button', { name: /Calibration -/ })).toBeDisabled();
+  });
+
+  it('given the tag, when the status bar is read, then it is the last item', () => {
+    setup();
+    expect(document.querySelector('[data-region="status"] .item:last-child')).toHaveAttribute(
+      'data-item',
+      'calibration',
+    );
   });
 });

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-start-zero-calibration"
+description = "Enables the start_zero_calibration command without any pre-configured scope."
+commands.allow = ["start_zero_calibration"]
+
+[[permission]]
+identifier = "deny-start-zero-calibration"
+description = "Denies the start_zero_calibration command without any pre-configured scope."
+commands.deny = ["start_zero_calibration"]

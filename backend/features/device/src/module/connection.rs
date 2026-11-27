@@ -173,6 +173,7 @@ mod tests {
             fpga_version: None,
             calibration: CalibrationStatus::Valid,
             simulated: true,
+            unit_id: None,
         }
     }
 

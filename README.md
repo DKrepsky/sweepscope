@@ -28,7 +28,7 @@ for tests and demos: `SWEEPSCOPE_NO_HARDWARE=1 SWEEPSCOPE_SIMULATOR=1 npm run de
 
 ### Accuracy
 
-Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit.
+Voltage readings can be off by about 2 to 3 counts at extreme positions (about 0.1 division). Ranges below 50 mV/div and above 1 V/div are only partly verified. All figures come from one unit; see [docs/accuracy.md](docs/accuracy.md).
 
 ### Keyboard shortcuts
 

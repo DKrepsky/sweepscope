@@ -44,4 +44,14 @@ describe('StatusBar', () => {
     expect(element).toHaveClass('warning');
     expect(element?.querySelector('svg')).toBeInTheDocument();
   });
+
+  it('given an end item of low priority, when rendered with a wrap threshold, then it closes the first row and never wraps', () => {
+    const tag = { ...item('tag', 1), end: true };
+    render(StatusBar, { items: [tag, ...items], wrapPriorityAtLeast: 2 });
+
+    const first = document.querySelector('.row');
+    expect(rowOf('tag')).toBe(first);
+    expect(first?.lastElementChild).toHaveTextContent('tag');
+    expect(screen.getByText('tag').closest('.item')).toHaveClass('end');
+  });
 });

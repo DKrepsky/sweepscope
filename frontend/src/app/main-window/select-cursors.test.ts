@@ -6,7 +6,6 @@ import { selectCursors } from './select-cursors';
 const scale = (value: number) => ({
   index: 0,
   label: { value, text: String(value), unit: '' },
-  verified: true,
   faster: { enabled: true, reason: null },
   slower: { enabled: true, reason: null },
 });

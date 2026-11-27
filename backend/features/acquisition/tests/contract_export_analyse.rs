@@ -29,7 +29,7 @@ fn given_the_analyse_state_when_exported_then_roll_math_pulse_and_autoset_fields
     assert!(generated("InstrumentState.ts").contains("math: MathState"));
     assert!(generated("HorizontalState.ts").contains("roll: boolean"));
     assert!(generated("TriggerState.ts").contains("pulse: PulseState | null"));
-    assert!(generated("PulseState.ts").contains("verified: boolean"));
+    assert!(!generated("PulseState.ts").contains("verified"));
     for field in [
         "single: Availability",
         "autoset: Availability",

@@ -41,12 +41,13 @@ fn given_the_channel_and_scale_types_when_exported_then_the_ui_fields_exist() {
         "maxPositionDivs: number",
         "bandwidthLimit: boolean",
         "probeText: string",
-        "unverified: string | null",
         "enable: Availability",
         "coupling: Coupling",
     ] {
         assert!(channel.contains(field), "{field} missing in {channel}");
     }
+    assert!(!channel.contains("unverified"), "{channel}");
+    assert!(!generated("ScaleChoice.ts").contains("verified"));
     assert!(generated("ScaleChoice.ts").contains("faster: Availability"));
     assert!(generated("FormattedValue.ts").contains("unit: string"));
     assert!(generated("Availability.ts").contains("reason: string | null"));

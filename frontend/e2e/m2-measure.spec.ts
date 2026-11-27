@@ -62,7 +62,7 @@ const invalid = (id: MeasurementId, text: string): Measurement => ({
   invalid: { reason: 'fewerThanOnePeriod', text },
 });
 
-async function sendMeasurements(page: Page, patch: { unverified?: string | null; clipped?: boolean } = {}) {
+async function sendMeasurements(page: Page, patch: { clipped?: boolean } = {}) {
   const measurements = IDS.map((id) => {
     if (id === 'frequency') return value(id, '1.000', 'kHz');
     if (id === 'period') return value(id, '1.000', 'ms');
@@ -72,8 +72,7 @@ async function sendMeasurements(page: Page, patch: { unverified?: string | null;
   });
   const state = measurementsState({
     revision: 5,
-    accuracyNote: 'Voltage readings are accurate to about 2 to 3 counts.',
-    channels: [{ channel: 1, clipped: patch.clipped ?? false, unverified: patch.unverified ?? null, measurements }],
+    channels: [{ channel: 1, clipped: patch.clipped ?? false, measurements }],
   });
   await emit(page, 'measurements_changed', state);
 }
@@ -202,7 +201,6 @@ test.describe('M2 measurements (#15)', () => {
     await expect(panel).toContainText('Frequency');
     await expect(panel).toContainText('1.000');
     await expect(panel).toContainText('kHz');
-    await expect(panel).toContainText('Voltage readings are accurate to about 2 to 3 counts.');
   });
 
   test('given a cell that does not fit, when shown, then it reads - with a footnote reason', async ({ page }) => {
@@ -228,14 +226,6 @@ test.describe('M2 measurements (#15)', () => {
       const box = (await item.boundingBox())!;
       expect(box.x + box.width, 'menu item right edge').toBeLessThanOrEqual(viewport.width);
     }
-  });
-
-  test('given an unverified range, when shown, then the value carries the ? marker', async ({ page }) => {
-    await openMain(page);
-    await liveFrame(page);
-    await sendMeasurements(page, { unverified: 'Range above 1 V/div is unverified' });
-    const panel = page.locator('aside, [data-region="sidebar"]').first();
-    await expect(panel.getByText('?').first()).toBeVisible();
   });
 
   test('given a pinned subset, when the window restarts, then the choice is restored', async ({ page }) => {

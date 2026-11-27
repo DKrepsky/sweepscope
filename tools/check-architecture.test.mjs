@@ -60,6 +60,24 @@ test('given a tauri plugin in the kernel, when check-architecture runs, then it 
   assert.deepEqual(rulesOf(checkMetadata(metadataOf(badKernel))), ['tauri-outside-shell']);
 });
 
+test('given the cli lists tauri, when check-architecture runs, then it fails with rule cli-without-tauri', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel', 'tauri']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(kernel, cli))), ['cli-without-tauri']);
+});
+
+test('given the cli lists a tauri plugin, when check-architecture runs, then it fails with rule cli-without-tauri', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['tauri-plugin-dialog']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(cli))), ['cli-without-tauri']);
+});
+
+test('given the cli depends on features and the kernel only, when check-architecture runs, then there are no violations', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel', 'sweepscope-device']);
+
+  assert.deepEqual(checkMetadata(metadataOf(kernel, device, cli)), []);
+});
+
 test('given the driver in a crate other than device, when check-architecture runs, then it fails with rule hantek-outside-device', () => {
   const acquisition = crate('sweepscope-acquisition', 'backend/features/acquisition', ['hantek6xx4-lib']);
 
@@ -131,4 +149,25 @@ test('given code after a line comment on the same line, when the shell sources a
   const files = [{ path: 'composition.rs', text: 'let a = 1; tauri::run(); // done' }];
 
   assert.equal(checkShellSources(files).length, 1);
+});
+
+test('given the shell depends on the cli, when check-architecture runs, then there are no violations', () => {
+  const cli = crate('sweepscope-cli', 'cli', ['sweepscope-kernel']);
+  const app = crate('sweepscope-app', 'src-tauri', ['sweepscope-cli']);
+
+  assert.deepEqual(checkMetadata(metadataOf(kernel, cli, app)), []);
+});
+
+test('given a feature depends on the cli, when check-architecture runs, then it fails with rule depends-on-cli', () => {
+  const cli = crate('sweepscope-cli', 'cli');
+  const settings = crate('sweepscope-settings', 'backend/features/settings', ['sweepscope-cli']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(cli, settings))), ['upward-dependency', 'depends-on-cli']);
+});
+
+test('given the kernel depends on the cli, when check-architecture runs, then it fails with rule depends-on-cli', () => {
+  const cli = crate('sweepscope-cli', 'cli');
+  const badKernel = crate('sweepscope-kernel', 'backend/kernel', ['sweepscope-cli']);
+
+  assert.deepEqual(rulesOf(checkMetadata(metadataOf(cli, badKernel))), ['upward-dependency', 'depends-on-cli']);
 });

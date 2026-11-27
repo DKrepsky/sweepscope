@@ -1,4 +1,5 @@
 import type { BackendClient } from './backend-client';
+import { createFakeZeroCalibration, zeroCalibrationHandlers, type FakeZeroCalibration } from './fake-zero-calibration';
 import type {
   CommandArgs,
   CommandName,
@@ -21,7 +22,13 @@ export type FakeClient = BackendClient & {
   scriptStream(kind: StreamKind, messages: ArrayBuffer[]): void;
   openStreamCount(kind: StreamKind): number;
   readonly calls: Call[];
+  /** The backend's zero calibration session; the four commands answer from it and publish its events. */
+  readonly zeroCalibration: FakeZeroCalibration;
 };
+
+function noResponse(name: string): never {
+  throw new Error(`No fake response registered for ${name}`);
+}
 
 export function createFakeClient(): FakeClient {
   const handlers = new Map<CommandName, Handler<CommandName>>();
@@ -33,13 +40,16 @@ export function createFakeClient(): FakeClient {
 
   const run = async (name: CommandName, args: CommandArgs[CommandName]) => {
     calls.push({ name, args });
-    const handler = handlers.get(name);
-    if (!handler) throw new Error(`No fake response registered for ${name}`);
-    return handler(args as never);
+    return (handlers.get(name) ?? noResponse(name))(args as never);
   };
 
+  const emit: FakeClient['emit'] = (name, payload) => listeners.get(name)?.forEach((fn) => fn(payload as never));
+  const zeroCalibration = createFakeZeroCalibration((state) => emit('zero_calibration_changed', state));
+  zeroCalibrationHandlers(zeroCalibration).forEach(([name, handler]) => handlers.set(name, handler));
   return {
     calls,
+    zeroCalibration,
+    emit,
     respond: (name, handler) => void handlers.set(name, handler as unknown as Handler<CommandName>),
     send: (name, args) => run(name, args) as Promise<CommandResult[typeof name]>,
     sendBytes: <R>(command: string, bytes: Uint8Array) => run(command as CommandName, bytes as never) as Promise<R>,
@@ -49,7 +59,6 @@ export function createFakeClient(): FakeClient {
       listeners.set(name, set);
       return () => void set.delete(listener as Listener);
     },
-    emit: (name, payload) => listeners.get(name)?.forEach((listener) => listener(payload as never)),
     openStream: (kind, onMessage) => {
       const open = openOf(kind);
       open.add(onMessage);

@@ -24,7 +24,6 @@
     {@render cell(c)}
   {:else}
     <span class="ss-num">{shownText(c)}</span>
-    {#if c.state === 'unverified'}<span class="mark" aria-label="unverified range">?</span>{/if}
     {#if c.state !== 'invalid' && c.unit}<span class="unit">{c.unit}</span>{/if}
     {#if c.footnote !== undefined}<sup>[{c.footnote}]</sup>{/if}
   {/if}
@@ -106,11 +105,9 @@
   td.muted {
     color: var(--ss-color-text-muted);
   }
-  td.unverified,
   td.warning {
     box-shadow: inset var(--ss-space-1) 0 0 var(--ss-color-status-warning);
   }
-  .mark,
   sup {
     font-family: var(--ss-font-mono);
     color: var(--ss-color-status-warning);

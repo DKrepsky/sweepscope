@@ -10,9 +10,6 @@ use crate::{PulseState, TriggerKindName, TriggerPatch};
 /// The driver's range for a pulse width.
 const MIN_WIDTH_S: f64 = 10e-9;
 const MAX_WIDTH_S: f64 = 10.0;
-/// Widths checked on hardware (R6).
-const VERIFIED_MIN_NS: f64 = 50_000.0;
-const VERIFIED_MAX_NS: f64 = 5_000_000.0;
 
 /// Edits the pulse fields of the model; any bad width rejects the whole patch.
 pub fn apply(model: &mut Model, patch: &TriggerPatch) -> Result<(), KernelError> {
@@ -60,6 +57,5 @@ pub fn state(model: &Model) -> Option<PulseState> {
     Some(PulseState {
         condition,
         width: formatted(width_s, Quantity::Seconds),
-        verified: (VERIFIED_MIN_NS..=VERIFIED_MAX_NS).contains(&(width_s * 1e9).round()),
     })
 }

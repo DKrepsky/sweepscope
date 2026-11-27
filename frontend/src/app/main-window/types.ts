@@ -1,5 +1,6 @@
 /** View model of the main window. Strings are already formatted (units, signs, precision); the backend will feed it. */
 
+import type { CalibrationDialogModel, CalibrationTagModel } from '../calibration';
 import type { CursorId } from '../cursors';
 
 export type { CursorId };
@@ -70,8 +71,6 @@ export type Interpolation = 'sinc' | 'linear' | 'dots';
 
 export interface HorizontalModel {
   timePerDiv: ScaleQuantity;
-  /** Marker text when the selected time base step has not been measured on the hardware. */
-  unverified?: string;
   triggerPosition: Quantity;
   window: string;
   interpolation: Interpolation;
@@ -93,8 +92,6 @@ export interface ChannelModel {
   bandwidthLimit: boolean;
   probe: string;
   inverted: boolean;
-  /** Reason text when the range is outside the verified one. */
-  unverified?: string;
   /** Ground marker, 0 (bottom) to 1 (top) of the screen. */
   groundPosition: number;
   enableReason?: string;
@@ -112,8 +109,6 @@ export type PulseCondition = 'equal' | 'notEqual' | 'greater' | 'less';
 export interface PulseModel {
   condition: PulseCondition;
   width: Quantity;
-  /** False outside the verified region. */
-  verified: boolean;
   /** Set when the last typed width was rejected; the applied width stays. */
   error?: string;
 }
@@ -163,7 +158,7 @@ export interface CursorsModel {
 }
 
 export interface MeasurementCellModel {
-  state: 'valid' | 'unverified' | 'invalid' | 'stale';
+  state: 'valid' | 'invalid' | 'stale';
   text: string;
   unit?: string;
   footnote?: number;
@@ -178,7 +173,6 @@ export interface MeasurementsModel {
   rows: { id: string; label: string; cells: Record<string, MeasurementCellModel> }[];
   footnotes: { key: number; text: string }[];
   frozenLabel?: 'Frozen' | 'Offline';
-  accuracyNote: string;
   /** Why no values are shown (roll mode). */
   unavailableNote?: string;
   /** Every row the pin menu offers, with whether it is shown. */
@@ -188,12 +182,12 @@ export interface MeasurementsModel {
 }
 
 export interface StatusModel {
-  connection: { state: string; detail: string; tooltip: string; simulated: boolean };
+  /** The state word is the design's: Ready, Connecting, Disconnected or Error. */
+  connection: { state: 'Ready' | 'Connecting' | 'Disconnected' | 'Error'; detail: string; tooltip: string };
   sampleRate: { value: string; tooltip: string; alias?: AliasNotice };
   record: { points: string; span: string };
   capture: { rate: string; deadTime: string; tooltip: string };
   renderer: string;
-  accuracy: string;
 }
 
 /** A label on the screen: `edge-right` is the roll `now` mark; `channel` colours it. */
@@ -387,6 +381,12 @@ export interface BannerModel {
   actions: BannerAction[];
 }
 
+/** Zero calibration: the status bar tag, and the dialog while a session exists (undefined otherwise). */
+export interface CalibrationModel {
+  tag: CalibrationTagModel;
+  dialog: CalibrationDialogModel | undefined;
+}
+
 export interface MainWindowModel {
   toolbar: ToolbarModel;
   horizontal: HorizontalModel;
@@ -404,4 +404,5 @@ export interface MainWindowModel {
   recording: RecordingModel;
   autoset: AutosetModel;
   math: MathModel;
+  calibration: CalibrationModel;
 }

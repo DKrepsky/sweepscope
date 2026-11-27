@@ -36,3 +36,10 @@ Durable lessons only: decisions, conventions, pitfalls, user preferences. No tas
 - FFT: Window as Menu button (4-word Segmented does not fit the Horizontal column), peak marker panel replaces Cursors panel in sidebar; XY keeps Time/div, X/Y selectors replace Trig pos and Interp rows.
 - Alias warning as badges in 4 places, no banner (banner costs height, flickers). Math = fixed 5th row in Vertical group (dock height impact). Recording token status-record pink.
 - Pitfall: there is no M2 design spec and no docs/design-system folder; design.md is the system. Prototype generator pattern: slice docs/design-prototype/index.html by markers and link its tokens.css/prototype.css relatively.
+
+## M4 Polish decisions (rev 2, pending G2)
+- Human overrode task-panel wizard: per-device modal calibration dialog (6 fixed steps, channel chips row, Cancel stores nothing, acquisition paused), status-bar tag CALIBRATED / NO CALIBRATION with accuracy tooltip. All UNVERIFIED/PARTIALLY VERIFIED markers removed (#50, inventory in spec 4.1); nothing replaces them. Lesson: don't over-design per-range UI; ask engineering, show progress only.
+- Dialog focus goes to the step heading, never the primary button. Avoid prototype.css class names like `.ok` (collides with status bar colour); use unique names.
+- Icon: yellow ch1 true sinusoid (Béziers from sin(), handle y = A*pi/6) on dark scope screen, `icon-small.svg` <=48 px. Old green sine rejected (green = Run).
+- Prototype generator in scratchpad; main-window.html = index.html with markers stripped by regex.
+- Rev 5 (hardware feedback): programmatic-focus targets (tabindex=-1: step heading, Note, drawer, popover) show no ring; rings only on operable elements. Not-shorted step: Cancel, Continue, Try again (primary); accepted channels get a quiet muted line on Done, no tag. Tag tooltip = one row per enabled channel `CH1 +0.66 mV at 2 mV/div`; no gain/extreme/resolution notes. Worktree: .claude/worktrees/designer-feedback.

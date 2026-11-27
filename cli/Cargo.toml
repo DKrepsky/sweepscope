@@ -1,0 +1,24 @@
+[package]
+name = "sweepscope-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "SweepScope headless capture library, run by the application binary; no Tauri (ADR 0022)"
+
+[lints]
+workspace = true
+
+[lib]
+name = "sweepscope_cli"
+path = "src/lib.rs"
+
+[dependencies]
+sweepscope-acquisition = { path = "../backend/features/acquisition" }
+sweepscope-calibration = { path = "../backend/features/calibration" }
+sweepscope-device = { path = "../backend/features/device" }
+sweepscope-export = { path = "../backend/features/export" }
+sweepscope-kernel = { path = "../backend/kernel" }
+
+[dev-dependencies]
+serde_json = "1"

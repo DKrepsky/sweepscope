@@ -135,7 +135,7 @@ mod tests {
             window_len: 4,
             invert: [false; 4],
             probe: [1.0; 4],
-            range_verified: [true; 4],
+            calibrated: [true; 4],
             seconds_per_div,
         }
     }
@@ -149,7 +149,6 @@ mod tests {
         ChannelMeasurements {
             channel: number,
             clipped: false,
-            unverified: None,
             measurements: vec![Measurement {
                 id: MeasurementId::Frequency,
                 label: "Frequency".into(),

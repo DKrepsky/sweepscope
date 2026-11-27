@@ -9,6 +9,7 @@ import type {
   MeasurementsState,
   RecordingState,
   SpectrumState,
+  ZeroCalibrationState,
 } from '../../api';
 
 export interface InstrumentStores {
@@ -20,7 +21,8 @@ export interface InstrumentStores {
   measurements: Readable<MeasurementsState | undefined>;
   spectrum: Readable<SpectrumState | undefined>;
   recording: Readable<RecordingState | undefined>;
-  /** Subscribes to the eight slice events, then loads the snapshot; events and snapshot apply by revision. */
+  zeroCalibration: Readable<ZeroCalibrationState | undefined>;
+  /** Subscribes to the nine slice events, then loads the snapshot; events and snapshot apply by revision. */
   start(): Promise<void>;
   stop(): void;
 }
@@ -54,6 +56,7 @@ function createSlices() {
     measurements: createSlice<MeasurementsState>(),
     spectrum: createSlice<SpectrumState>(),
     recording: createSlice<RecordingState>(),
+    zeroCalibration: createSlice<ZeroCalibrationState>(),
   };
 }
 
@@ -69,6 +72,7 @@ function follow(client: BackendClient, slices: Slices): (() => void)[] {
     client.subscribe('measurements_changed', slices.measurements.apply),
     client.subscribe('spectrum_changed', slices.spectrum.apply),
     client.subscribe('recording_changed', slices.recording.apply),
+    client.subscribe('zero_calibration_changed', slices.zeroCalibration.apply),
   ];
 }
 
@@ -82,6 +86,7 @@ function readableOf(slices: Slices) {
     measurements: slices.measurements.store,
     spectrum: slices.spectrum.store,
     recording: slices.recording.store,
+    zeroCalibration: slices.zeroCalibration.store,
   };
 }
 

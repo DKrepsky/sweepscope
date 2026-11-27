@@ -48,9 +48,9 @@ test.describe('tokens at runtime', () => {
   test('given the Tokens section, when checked, then there is one swatch per colour token and each resolves to the token value', async ({
     page,
   }) => {
-    // Overlay and gap fill are translucent (rgba) tokens: they have no hex value to compare.
+    // Overlay, scrim and gap fill are translucent (rgba) tokens: they have no hex value to compare.
     const colourTokens = tokenNames.filter(
-      (n) => n.startsWith('color-') && !n.includes('overlay') && n !== 'color-gap-fill',
+      (n) => n.startsWith('color-') && !n.includes('overlay') && n !== 'color-scrim' && n !== 'color-gap-fill',
     );
     await expect(page.locator('[data-swatch]')).toHaveCount(tokenNames.filter((n) => n.startsWith('color-')).length);
     for (const name of colourTokens) {
@@ -157,7 +157,6 @@ test.describe('tokens at runtime', () => {
   }) => {
     const badges = section(page, 'Badge').locator('.badge');
     const expected: [string, string, string][] = [
-      ['Unverified', dark['color-status-warning'], 'dashed'],
       ['SW', dark['color-status-info'], 'solid'],
       ['Offline', dark['color-status-offline'], 'solid'],
       ['Error', dark['color-status-error'], 'solid'],
@@ -357,12 +356,12 @@ test.describe('tooltip and feedback', () => {
     await badge.scrollIntoViewIfNeeded();
     await badge.hover();
     await page.waitForTimeout(200);
-    const early = await page.getByRole('tooltip').filter({ hasText: 'not verified' }).count();
+    const early = await page.getByRole('tooltip').filter({ hasText: 'Computed in software' }).count();
     await page.waitForTimeout(500);
-    await expect(page.getByRole('tooltip').filter({ hasText: 'driver has not verified' })).toBeVisible();
+    await expect(page.getByRole('tooltip').filter({ hasText: 'Computed in software' })).toBeVisible();
     expect(early).toBe(0);
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('tooltip').filter({ hasText: 'driver has not verified' })).toHaveCount(0);
+    await expect(page.getByRole('tooltip').filter({ hasText: 'Computed in software' })).toHaveCount(0);
   });
 
   test('given a Tooltip host, when its tooltip is shown, then the control is linked to it by aria-describedby', async ({
@@ -411,6 +410,5 @@ test.describe('tooltip and feedback', () => {
     const matrix = section(page, 'MeasurementMatrix').locator('table').first();
     expect(await matrix.locator('th:not([scope])').count()).toBe(0);
     await expect(matrix.getByText('[2]').first()).toBeVisible();
-    await expect(matrix.locator('.unverified').first()).toBeVisible();
   });
 });

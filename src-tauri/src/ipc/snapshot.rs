@@ -1,5 +1,6 @@
 use serde::Serialize;
 use sweepscope_acquisition::{AcquisitionStatus, GetInstrument, InstrumentFacts, InstrumentSnapshot, InstrumentState};
+use sweepscope_calibration::{GetZeroCalibration, ZeroCalibrationState};
 use sweepscope_device::GetConnection;
 use sweepscope_display::{DisplayState, GetDisplay};
 use sweepscope_kernel::contracts::ConnectionSnapshot;
@@ -22,6 +23,7 @@ pub struct StateSnapshot {
     pub measurements: MeasurementsState,
     pub spectrum: SpectrumState,
     pub recording: RecordingState,
+    pub zero_calibration: ZeroCalibrationState,
 }
 
 pub fn snapshot_with(bus: &Bus) -> Result<StateSnapshot, KernelError> {
@@ -40,6 +42,7 @@ pub fn snapshot_with(bus: &Bus) -> Result<StateSnapshot, KernelError> {
         measurements: bus.request(GetMeasurements)?,
         spectrum: bus.request(GetSpectrum)?,
         recording: bus.request(GetRecording)?,
+        zero_calibration: bus.request(GetZeroCalibration)?,
     })
 }
 
@@ -121,6 +124,7 @@ mod tests {
             measurements,
             spectrum,
             recording,
+            zero_calibration,
         } = snapshot_with(&backend.bus).expect("snapshot");
 
         let actual = [
@@ -132,6 +136,7 @@ mod tests {
             ("measurements", ts_expression(&measurements)),
             ("spectrum", ts_expression(&spectrum)),
             ("recording", ts_expression(&recording)),
+            ("zeroCalibration", ts_expression(&zero_calibration)),
         ];
 
         let listed: Vec<(&str, String)> = SNAPSHOT_FIELDS
@@ -142,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn given_the_composed_app_with_the_simulator_when_a_snapshot_is_requested_then_it_carries_all_eight_slices() {
+    fn given_the_composed_app_with_the_simulator_when_a_snapshot_is_requested_then_it_carries_all_nine_slices() {
         let backend = compose_quiet();
         assert!(eventually(Duration::from_secs(5), || {
             snapshot_with(&backend.bus).is_ok_and(|s| s.connection.state == ConnectionState::Ready)
@@ -156,5 +161,6 @@ mod tests {
         assert!(snapshot.measurements.channels.is_empty());
         assert!(!snapshot.spectrum.active);
         assert!(!snapshot.recording.active);
+        assert_eq!(snapshot.zero_calibration.session, None);
     }
 }

@@ -23,6 +23,12 @@ describe('tauri client contract', () => {
     expect(result).toEqual({ namespace: 'a', version: 1, json: '{}' });
   });
 
+  it('given the continue calibration command, when sent, then the transport receives its Rust name', async () => {
+    const transport = fakeTransport();
+    await createTauriClient(transport).send('continue_zero_calibration', {});
+    expect(transport.invoke).toHaveBeenCalledExactlyOnceWith('continue_zero_calibration', {});
+  });
+
   it('given bytes, when sent, then the transport receives the command and the same bytes', async () => {
     const transport = fakeTransport({ invoke: vi.fn().mockResolvedValue({ fileName: 'a.png' }) });
     const bytes = new Uint8Array([137, 80, 78, 71]);

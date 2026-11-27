@@ -35,12 +35,10 @@ export const mockChannels = (): ChannelModel[] => [
     voltsPerDiv: scale('20', 'mV/div'),
     position: { value: '+3.00', unit: 'div' },
     groundPosition: 0.875,
-    unverified: 'Unverified range: below 50 mV/div. Accuracy up to about 5 % of a division.',
   }),
   channel({
     number: 3,
     voltsPerDiv: scale('2', 'V/div'),
-    unverified: 'Unverified range: above 1 V/div.',
   }),
   channel({
     number: 4,
@@ -50,7 +48,6 @@ export const mockChannels = (): ChannelModel[] => [
 ];
 
 const valid = (text: string, unit?: string) => ({ state: 'valid' as const, text, unit });
-const unverified = (text: string, unit: string) => ({ state: 'unverified' as const, text, unit });
 const unavailable = (footnote: number) => ({ state: 'invalid' as const, text: '', footnote });
 
 function measurementRows(): MeasurementsModel['rows'] {
@@ -68,11 +65,11 @@ function measurementRows(): MeasurementsModel['rows'] {
   return [
     row('frequency', 'Frequency', valid('1.000', 'kHz'), valid('2.000', 'kHz'), unavailable(2)),
     row('period', 'Period', valid('1.000', 'ms'), valid('500.0', 'µs'), unavailable(2)),
-    row('vpp', 'Vpp', valid('1.91', 'V'), unverified('32.0', 'mV'), unverified('4.02', 'V')),
-    row('vmax', 'Vmax', valid('1.93', 'V'), unverified('16.0', 'mV'), unverified('2.01', 'V')),
-    row('vmin', 'Vmin', valid('20.0', 'mV'), unverified('−16.0', 'mV'), unverified('−2.01', 'V')),
-    row('vmean', 'Vmean', valid('960', 'mV'), unverified('−0.3', 'mV'), unverified('−10', 'mV')),
-    row('vrms', 'Vrms', valid('1.35', 'V'), unverified('11.3', 'mV'), unverified('1.15', 'V')),
+    row('vpp', 'Vpp', valid('1.91', 'V'), valid('32.0', 'mV'), valid('4.02', 'V')),
+    row('vmax', 'Vmax', valid('1.93', 'V'), valid('16.0', 'mV'), valid('2.01', 'V')),
+    row('vmin', 'Vmin', valid('20.0', 'mV'), valid('−16.0', 'mV'), valid('−2.01', 'V')),
+    row('vmean', 'Vmean', valid('960', 'mV'), valid('−0.3', 'mV'), valid('−10', 'mV')),
+    row('vrms', 'Vrms', valid('1.35', 'V'), valid('11.3', 'mV'), valid('1.15', 'V')),
     row('width', '+Width', valid('500.0', 'µs'), valid('250.0', 'µs'), unavailable(2)),
     row('duty', 'Duty', valid('50.0', '%'), valid('50.0', '%'), unavailable(2)),
     row('rise', 'Rise time', unavailable(1), unavailable(3), unavailable(3)),
@@ -87,7 +84,6 @@ export const mockMeasurements = (): MeasurementsModel => ({
     { id: 'ch3', label: 'CH3', color: 'color-ch3' },
   ],
   rows: measurementRows(),
-  accuracyNote: 'Volts accurate to about 2 to 3 ADC counts (placeholder wording).',
   pinnable: measurementRows().map(({ id, label }) => ({ id, label, pinned: true })),
   footnotes: [
     { key: 1, text: 'Reason text from the backend (example: not measurable at this setting).' },

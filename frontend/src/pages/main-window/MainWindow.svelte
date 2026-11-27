@@ -7,6 +7,7 @@
   import Banner from '../../ui/banner/Banner.svelte';
   import Button from '../../ui/button/Button.svelte';
   import Toast from '../../ui/toast/Toast.svelte';
+  import CalibrationDialog from './CalibrationDialog.svelte';
   import FrontPanelDock from './FrontPanelDock.svelte';
   import HorizontalReadout from './HorizontalReadout.svelte';
   import MainStatusBar from './MainStatusBar.svelte';
@@ -56,6 +57,7 @@
   });
 
   function onkeydown(event: KeyboardEvent) {
+    if (model.calibration.dialog) return;
     if (event.key === 'Escape' && drawerOpen) drawerRequested = false;
     handleShortcut(event, windowActions);
   }
@@ -191,8 +193,23 @@
         </div>
       </div>
     </div>
-    <MainStatusBar status={model.status} wrap={compact} essentialOnly={collapse.essentialStatusOnly} />
+    <MainStatusBar
+      status={model.status}
+      calibration={model.calibration.tag}
+      onopencalibration={windowActions.openCalibration}
+      wrap={compact}
+      essentialOnly={collapse.essentialStatusOnly}
+    />
   </div>
+  {#if model.calibration.dialog}
+    <CalibrationDialog
+      dialog={model.calibration.dialog}
+      onstart={windowActions.startCalibration}
+      oncalibrate={windowActions.calibrateChannel}
+      oncontinue={windowActions.continueChannel}
+      onclose={windowActions.closeCalibration}
+    />
+  {/if}
   {#if notifications.length > 0}
     <div class="toasts">
       {#each notifications as notification (notification.id)}
@@ -285,5 +302,9 @@
     inset-inline-end: 0;
     z-index: var(--ss-z-overlay);
     box-shadow: var(--ss-shadow-popover);
+  }
+  .drawer:focus,
+  .drawer:focus-visible {
+    outline: none;
   }
 </style>

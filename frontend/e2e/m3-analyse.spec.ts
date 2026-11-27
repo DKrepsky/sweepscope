@@ -83,7 +83,7 @@ async function emitAlias(page: Page, revision: number, on: boolean): Promise<voi
     'measurements_changed',
     measurementsState({
       revision,
-      channels: [{ channel: 1, clipped: false, unverified: null, measurements }],
+      channels: [{ channel: 1, clipped: false, measurements }],
       warnings: on
         ? [
             {

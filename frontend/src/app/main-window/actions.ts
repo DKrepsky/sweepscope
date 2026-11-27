@@ -75,6 +75,12 @@ export interface MainWindowActions {
   exportCsv(): void;
   exportRaw(): void;
   saveScreenshot(): void;
+  /** Refused by the guard while calibration is unavailable; the tag is disabled then too. */
+  openCalibration(): void;
+  startCalibration(): void;
+  calibrateChannel(): void;
+  continueChannel(): void;
+  closeCalibration(): void;
   bannerAction(id: BannerActionId): void;
   copyText(text: string): void;
 }

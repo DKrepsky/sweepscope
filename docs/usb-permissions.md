@@ -6,7 +6,8 @@ grants access. Without the rule the app shows a banner "Permission denied" with 
 
 ## Install the rule
 
-From the repository root:
+The `.deb` package installs the rule itself ([install.md](install.md)). For the AppImage or a source build, from the
+repository root:
 
 ```sh
 sudo cp packaging/udev/99-hantek6xx4.rules /etc/udev/rules.d/

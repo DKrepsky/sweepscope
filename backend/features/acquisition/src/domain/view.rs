@@ -24,8 +24,6 @@ pub const AUTOSET_RUNNING: &str = "Auto-setup is running";
 pub const RECORD_NEEDS_ROLL: &str = "Recording needs roll mode (500 ms/div or slower)";
 pub const LAST_CHANNEL: &str = "At least one channel must stay on";
 const NOT_RUNNING: &str = "Start acquisition first";
-const RANGE_LOW_LIMIT_V: f64 = 0.05;
-const RANGE_HIGH_LIMIT_V: f64 = 1.0;
 
 pub fn formatted(value: f64, quantity: Quantity) -> FormattedValue {
     let f = format(value, quantity);
@@ -114,19 +112,6 @@ pub fn instrument_state(caps: &Capabilities, model: &Model, revision: u64, locks
     }
 }
 
-fn unverified_text(volts_per_div: f64) -> Option<String> {
-    let side = if volts_per_div < RANGE_LOW_LIMIT_V {
-        "below 50 mV"
-    } else if volts_per_div > RANGE_HIGH_LIMIT_V {
-        "above 1 V"
-    } else {
-        return None;
-    };
-    Some(format!(
-        "Unverified range: {side} per div. Accuracy up to about 5 % of a division."
-    ))
-}
-
 fn channel_state(
     caps: &Capabilities,
     model: &Model,
@@ -145,7 +130,6 @@ fn channel_state(
         range: ScaleChoice {
             index: setup.range_index,
             label: formatted(volts_per_div * probe, Quantity::VoltsPerDiv),
-            verified: range.is_none_or(|r| r.verified),
             faster: gate(availability(index > 0, "Smallest range")),
             slower: gate(availability(index + 1 < caps.vertical_ranges.len(), "Largest range")),
         },
@@ -157,7 +141,6 @@ fn channel_state(
         probe,
         probe_text: format!("{probe}x"),
         invert: model.invert[number],
-        unverified: unverified_text(volts_per_div),
         enable: gate(availability(!only_enabled, LAST_CHANNEL)),
     }
 }
@@ -177,7 +160,6 @@ fn horizontal_state(
         time_base: ScaleChoice {
             index: model.setup.time_base_index,
             label: formatted(step.map_or(0.0, |t| t.seconds_per_div), Quantity::SecondsPerDiv),
-            verified: step.is_none_or(|t| t.verified),
             faster: gate(availability(index > 0, "Fastest time base")),
             slower: gate(slower),
         },

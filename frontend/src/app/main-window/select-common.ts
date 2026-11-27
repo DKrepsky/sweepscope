@@ -5,6 +5,7 @@ import type {
   InstrumentFacts,
   InstrumentState,
   MeasurementsState,
+  ZeroCalibrationState,
 } from '../../api';
 import type { RecordingState } from '../../api/generated/RecordingState';
 import type { SpectrumState } from '../../api/generated/SpectrumState';
@@ -21,6 +22,7 @@ export interface ModelInputs {
   facts: InstrumentFacts | undefined;
   display: DisplayState | undefined;
   measurements: MeasurementsState | undefined;
+  zeroCalibration: ZeroCalibrationState | undefined;
   frame: DecodedFrame | undefined;
   selected: ChannelNumber;
   cursors: CursorsState;

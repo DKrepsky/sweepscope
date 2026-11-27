@@ -146,15 +146,24 @@ test.describe('main window shell', () => {
     await expect(page.getByRole('menu')).toHaveCount(0);
   });
 
-  test('given the Accuracy item, when activated, then the popover opens and, with focus inside, Escape closes it', async ({
+  test('given the calibration tag, when it is activated, then the backend is asked to open the dialog', async ({
     page,
   }) => {
     await openMain(page);
-    await page.getByRole('button', { name: /^Accuracy/ }).click();
-    await expect(page.getByRole('dialog', { name: 'Accuracy note' }).getByText('Approximate')).toBeVisible();
-    await page.getByRole('dialog', { name: 'Accuracy note' }).focus();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog', { name: 'Accuracy note' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'No calibration. Open calibration dialog' }).click();
+    await expect
+      .poll(async () => (await ipcLog(page)).some((call) => call.command === 'open_zero_calibration'))
+      .toBe(true);
+  });
+
+  test('given the status bar, when read, then it has no Accuracy item or Simulator chip and the tag closes the row', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const status = page.locator('[data-region="status"]');
+    await expect(status.getByRole('button', { name: /^Accuracy/ })).toHaveCount(0);
+    await expect(status.locator('.chip')).toHaveCount(0);
+    await expect(status.locator('.item').last()).toHaveAttribute('data-item', 'calibration');
   });
 
   test('given the shell, when loaded and exercised, then no console or page errors occur', async ({ page }) => {
@@ -176,54 +185,6 @@ test.describe('main window shell', () => {
     );
     expect(unnamed).toEqual([]);
   });
-});
-
-test.describe('unverified time base', () => {
-  test('given a measured time base, when the window opens, then no Unverified badge shows in Horizontal', async ({
-    page,
-  }) => {
-    await openMain(page);
-    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toHaveCount(0);
-  });
-
-  test('given an unmeasured time base, when the window opens, then the Horizontal group and the readout show Unverified', async ({
-    page,
-  }) => {
-    await openMain(page, 100, { unverifiedTimeBase: true });
-    await expect(page.locator('[data-region="horizontal"]').getByText('Unverified')).toBeVisible();
-    await expect(page.locator('[data-region="readout"]').getByText('Unverified')).toBeVisible();
-  });
-});
-
-test.describe('unverified badge placement', () => {
-  const windows: [number, number][] = [
-    [1440, 900],
-    [1920, 1080],
-    [1280, 800],
-    [2560, 1440],
-  ];
-
-  for (const [width, height] of windows) {
-    test(`given an unmeasured time base at ${width}x${height}, when the Horizontal group shows, then the badge stays inside its group and clear of the Trigger Type label`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height });
-      await openMain(page, 100, { unverifiedTimeBase: true });
-      const group = page.locator('[data-region="horizontal"]');
-      const badge = await group.getByRole('note').filter({ hasText: 'Unverified' }).boundingBox();
-      const groupBox = await group.boundingBox();
-      const typeLabel = await page.locator('[data-region="trigger"]').getByText('Type', { exact: true }).boundingBox();
-      if (!badge || !groupBox || !typeLabel) throw new Error('missing box');
-      const groupPadding = 8;
-      expect(badge.x + badge.width).toBeLessThanOrEqual(groupBox.x + groupBox.width - groupPadding);
-      const overlapsType =
-        badge.x < typeLabel.x + typeLabel.width &&
-        typeLabel.x < badge.x + badge.width &&
-        badge.y < typeLabel.y + typeLabel.height &&
-        typeLabel.y < badge.y + badge.height;
-      expect(overlapsType).toBe(false);
-    });
-  }
 });
 
 test.describe('security', () => {

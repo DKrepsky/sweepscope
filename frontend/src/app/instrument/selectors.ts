@@ -1,13 +1,6 @@
 import type { AcquisitionStatus, ConnectionSnapshot, InstrumentState } from '../../api';
 import type { ChipModel } from '../main-window/types';
 
-export interface ConnectionChip {
-  state: 'Connected' | 'Connecting' | 'Disconnected' | 'Error';
-  detail: string;
-  tooltip: string;
-  simulated: boolean;
-}
-
 type Connection = ConnectionSnapshot | undefined;
 
 export function isAcquiring(connection: Connection, instrument: InstrumentState | undefined): boolean {
@@ -65,29 +58,4 @@ export function statusChips(
     return status?.phase === 'done' && phase ? [stopped, phase] : [stopped];
   }
   return [{ id: 'state', kind: 'run', text: 'Run' }, ...rollChips(instrument), ...triggerChips(instrument, phase)];
-}
-
-function readyChip(connection: ConnectionSnapshot): ConnectionChip {
-  const identity = connection.identity;
-  const firmware = identity?.firmware ? `Firmware ${identity.firmware}` : '';
-  return {
-    state: 'Connected',
-    detail: identity?.model ?? '',
-    tooltip: firmware,
-    simulated: connection.simulatorActive,
-  };
-}
-
-export function connectionChip(connection: Connection): ConnectionChip {
-  const simulated = connection?.simulatorActive ?? false;
-  switch (connection?.state) {
-    case 'ready':
-      return readyChip(connection);
-    case 'disconnected':
-      return { state: 'Disconnected', detail: 'No scope found', tooltip: '', simulated };
-    case 'error':
-      return { state: 'Error', detail: connection.issue?.message ?? 'Connection failed', tooltip: '', simulated };
-    default:
-      return { state: 'Connecting', detail: '', tooltip: '', simulated };
-  }
 }

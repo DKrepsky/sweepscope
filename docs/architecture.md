@@ -70,6 +70,7 @@ sweepscope/
 ├── tools/                        # repository checks, no dependencies
 │   ├── check-architecture.mjs    # crate rules from `cargo metadata` (+ tests, node --test)
 │   └── check-test-names.mjs      # given_when_then naming
+├── cli/                          # capture CLI library, second composition root, no Tauri, run by the app binary (ADR 0022)
 ├── src-tauri/                    # Tauri shell: composition root, window and IPC wiring only
 │   ├── tauri.conf.json  build.rs  capabilities/
 │   └── src/
@@ -86,10 +87,11 @@ sweepscope/
 │       ├── settings/             # opaque UI-state blobs in settings.json (cursors, measurement pins)
 │       ├── device/  acquisition/ # device sessions; setup, run state and setup files (setup JSON, last-setup)
 │       ├── display/              # wire frame, interpolation mode (domain state)
-│       ├── measurement/          # twelve measurements per channel, accuracy note
+│       ├── measurement/          # twelve measurements per channel
 │       ├── export/               # CSV, raw SSR1 frame files
 │       ├── spectrum/             # FFT frames on their own stream (ADR 0018)
 │       ├── recording/            # roll data to .ssroll files (ADR 0017)
+│       ├── calibration/          # zero calibration session, per-unit offsets (ADR 0021)
 │       └── (channels, timebase-trigger ... created by their stories)
 └── frontend/
     ├── package.json  vite.config.ts  svelte.config.js  tsconfig.json  eslint.config.js  .stylelintrc.json
@@ -507,6 +509,7 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | Feature crates do not depend on other feature crates | `tools/check-architecture.mjs` over `cargo metadata` |
 | Libs depend on no feature and not on the bus | Same script |
 | Only `device` depends on `hantek6xx4-lib`; only `src-tauri` depends on `tauri`; `tauri::` only in `src-tauri/src/ipc` and `main.rs` | Same script |
+| The `cli` library (second composition root, ADR 0022) may depend on kernel, libs and feature crates but never on `tauri`; only `src-tauri`, whose binary runs it, may depend on `cli` | Same script |
 | `ui` imports only `design-system`; `pages` do not import `api`; `app` imports no markup | ESLint `no-restricted-imports` per folder |
 | No raw colour, size or font literals in `ui/` and `pages/` | Stylelint core rules (CSS in `.svelte`) and an ESLint rule (TS) |
 | Generated files up to date (tokens, API types, command manifest) | Regenerate and `git diff --exit-code` |
@@ -561,6 +564,10 @@ Mechanisms are in ADR 0004. All run locally with `npm run check`.
 | `spectrum` feature, `libs/fft` without external dependency | Decided (ADR 0018) |
 | Math as derived trace in `acquisition`, XY in the frontend | Decided (ADR 0019) |
 | Auto-setup as `libs/autoset` driven by `acquisition` | Decided (ADR 0020) |
+| Zero calibration as its own feature `calibration`; four new kernel messages (thirteen in total, ADR 0010 list) | Decided (ADR 0021) |
+| Headless capture CLI as a second composition root in the top-level `cli/` library, run by the one `sweepscope` executable | Decided (ADR 0022) |
+| Verification markers removed from the product; facts stay in documentation and an internal hint | Decided (ADR 0023) |
+| Linux packaging with the Tauri bundler, udev rule in the .deb, identifier `io.github.dkrepsky.sweepscope` | Decided (ADR 0024) |
 | Items not yet defined | See section 10 |
 
 Tension to watch: P1 (backend does all domain processing) means features that look like display logic (persistence
@@ -597,8 +604,8 @@ section 8.4). Still open, to be decided in the story that first needs them:
 |---|---|---|
 | Q-E1 | The backend publishes `InstrumentFacts` as domain state (acquisition slice): effective sample rate and interval, record length in points per channel, capture rate in waveforms per second, dead time as a fraction of time. Each value travels as a number in SI base units plus the backend-formatted text (`FormattedValue { text, value, unit }`); one value and one unit per slot. Update rate at most 4 per second; changes highlight for one `motion-normal`. | Decided; implemented by the acquisition story |
 | Q-E2 | The backend decides. Aliasing and similar warnings are backend state (`warnings` list with id, severity, channel, short text, message in the measurement slice; alias raised above Fs/5, cleared at 0.95 of it) that the UI only displays and that clears when the backend clears it. | Decided; implemented in M3 |
-| Q-E3 | The backend sends every selectable scale as `ScaleOption { value, text, verified }`; the UI never knows the table. Out-of-region values carry `verified: false`. | Decided |
-| Q-E4 | The accuracy note is one backend constant in `measurement`, published in the measurement slice; the frontend only shows it. Wording decided by the PM in M2 (D9): "Voltage readings are accurate to about 2 to 3 counts (about 5 % of a division at extreme positions). Ranges below 50 mV/div and above 1 V/div are unverified. Verified on one unit." The README quotes the same sentence until the M4 accuracy page exists. | Decided (PM, M2) |
+| Q-E3 | Void: the verification markers and `ScaleOption.verified` are removed (ADR 0023). | Void (M4) |
+| Q-E4 | Void: the accuracy note is removed from the product; the M4 accuracy page replaces it (ADR 0023). | Void (M4) |
 | Q-E5 | Formatting is one implementation in Rust (`libs/engineering-format`), 3 significant digits by default (1.91 V, 500 µs), prefix rules per quantity; the digit count belongs to the `Quantity` (measured frequency and period use 4: `Quantity::Frequency`, `Quantity::Period`). Domain values arrive pre-formatted. Cursor readouts are frontend state and are formatted in the browser by a small TypeScript port of three quantities (volts, seconds, hertz) checked against shared golden vectors (`golden.tsv`, read by the Rust and the TypeScript tests). A backend round trip per cursor move cannot meet the same-frame feedback of #14 AC1. Four-digit rows live in a Rust-only golden file. | Decided (M2, ADR 0014) |
 | Q-E6 | Time cursors are relative to samples, never to the trigger (PRD 5.2). X readouts are Δ-based (ΔX and 1/ΔX). The absolute X1 and X2 values are the time from the left edge of the screen, that is the first sample of the displayed window, not the first sample of the record (the record starts 3.2 divisions left of the screen and pan would move it invisibly). Cursor positions are stored as fractions of the screen width. | Decided (M2 spec D1, approved at G3) |
 | Q-E7 | Backend publishes availability per control, `Availability { enabled, reason }`, so the UI encodes no rule (P1). Default policy: settings are accepted while stopped and applied at the next arm; offline and disconnected accept presentation settings only; roll disables trigger and fast time bases. To be confirmed against the driver in the acquisition story. | Principle decided; policy open |

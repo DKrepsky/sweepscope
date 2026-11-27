@@ -3340,6 +3340,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sweepscope-acquisition",
+ "sweepscope-calibration",
+ "sweepscope-cli",
  "sweepscope-device",
  "sweepscope-display",
  "sweepscope-export",
@@ -3351,6 +3353,29 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "sweepscope-calibration"
+version = "0.1.0"
+dependencies = [
+ "engineering-format",
+ "serde",
+ "serde_json",
+ "sweepscope-kernel",
+ "ts-rs",
+]
+
+[[package]]
+name = "sweepscope-cli"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sweepscope-acquisition",
+ "sweepscope-calibration",
+ "sweepscope-device",
+ "sweepscope-export",
+ "sweepscope-kernel",
 ]
 
 [[package]]

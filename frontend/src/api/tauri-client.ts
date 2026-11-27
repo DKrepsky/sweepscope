@@ -30,6 +30,11 @@ export const tauriCommandNames: Record<CommandName, string> = {
   set_spectrum: 'set_spectrum',
   start_recording: 'start_recording',
   stop_recording: 'stop_recording',
+  open_zero_calibration: 'open_zero_calibration',
+  start_zero_calibration: 'start_zero_calibration',
+  measure_zero_calibration: 'measure_zero_calibration',
+  continue_zero_calibration: 'continue_zero_calibration',
+  close_zero_calibration: 'close_zero_calibration',
 };
 
 /** Rust commands that open and close each backend stream. Exhaustive, like the command names. */

@@ -37,10 +37,13 @@ impl RollSessions {
     }
 
     /// The item of an open session; polls from before the last change of setup are the caller's to drop.
-    pub fn item(&self, polled: RollPolled) -> Option<RollCaptured> {
+    pub fn item(&self, polled: RollPolled, instrument: &Instrument) -> Option<RollCaptured> {
         let open = self.open.as_ref()?;
         let item = match polled.item {
-            RollPolledItem::Samples { first_index, frame } => RollItem::Samples { first_index, frame },
+            RollPolledItem::Samples { first_index, frame } => RollItem::Samples {
+                first_index,
+                frame: instrument.correct_frame(&frame).frame,
+            },
             RollPolledItem::Gap { after, missed } => RollItem::Gap { after, missed },
         };
         Some(RollCaptured {

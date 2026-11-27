@@ -2,14 +2,14 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
 use sweepscope_kernel::contracts::{
-    ApplySetup, CaptureCompleted, ConnectionChanged, ForceTrigger, RollPolled, SetCapturing,
+    ApplySetup, CaptureCompleted, ConnectionChanged, ForceTrigger, RollPolled, SetCapturing, ZeroOffsetsChanged,
 };
 use sweepscope_kernel::{Bus, Clock, KernelError, Storage};
 
 use super::core::Core;
 use super::effects::{Call, Effects, Output};
 use super::last_setup::{LastSetup, Stored};
-use crate::{FactsChanged, InstrumentChanged, InstrumentSnapshot, StatusChanged};
+use crate::{FactsChanged, InstrumentChanged, InstrumentSnapshot, StatusChanged, ZeroOffsetsApplied};
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -97,6 +97,11 @@ impl Shared {
         self.react(|core, effects, _| core.roll_polled(polled, effects));
     }
 
+    pub fn zero_offsets(&self, change: ZeroOffsetsChanged) {
+        self.react(|core, effects, _| core.zero_offsets(change.offsets, effects));
+        self.bus.publish(ZeroOffsetsApplied);
+    }
+
     pub fn tick(&self) {
         self.react(|core, effects, now| core.tick(effects, now));
     }
@@ -124,6 +129,7 @@ impl Shared {
             Output::Facts(facts) => self.bus.publish(FactsChanged(*facts)),
             Output::Frame(frame) => self.bus.publish(frame),
             Output::Roll(item) => self.bus.publish(item),
+            Output::Probe(probe) => self.bus.publish(probe),
         }
     }
 

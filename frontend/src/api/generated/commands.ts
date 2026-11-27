@@ -19,6 +19,7 @@ import type { SpectrumState } from './SpectrumState';
 import type { StateSnapshot } from './StateSnapshot';
 import type { TriggerPatch } from './TriggerPatch';
 import type { UiStateEntry } from './UiStateEntry';
+import type { ZeroCalibrationState } from './ZeroCalibrationState';
 
 export const COMMANDS = [
   'load_ui_state',
@@ -46,6 +47,11 @@ export const COMMANDS = [
   'set_spectrum',
   'start_recording',
   'stop_recording',
+  'open_zero_calibration',
+  'start_zero_calibration',
+  'measure_zero_calibration',
+  'continue_zero_calibration',
+  'close_zero_calibration',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -75,6 +81,11 @@ export type CommandArgs = {
   set_spectrum: { patch: SpectrumPatch };
   start_recording: Record<string, never>;
   stop_recording: Record<string, never>;
+  open_zero_calibration: Record<string, never>;
+  start_zero_calibration: Record<string, never>;
+  measure_zero_calibration: Record<string, never>;
+  continue_zero_calibration: Record<string, never>;
+  close_zero_calibration: Record<string, never>;
 };
 
 export type CommandResult = {
@@ -103,9 +114,14 @@ export type CommandResult = {
   set_spectrum: null;
   start_recording: SavedFile | null;
   stop_recording: null;
+  open_zero_calibration: null;
+  start_zero_calibration: null;
+  measure_zero_calibration: null;
+  continue_zero_calibration: null;
+  close_zero_calibration: null;
 };
 
-export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed', 'spectrum_changed', 'recording_changed'] as const;
+export const EVENTS = ['connection_changed', 'instrument_changed', 'status_changed', 'facts_changed', 'display_changed', 'measurements_changed', 'spectrum_changed', 'recording_changed', 'zero_calibration_changed'] as const;
 export type EventName = (typeof EVENTS)[number];
 
 export type EventPayload = {
@@ -117,6 +133,7 @@ export type EventPayload = {
   measurements_changed: MeasurementsState;
   spectrum_changed: SpectrumState;
   recording_changed: RecordingState;
+  zero_calibration_changed: ZeroCalibrationState;
 };
 
 export const STREAMS = ['frames', 'roll', 'spectrum'] as const;

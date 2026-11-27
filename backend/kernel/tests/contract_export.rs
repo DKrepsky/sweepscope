@@ -36,6 +36,7 @@ fn given_the_device_types_when_exported_then_the_generated_files_have_camel_case
     VerticalRange::export_all(&config).unwrap();
 
     assert!(generated("DeviceIdentity.ts").contains("fpgaVersion: string | null"));
+    assert!(!generated("DeviceIdentity.ts").contains("unitId"));
     let capabilities = generated("Capabilities.ts");
     assert!(
         capabilities.contains("timeBases: Array<TimeBaseStep>"),

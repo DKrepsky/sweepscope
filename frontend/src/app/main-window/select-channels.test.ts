@@ -13,7 +13,6 @@ const channel = (number: number) =>
     bandwidthLimit: false,
     probeText: '1x',
     invert: false,
-    unverified: null,
     enable: { enabled: true },
   }) as unknown as InstrumentState['channels'][number];
 
@@ -24,12 +23,10 @@ const instrument = {
 
 const slice = (clippedChannel: number): MeasurementsState => ({
   revision: 1,
-  accuracyNote: '',
   warnings: [],
   channels: [1, 2].map((number) => ({
     channel: number,
     clipped: number === clippedChannel,
-    unverified: null,
     measurements: [],
   })),
 });

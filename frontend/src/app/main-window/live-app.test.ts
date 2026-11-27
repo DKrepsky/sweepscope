@@ -166,3 +166,56 @@ describe('createLiveApp', () => {
     });
   });
 });
+
+describe('calibration wiring in the live app', () => {
+  it('given the live app, when the user runs the wizard, then the model walks tag, dialog, chip and back', async () => {
+    const { client, app } = setup();
+    await app.start();
+    const model = () => get(app.model);
+
+    app.model.openCalibration();
+    expect(model().calibration.dialog?.stepNumber).toBe(1);
+    expect(model().toolbar.chips.map((chip) => chip.text)).toEqual(['Paused (calibration)']);
+
+    app.model.startCalibration();
+    for (let channel = 1; channel <= 4; channel++) app.model.calibrateChannel();
+    expect(model().calibration.dialog).toMatchObject({ step: 'done', stepNumber: 6 });
+    expect(model().calibration.tag.state).toBe('calibrated');
+
+    app.model.closeCalibration();
+    expect(model().calibration.dialog).toBeUndefined();
+    expect(model().toolbar.chips[0]?.text).toBe('Run');
+    expect(client.calls.filter((call) => call.name.endsWith('zero_calibration')).length).toBe(7);
+  });
+
+  it('given a channel that is not shorted, when the user continues, then the sweep resumes and Done names the channel', async () => {
+    const { client, app } = setup();
+    await app.start();
+    const model = () => get(app.model);
+    client.zeroCalibration.leaveUnshorted(2);
+    app.model.openCalibration();
+    app.model.startCalibration();
+    app.model.calibrateChannel();
+    app.model.calibrateChannel();
+    expect(model().calibration.dialog).toMatchObject({ step: 'notShorted', channel: 2, canContinue: true });
+
+    app.model.continueChannel();
+
+    expect(client.calls.some((call) => call.name === 'continue_zero_calibration')).toBe(true);
+    expect(model().calibration.dialog).toMatchObject({ step: 'channel', channel: 3 });
+    app.model.calibrateChannel();
+    app.model.calibrateChannel();
+    expect(model().calibration.dialog).toMatchObject({ step: 'done', overridden: [false, true, false, false] });
+  });
+
+  it('given a recording is active, when the user opens calibration, then the tag says why and no command is sent', async () => {
+    const { client, app } = setup();
+    client.respond('get_snapshot', () => stateSnapshot({ recording: recordingState({ active: true }) }));
+    await app.start();
+
+    app.model.openCalibration();
+
+    expect(get(app.model).calibration.tag).toEqual({ state: 'unavailable', reason: 'Stop recording first' });
+    expect(client.calls.some((call) => call.name === 'open_zero_calibration')).toBe(false);
+  });
+});

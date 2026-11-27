@@ -41,8 +41,18 @@ function setup(
     exportRaw: vi.fn(() => Promise.resolve()),
     saveScreenshot: vi.fn(() => Promise.resolve()),
   };
+  const calibration = {
+    openCalibration: vi.fn(),
+    startCalibration: vi.fn(),
+    calibrateChannel: vi.fn(),
+    continueChannel: vi.fn(),
+    closeCalibration: vi.fn(),
+  };
+  const calibrationBlocked = vi.fn((): string | null => null);
   const actions = createLiveActions({
     commands,
+    calibration,
+    calibrationBlocked,
     read: () => ({ instrument: noInstrument ? undefined : state, connection }),
     copyText,
     notify,
@@ -53,7 +63,7 @@ function setup(
     files,
     dismissRecordingFailure: vi.fn(),
   });
-  return { actions, commands, copyText, notify, select, cursors, pinned, files };
+  return { actions, commands, calibration, calibrationBlocked, copyText, notify, select, cursors, pinned, files };
 }
 
 const withChannel = (number: number, patch: Partial<InstrumentState['channels'][number]>): InstrumentState => {
@@ -309,5 +319,32 @@ describe('live actions: no instrument state', () => {
     actions.toggleInvert(1);
     expect(commands.setRunning).not.toHaveBeenCalled();
     expect(commands.setChannel).not.toHaveBeenCalled();
+  });
+});
+
+describe('live actions: calibration', () => {
+  it('given calibration is available, when it is opened, then the use case runs', () => {
+    const { actions, calibration } = setup();
+    actions.openCalibration();
+    expect(calibration.openCalibration).toHaveBeenCalledOnce();
+  });
+
+  it('given calibration is blocked, when it is opened, then nothing reaches the backend', () => {
+    const { actions, calibration, calibrationBlocked } = setup();
+    calibrationBlocked.mockReturnValue('Stop recording first');
+    actions.openCalibration();
+    expect(calibration.openCalibration).not.toHaveBeenCalled();
+  });
+
+  it('given an open dialog, when start, calibrate, continue and close are pressed, then each use case runs once', () => {
+    const { actions, calibration } = setup();
+    actions.startCalibration();
+    actions.calibrateChannel();
+    actions.continueChannel();
+    actions.closeCalibration();
+    expect(calibration.startCalibration).toHaveBeenCalledOnce();
+    expect(calibration.calibrateChannel).toHaveBeenCalledOnce();
+    expect(calibration.continueChannel).toHaveBeenCalledOnce();
+    expect(calibration.closeCalibration).toHaveBeenCalledOnce();
   });
 });

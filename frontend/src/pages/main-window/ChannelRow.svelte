@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { ChannelModel, MainWindowActions } from '../../app/main-window';
-  import Badge from '../../ui/badge/Badge.svelte';
   import Button from '../../ui/button/Button.svelte';
   import NumberField from '../../ui/number-field/NumberField.svelte';
   import Segmented from '../../ui/segmented/Segmented.svelte';
@@ -120,11 +119,6 @@
   >
     Inv
   </Button>
-  {#if channel.unverified}
-    <span class="badge">
-      <Badge kind="warning" tooltip={channel.unverified}>?</Badge>
-    </span>
-  {/if}
 </div>
 
 <style>
@@ -163,8 +157,5 @@
   /* Same dimming as the Stepper's off state, so a disabled row reads as one. */
   .coupling.dim {
     opacity: 0.45;
-  }
-  .badge {
-    justify-self: end;
   }
 </style>

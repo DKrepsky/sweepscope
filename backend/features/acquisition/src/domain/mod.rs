@@ -7,6 +7,7 @@ mod instrument;
 mod math;
 mod meter;
 mod model;
+mod offsets;
 mod pulse;
 pub mod setup_file;
 mod status;

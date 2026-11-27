@@ -3,8 +3,10 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sweepscope_acquisition::{AcquisitionDeps, AcquisitionModule};
+use sweepscope_calibration::{CalibrationDeps, CalibrationModule};
 use sweepscope_device::{
-    DeviceCatalog, DeviceDeps, DeviceModule, HantekCatalog, SimulatedCatalog, SimulatorControl, SimulatorSource,
+    DeviceCatalog, DeviceDeps, DeviceModule, HantekCatalog, SignalKind, SignalSpec, SimulatedCatalog, SimulatorControl,
+    SimulatorSource,
 };
 use sweepscope_display::{DisplayDeps, DisplayModule};
 use sweepscope_export::{ExportDeps, ExportModule};
@@ -16,6 +18,8 @@ use sweepscope_spectrum::{SpectrumDeps, SpectrumModule};
 
 const SIMULATOR_VARIABLE: &str = "SWEEPSCOPE_SIMULATOR";
 const NO_HARDWARE_VARIABLE: &str = "SWEEPSCOPE_NO_HARDWARE";
+const SIMULATOR_SIGNAL_VARIABLE: &str = "SWEEPSCOPE_SIMULATOR_SIGNAL";
+const CHANNELS: usize = 4;
 
 /// The wired backend. Modules are kept alive here; the bus is the only way in.
 /// Fields drop in declaration order, so consumers stop before the producers they read from.
@@ -23,6 +27,7 @@ pub struct Backend {
     pub bus: Bus,
     _display: DisplayModule,
     _measurement: MeasurementModule,
+    _calibration: CalibrationModule,
     _spectrum: SpectrumModule,
     _recording: RecordingModule,
     _export: ExportModule,
@@ -48,6 +53,7 @@ struct Consumers {
     spectrum: SpectrumModule,
     measurement: MeasurementModule,
     export: ExportModule,
+    calibration: CalibrationModule,
 }
 
 fn consumers(bus: &Bus, wiring: &Wiring) -> Result<Consumers, KernelError> {
@@ -71,6 +77,12 @@ fn consumers(bus: &Bus, wiring: &Wiring) -> Result<Consumers, KernelError> {
         export: ExportModule::new(ExportDeps {
             bus: bus.clone(),
             picker: Arc::clone(&wiring.picker),
+            unix_time_us: wiring.unix_time_us,
+        })?,
+        calibration: CalibrationModule::new(CalibrationDeps {
+            bus: bus.clone(),
+            clock: Arc::clone(&wiring.clock),
+            storage: Arc::clone(&wiring.storage),
             unix_time_us: wiring.unix_time_us,
         })?,
     })
@@ -103,6 +115,7 @@ pub fn compose(wiring: Wiring) -> Result<Backend, KernelError> {
         bus,
         _display: display,
         _measurement: consumers.measurement,
+        _calibration: consumers.calibration,
         _spectrum: consumers.spectrum,
         _recording: consumers.recording,
         _export: consumers.export,
@@ -115,6 +128,11 @@ pub fn compose(wiring: Wiring) -> Result<Backend, KernelError> {
 pub fn compose_on_disk(config_dir: PathBuf, picker: Arc<dyn FilePicker>) -> Result<Backend, KernelError> {
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let start_plugged = simulator_requested(std::env::var(SIMULATOR_VARIABLE).ok().as_deref());
+    let simulator = simulator_source(Arc::clone(&clock), start_plugged);
+    apply_simulator_signal(
+        &simulator.control,
+        simulator_signal(std::env::var(SIMULATOR_SIGNAL_VARIABLE).ok().as_deref()),
+    );
     compose(Wiring {
         storage: Arc::new(FileStorage::new(config_dir)),
         picker,
@@ -123,7 +141,7 @@ pub fn compose_on_disk(config_dir: PathBuf, picker: Arc<dyn FilePicker>) -> Resu
             hardware_disabled(std::env::var(NO_HARDWARE_VARIABLE).ok().as_deref()),
             hardware_catalog,
         ),
-        simulator: Some(simulator_source(Arc::clone(&clock), start_plugged)),
+        simulator: Some(simulator),
         clock,
         unix_time_us,
     })
@@ -131,6 +149,33 @@ pub fn compose_on_disk(config_dir: PathBuf, picker: Arc<dyn FilePicker>) -> Resu
 
 pub fn simulator_requested(value: Option<&str>) -> bool {
     value == Some("1")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SimulatorSignal {
+    /// The default: the usual waveform on every input.
+    Open,
+    /// Every input is shorted to ground, so the zero calibration can be tried without a scope.
+    Shorted,
+}
+
+pub fn simulator_signal(value: Option<&str>) -> SimulatorSignal {
+    match value {
+        None | Some("open") => SimulatorSignal::Open,
+        Some("shorted") => SimulatorSignal::Shorted,
+        Some(other) => {
+            log::warn!("{SIMULATOR_SIGNAL_VARIABLE}={other} is not shorted or open, using open");
+            SimulatorSignal::Open
+        }
+    }
+}
+
+fn apply_simulator_signal(control: &SimulatorControl, signal: SimulatorSignal) {
+    if signal == SimulatorSignal::Shorted {
+        for channel in 0..CHANNELS {
+            control.set_signal(channel, SignalSpec::new(SignalKind::Shorted));
+        }
+    }
 }
 
 pub fn hardware_disabled(value: Option<&str>) -> bool {
@@ -182,9 +227,12 @@ pub fn unix_time_us() -> f64 {
 mod tests {
     use std::time::Duration;
 
+    use sweepscope_acquisition::SetRunning;
     use sweepscope_device::{GetConnection, UseSimulator};
-    use sweepscope_kernel::contracts::ConnectionState;
-    use sweepscope_kernel::testing::{eventually, FakeClock};
+    use sweepscope_kernel::contracts::{ConnectionState, FrameCaptured};
+    use sweepscope_kernel::testing::{eventually, FakeClock, MemoryStorage, ScriptedPicker};
+    use sweepscope_kernel::SystemClock;
+    use sweepscope_recording::OsRecordFiles;
 
     use super::*;
 
@@ -265,6 +313,58 @@ mod tests {
         bus.request(UseSimulator { enabled: true }).expect("enable");
 
         assert!(eventually(WAIT, || connection_state(&bus) == ConnectionState::Ready));
+    }
+
+    #[test]
+    fn given_the_signal_variable_is_shorted_when_read_then_the_inputs_are_shorted() {
+        assert_eq!(simulator_signal(Some("shorted")), SimulatorSignal::Shorted);
+    }
+
+    #[test]
+    fn given_the_signal_variable_is_missing_open_or_unknown_when_read_then_the_inputs_are_open() {
+        assert_eq!(simulator_signal(None), SimulatorSignal::Open);
+        assert_eq!(simulator_signal(Some("open")), SimulatorSignal::Open);
+        assert_eq!(simulator_signal(Some("1")), SimulatorSignal::Open);
+    }
+
+    fn peak_to_peak_of_first_frame(signal: SimulatorSignal) -> u8 {
+        let clock = Arc::new(SystemClock);
+        let source = simulator_source(clock.clone(), true);
+        apply_simulator_signal(&source.control, signal);
+        let backend = compose(Wiring {
+            storage: Arc::new(MemoryStorage::default()),
+            picker: Arc::new(ScriptedPicker::default()),
+            record_files: Arc::new(OsRecordFiles),
+            clock,
+            hardware: None,
+            simulator: Some(source),
+            unix_time_us,
+        })
+        .expect("compose");
+        let frames = backend.bus.subscribe_latest::<FrameCaptured>();
+        assert!(eventually(WAIT, || connection_state(&backend.bus) == ConnectionState::Ready));
+        assert!(eventually(WAIT, || backend
+            .bus
+            .request(SetRunning { running: true })
+            .is_ok()));
+        let mut first = None;
+        assert!(eventually(WAIT, || {
+            first = frames.try_next();
+            first.is_some()
+        }));
+        let captured = first.expect("frame");
+        let codes = &captured.frame.channels[0].as_ref().expect("channel 1").codes;
+        codes.iter().max().expect("codes") - codes.iter().min().expect("codes")
+    }
+
+    #[test]
+    fn given_shorted_inputs_when_a_frame_is_captured_then_channel_one_is_nearly_flat() {
+        assert!(peak_to_peak_of_first_frame(SimulatorSignal::Shorted) < 30);
+    }
+
+    #[test]
+    fn given_open_inputs_when_a_frame_is_captured_then_channel_one_shows_the_waveform() {
+        assert!(peak_to_peak_of_first_frame(SimulatorSignal::Open) > 30);
     }
 
     #[test]
